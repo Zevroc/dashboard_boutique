@@ -77,6 +77,12 @@
     top:0;
     z-index:20;
   }
+  .toolbar-inview{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    align-items:center;
+  }
   .btn{
     font-family:'Space Grotesk',sans-serif;
     font-weight:600;
@@ -878,12 +884,18 @@
 <body>
 
 <header>
-  <p class="eyebrow">Registre PLU · balances poids‑prix</p>
   <h1>Éditeur de grille à largeur fixe</h1>
-  <p class="sub">Charge un fichier CSV exporté depuis ta balance. Les colonnes à largeur fixe sont détectées automatiquement (bandeau brass) et le padding en espaces est recalculé tout seul à chaque modification — plus besoin d'y penser, ni de passer par Excel.</p>
 </header>
 
-<div class="toolbar">
+
+<div class="top-view-switch">
+  <button class="top-view-btn active" id="btnViewArticles">📋 Base articles</button>
+  <button class="top-view-btn" id="btnViewVentes">📊 Analyse des ventes</button>
+</div>
+
+<main>
+  <div id="viewArticles">
+    <div class="toolbar">
   <button class="btn primary" id="btnImport">⇪ Importer la base articles</button>
   <input type="file" id="fileInput" accept=".csv,.CSV,text/csv">
   <button class="btn" id="btnAddRow" disabled>+ Ajouter une ligne</button>
@@ -930,18 +942,7 @@
   <button class="btn ghost" id="btnLabels" disabled>🏷 Étiquettes</button>
   <button class="btn ghost" id="btnEditMode" disabled>🔒 Verrouillé (lecture seule)</button>
 
-  <details class="menu">
-    <summary class="btn ghost" id="menuVentes">📊 Ventes ▾</summary>
-    <div class="menu-panel">
-      <button class="menu-item" id="btnImportSalesTxt">⇪ Importer des journaux (.TXT)</button>
-      <input type="file" id="salesTxtFileInput" accept=".txt,.TXT" multiple>
-      <button class="menu-item" id="btnImportSalesPay">⇪ Importer les tickets (.PAY)</button>
-      <input type="file" id="salesPayFileInput" accept=".pay,.PAY" multiple>
-      <button class="menu-item" id="btnImportSalesSynth">⇪ Importer une synthèse (CSV)</button>
-      <input type="file" id="salesSynthFileInput" accept=".csv,.CSV">
-      <button class="menu-item" id="btnExportSalesSynth">⇩ Enregistrer la synthèse (CSV)</button>
-    </div>
-  </details>
+
 
   <details class="menu">
     <summary class="btn ghost" id="menuSysteme">⚙️ Système ▾</summary>
@@ -970,15 +971,8 @@
     Toutes les colonnes
   </label>
   <div class="status" id="status"></div>
-</div>
+    </div>
 
-<div class="top-view-switch">
-  <button class="top-view-btn active" id="btnViewArticles">📋 Base articles</button>
-  <button class="top-view-btn" id="btnViewVentes">📊 Analyse des ventes</button>
-</div>
-
-<main>
-  <div id="viewArticles">
     <div class="dropzone" id="dropzone">
       Dépose ta <strong>base articles</strong> ici, ou clique sur <strong>Importer la base articles</strong>.<br>
       Pas encore de base ? Utilise <strong>Fichier ▾ → Importer/fusionner un CSV balance</strong> pour démarrer directement depuis un export brut de la balance.<br>
@@ -1001,7 +995,22 @@
 
   <div id="viewVentes" style="display:none;">
 <div class="ventes-section" id="salesSection">
-  <div class="ventes-head">
+  <div class="toolbar-inview" style="margin-bottom:14px;">
+  <details class="menu">
+    <summary class="btn ghost" id="menuVentes">📊 Ventes ▾</summary>
+    <div class="menu-panel">
+      <button class="menu-item" id="btnImportSalesTxt">⇪ Importer des journaux (.TXT)</button>
+      <input type="file" id="salesTxtFileInput" accept=".txt,.TXT" multiple>
+      <button class="menu-item" id="btnImportSalesPay">⇪ Importer les tickets (.PAY)</button>
+      <input type="file" id="salesPayFileInput" accept=".pay,.PAY" multiple>
+      <button class="menu-item" id="btnImportSalesSynth">⇪ Importer une synthèse (CSV)</button>
+      <input type="file" id="salesSynthFileInput" accept=".csv,.CSV">
+      <button class="menu-item" id="btnExportSalesSynth">⇩ Enregistrer la synthèse (CSV)</button>
+    </div>
+  </details>
+</div>
+
+<div class="ventes-head">
     <div class="titles">
       <p class="eyebrow2">Journaux de caisse (.TXT)</p>
       <h2>Tableau d'analyse des ventes</h2>
@@ -3171,7 +3180,6 @@
     btnResetMasterDbLink.style.display = 'none';
     footerNote.textContent = 'Lien vers le fichier base articles réinitialisé — le prochain enregistrement te demandera de choisir un fichier.';
   });
-
 
   // Ferme le menu déroulant après avoir cliqué sur une action à l'intérieur
   document.querySelectorAll('.menu-panel').forEach(panel=>{
