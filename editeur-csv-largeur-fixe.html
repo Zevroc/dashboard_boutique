@@ -82,6 +82,9 @@
     gap:10px;
     flex-wrap:wrap;
     align-items:center;
+    background:var(--graphite-2);
+    padding:12px 16px;
+    border-radius:8px;
   }
   .btn{
     font-family:'Space Grotesk',sans-serif;
@@ -996,12 +999,14 @@
   <div id="viewVentes" style="display:none;">
 <div class="ventes-section" id="salesSection">
   <div class="toolbar-inview" style="margin-bottom:14px;">
+  <button class="btn primary" id="btnImportSalesFolder">📁 Importer un dossier (.TXT + .PAY)</button>
+  <input type="file" id="salesFolderInput" webkitdirectory directory multiple>
   <details class="menu">
     <summary class="btn ghost" id="menuVentes">📊 Ventes ▾</summary>
     <div class="menu-panel">
-      <button class="menu-item" id="btnImportSalesTxt">⇪ Importer des journaux (.TXT)</button>
+      <button class="menu-item" id="btnImportSalesTxt">⇪ Importer des journaux (.TXT) séparément</button>
       <input type="file" id="salesTxtFileInput" accept=".txt,.TXT" multiple>
-      <button class="menu-item" id="btnImportSalesPay">⇪ Importer les tickets (.PAY)</button>
+      <button class="menu-item" id="btnImportSalesPay">⇪ Importer les tickets (.PAY) séparément</button>
       <input type="file" id="salesPayFileInput" accept=".pay,.PAY" multiple>
       <button class="menu-item" id="btnImportSalesSynth">⇪ Importer une synthèse (CSV)</button>
       <input type="file" id="salesSynthFileInput" accept=".csv,.CSV">
@@ -3791,6 +3796,54 @@
     });
     return daysAdded;
   }
+
+  // Import par dossier : un seul choix, chaque fichier est routé selon son extension
+  // (.TXT -> journal de vente, .PAY -> comptage tickets). Nécessite un navigateur
+  // compatible avec la sélection de dossier (Chrome/Edge) — webkitdirectory.
+  $('btnImportSalesFolder').addEventListener('click', ()=> $('salesFolderInput').click());
+  $('salesFolderInput').addEventListener('change', (e)=>{
+    const files = Array.from(e.target.files||[]);
+    if(files.length===0) return;
+    const txtFiles = files.filter(f=> /\.txt$/i.test(f.name));
+    const payFiles = files.filter(f=> /\.pay$/i.test(f.name));
+    const ignored = files.length - txtFiles.length - payFiles.length;
+    if(txtFiles.length===0 && payFiles.length===0){
+      alert("Aucun fichier .TXT ou .PAY trouvé dans ce dossier.");
+      $('salesFolderInput').value = '';
+      return;
+    }
+    let remaining = txtFiles.length + payFiles.length;
+    let txtDays = 0, payDays = 0;
+    const finish = ()=>{
+      if(remaining>0) return;
+      const parts = [];
+      if(txtFiles.length) parts.push(`${txtFiles.length} journal/journaux .TXT (${txtDays} jour(s) de vente)`);
+      if(payFiles.length) parts.push(`${payFiles.length} fichier(s) .PAY (${payDays} jour(s) de tickets)`);
+      alert(`Dossier importé : ${parts.join(', ')}.${ignored?` ${ignored} fichier(s) ignoré(s) (autre format).`:''}`);
+      $('salesFolderInput').value = '';
+      if($('viewVentes').style.display !== 'none'){ renderSalesEmptyState(); renderSalesDashboard(); }
+      persistSession();
+    };
+    txtFiles.forEach(f=>{
+      const reader = new FileReader();
+      reader.onload = ()=>{
+        const text = decodeWin1252(reader.result);
+        txtDays += mergeSalesData(parseSalesTxt(text));
+        remaining--; finish();
+      };
+      reader.readAsArrayBuffer(f);
+    });
+    payFiles.forEach(f=>{
+      const reader = new FileReader();
+      reader.onload = ()=>{
+        const text = decodeWin1252(reader.result);
+        const counts = parsePayTicketCounts(text);
+        Object.entries(counts).forEach(([date,n])=>{ state.ticketCounts[date] = n; payDays++; });
+        remaining--; finish();
+      };
+      reader.readAsArrayBuffer(f);
+    });
+  });
 
   $('btnImportSalesTxt').addEventListener('click', ()=> $('salesTxtFileInput').click());
   $('salesTxtFileInput').addEventListener('change', (e)=>{
