@@ -1052,11 +1052,18 @@
         <p class="biz-title" style="margin-top:18px;">CA cumulé sur la période (rythme de progression)</p>
         <div id="salesChartCumulative"></div>
 
-        <p class="biz-title" style="margin-top:18px;">Chiffre d'affaires par jour</p>
-        <div id="salesChartDays"></div>
-
-        <p class="biz-title" style="margin-top:18px;">Nombre de ventes par jour</p>
-        <div id="salesChartCountDays"></div>
+        <p class="biz-title" style="margin-top:18px;">Chiffre d'affaires &amp; nombre de ventes</p>
+        <label class="filterLabel" style="display:inline-flex; margin-bottom:10px;">
+          Regrouper par
+          <select id="salesGranularity">
+            <option value="jour" selected>Jour</option>
+            <option value="jour_semaine">Jour de la semaine</option>
+            <option value="semaine">Semaine</option>
+            <option value="mois">Mois</option>
+            <option value="annee">Année</option>
+          </select>
+        </label>
+        <div id="salesChartCombo"></div>
 
         <p class="biz-title" style="margin-top:18px;">Chiffre d'affaires par mois</p>
         <div id="salesChartMonths"></div>
@@ -3857,6 +3864,63 @@
     container.innerHTML = `<div>${svg}</div><div style="margin-top:8px;">${legend}</div>`;
   }
 
+  // Graphique combiné : barres (CA, échelle gauche) + courbe (nombre de ventes,
+  // échelle droite) sur un même axe des jours en abscisse — deux échelles distinctes
+  // car CA et nombre de ventes n'ont pas du tout le même ordre de grandeur.
+  function comboChart(container, labels, barValues, lineValues, formatBar, formatLine){
+    const W = 680, H = 240, padL = 50, padR = 44, padT = 12, padB = 30;
+    const n = labels.length;
+    const maxBar = Math.max(1, ...barValues);
+    const maxLine = Math.max(1, ...lineValues);
+    const slot = n>0 ? (W-padL-padR)/n : 0;
+    const barW = Math.min(slot*0.6, 26);
+    const yBar = v => (H-padB) - (v/maxBar)*(H-padT-padB);
+    const yLine = v => (H-padB) - (v/maxLine)*(H-padT-padB);
+
+    let svg = `<svg viewBox="0 0 ${W} ${H}" style="width:100%; max-width:${W}px; height:auto; display:block;">`;
+    const gridN = 4;
+    for(let i=0;i<=gridN;i++){
+      const v = maxBar*i/gridN;
+      const y = yBar(v);
+      svg += `<line x1="${padL}" y1="${y.toFixed(1)}" x2="${W-padR}" y2="${y.toFixed(1)}" stroke="#E1D6BA" stroke-width="1"/>`;
+      svg += `<text x="${padL-5}" y="${(y+3).toFixed(1)}" font-size="8" text-anchor="end" fill="#B8853A" font-family="IBM Plex Mono, monospace">${formatBar(v)}</text>`;
+      const vr = maxLine*i/gridN;
+      svg += `<text x="${W-padR+5}" y="${(y+3).toFixed(1)}" font-size="8" text-anchor="start" fill="#5C7A5B" font-family="IBM Plex Mono, monospace">${formatLine(vr)}</text>`;
+    }
+    // barres CA
+    labels.forEach((lbl,i)=>{
+      const cx = padL + slot*i + slot/2;
+      const v = barValues[i]||0;
+      const y = yBar(v);
+      svg += `<rect x="${(cx-barW/2).toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${(H-padB-y).toFixed(1)}" fill="#B8853A" fill-opacity="0.85" rx="1.5"/>`;
+    });
+    // courbe nombre de ventes
+    const linePts = labels.map((lbl,i)=> `${(padL+slot*i+slot/2).toFixed(1)},${yLine(lineValues[i]||0).toFixed(1)}`).join(' ');
+    svg += `<polyline points="${linePts}" fill="none" stroke="#5C7A5B" stroke-width="2.2"/>`;
+    labels.forEach((lbl,i)=>{
+      const cx = padL+slot*i+slot/2, cy = yLine(lineValues[i]||0);
+      svg += `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="2.4" fill="#5C7A5B"/>`;
+    });
+    // labels X (sous-echantillonnes si trop nombreux)
+    const labelEvery = Math.max(1, Math.ceil(n/10));
+    labels.forEach((lbl,i)=>{
+      if(i%labelEvery!==0 && i!==n-1) return;
+      const cx = padL+slot*i+slot/2;
+      svg += `<text x="${cx.toFixed(1)}" y="${H-8}" font-size="7.5" text-anchor="middle" fill="#6B6154" font-family="IBM Plex Mono, monospace">${lbl}</text>`;
+    });
+    svg += `</svg>`;
+
+    const legend = `
+      <span style="display:inline-flex; align-items:center; gap:5px; margin-right:16px; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink);">
+        <span style="width:11px; height:11px; background:#B8853A; display:inline-block; border-radius:2px;"></span>Chiffre d'affaires (échelle gauche)
+      </span>
+      <span style="display:inline-flex; align-items:center; gap:5px; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink);">
+        <span style="width:14px; height:2px; background:#5C7A5B; display:inline-block;"></span>Nombre de ventes (échelle droite)
+      </span>`;
+
+    container.innerHTML = `<div>${svg}</div><div style="margin-top:8px;">${legend}</div>`;
+  }
+
   function donutChart(container, rows){
     // seules les valeurs positives occupent une part du disque — une catégorie en
     // net négatif (ex. consignes rendues) ne peut pas avoir une taille de part négative
@@ -3977,6 +4041,75 @@
     const marginRate = amountHT>0 ? (margin/amountHT)*100 : null;
     return { cost, margin, marginRate };
   }
+
+  let currentByDayForCombo = [];
+  const MONTH_NAMES = ['Janv','Fév','Mars','Avr','Mai','Juin','Juil','Août','Sept','Oct','Nov','Déc'];
+
+  function aggregateByGranularity(byDay, granularity){
+    if(granularity==='jour'){
+      return byDay.map(d=>({ label:d.date, amount:d.amount, count:d.count }));
+    }
+    if(granularity==='jour_semaine'){
+      const buckets = WEEKDAY_NAMES.map(()=>({ amount:0, count:0, occ:0 }));
+      byDay.forEach(d=>{
+        const [dd,mm,yy] = d.date.split('.');
+        const jsDay = new Date(yy,mm-1,dd).getDay();
+        const idx = jsDay===0 ? 6 : jsDay-1;
+        buckets[idx].amount += d.amount; buckets[idx].count += d.count; buckets[idx].occ += 1;
+      });
+      return WEEKDAY_NAMES.map((name,i)=>({
+        label: `${name}${buckets[i].occ ? ' ('+buckets[i].occ+'j)' : ''}`,
+        amount: buckets[i].occ ? buckets[i].amount/buckets[i].occ : 0,
+        count: buckets[i].occ ? buckets[i].count/buckets[i].occ : 0
+      }));
+    }
+    if(granularity==='semaine'){
+      const map = {};
+      byDay.forEach(d=>{
+        const [dd,mm,yy] = d.date.split('.');
+        const dt = new Date(yy,mm-1,dd);
+        const jsDay = dt.getDay();
+        const diff = jsDay===0 ? -6 : 1-jsDay;
+        dt.setDate(dt.getDate()+diff); // lundi de la semaine
+        const key = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+        if(!map[key]) map[key] = { amount:0, count:0, label:`Sem. ${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}` };
+        map[key].amount += d.amount; map[key].count += d.count;
+      });
+      return Object.keys(map).sort().map(k=>map[k]);
+    }
+    if(granularity==='mois'){
+      const map = {};
+      byDay.forEach(d=>{
+        const [dd,mm,yy] = d.date.split('.');
+        const key = `${yy}-${mm}`;
+        if(!map[key]) map[key] = { amount:0, count:0, label:`${MONTH_NAMES[parseInt(mm,10)-1]} ${yy}` };
+        map[key].amount += d.amount; map[key].count += d.count;
+      });
+      return Object.keys(map).sort().map(k=>map[k]);
+    }
+    // annee
+    const map = {};
+    byDay.forEach(d=>{
+      const yy = d.date.split('.')[2];
+      if(!map[yy]) map[yy] = { amount:0, count:0, label:yy };
+      map[yy].amount += d.amount; map[yy].count += d.count;
+    });
+    return Object.keys(map).sort().map(k=>map[k]);
+  }
+
+  function renderComboChart(){
+    const granularity = $('salesGranularity').value;
+    const rows = aggregateByGranularity(currentByDayForCombo, granularity);
+    comboChart(
+      $('salesChartCombo'),
+      rows.map(r=>r.label),
+      rows.map(r=>r.amount),
+      rows.map(r=>r.count),
+      v=>eurosFromCents(Math.round(v)),
+      v=> granularity==='jour_semaine' ? v.toFixed(1).replace('.',',') : String(Math.round(v))
+    );
+  }
+  $('salesGranularity').addEventListener('change', renderComboChart);
 
   function renderDayProductsChart(date){
     const container = $('salesChartDayProducts');
@@ -4255,7 +4388,6 @@
       if(!byMonth[key]) byMonth[key] = 0;
       byMonth[key] += d.amount;
     });
-    const MONTH_NAMES = ['Janv','Fév','Mars','Avr','Mai','Juin','Juil','Août','Sept','Oct','Nov','Déc'];
     const monthKeys = Object.keys(byMonth).sort((a,b)=>{
       const [ma,ya] = a.split('.'), [mb,yb] = b.split('.');
       return new Date(ya,ma-1,1) - new Date(yb,mb-1,1);
@@ -4563,14 +4695,9 @@
       statsDiv.appendChild(card);
     });
 
-    const dayRows = byDay.map(d=>({ label:d.date, value:d.amount }));
-    const maxDay = Math.max(1, ...dayRows.map(r=>r.value));
-    chartBars($('salesChartDays'), dayRows, maxDay, v=>eurosFromCents(v));
-
-    // ---- Nombre de ventes par jour (tendance quantité, pas seulement CA) ----
-    const countDayRows = byDay.map(d=>({ label:d.date, value:d.count }));
-    const maxCountDay = Math.max(1, ...countDayRows.map(r=>r.value));
-    chartBars($('salesChartCountDays'), countDayRows, maxCountDay, v=>String(v));
+    // ---- CA & nombre de ventes combinés, regroupés selon la granularité choisie ----
+    currentByDayForCombo = byDay;
+    renderComboChart();
 
     // ---- Cumul du CA par jour de la semaine (lundi -> dimanche) ----
     const byWeekday = WEEKDAY_NAMES.map(()=> ({ amount:0, count:0 }));
