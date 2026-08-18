@@ -287,7 +287,7 @@
 
   table{
     border-collapse:collapse;
-    width:100%;
+    table-layout:fixed;
     font-family:'IBM Plex Mono',monospace;
     font-size:12.5px;
   }
@@ -301,7 +301,18 @@
     position:sticky;
     top:0;
     white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
   }
+  tbody td{ overflow:hidden; text-overflow:ellipsis; }
+  .col-resize-handle{
+    position:absolute;
+    right:-3px; top:0; bottom:0;
+    width:7px;
+    cursor:col-resize;
+    z-index:6;
+  }
+  .col-resize-handle:hover, .col-resize-handle.resizing{ background:var(--brass); opacity:.5; }
   th .colnum{
     font-size:10px;
     color:var(--ink-soft);
@@ -975,6 +986,7 @@
 
     <div class="sheet-wrap" id="sheetWrap">
       <table>
+        <colgroup id="gridColgroup"></colgroup>
         <thead><tr id="headRow"></tr></thead>
         <tbody id="bodyRows"></tbody>
       </table>
@@ -1045,28 +1057,26 @@
       </div>
 
       <div class="sales-tab-panel active" data-panel="apercu">
-        <p class="biz-title" style="margin-top:16px;">Évolution du CA — période actuelle vs précédente</p>
-        <p class="allergen-note">Jours alignés par position dans la période (Jour 1, Jour 2…), pas par date calendaire — permet de comparer une progression même si les périodes n'ont pas la même longueur. La courbe "période précédente" n'apparaît que si "Comparer à la période précédente" est activé dans les filtres.</p>
-        <div id="salesChartEvolution"></div>
-
-        <p class="biz-title" style="margin-top:18px;">CA cumulé sur la période (rythme de progression)</p>
-        <div id="salesChartCumulative"></div>
-
-        <p class="biz-title" style="margin-top:18px;">Chiffre d'affaires &amp; nombre de ventes</p>
-        <label class="filterLabel" style="display:inline-flex; margin-bottom:10px;">
-          Regrouper par
-          <select id="salesGranularity">
-            <option value="jour" selected>Jour</option>
-            <option value="jour_semaine">Jour de la semaine</option>
-            <option value="semaine">Semaine</option>
-            <option value="mois">Mois</option>
-            <option value="annee">Année</option>
-          </select>
-        </label>
+        <p class="biz-title" style="margin-top:16px;">Chiffre d'affaires &amp; nombre de ventes</p>
+        <p class="allergen-note">La courbe "période précédente" (pointillés) apparaît automatiquement si "Comparer à la période précédente" est activé dans les filtres — alignée par position (Jour 1, Jour 2…) et non par date calendaire.</p>
+        <div style="display:flex; gap:16px; flex-wrap:wrap; align-items:center; margin-bottom:10px;">
+          <label class="filterLabel" style="display:inline-flex;">
+            Regrouper par
+            <select id="salesGranularity">
+              <option value="jour" selected>Jour</option>
+              <option value="jour_semaine">Jour de la semaine</option>
+              <option value="semaine">Semaine</option>
+              <option value="mois">Mois</option>
+              <option value="annee">Année</option>
+            </select>
+          </label>
+          <label class="toggleLabel" style="margin:0;">
+            <input type="checkbox" id="salesCumulToggle">
+            <span class="toggleSwitch"></span>
+            Cumulé (rythme de progression)
+          </label>
+        </div>
         <div id="salesChartCombo"></div>
-
-        <p class="biz-title" style="margin-top:18px;">Chiffre d'affaires par mois</p>
-        <div id="salesChartMonths"></div>
 
         <p class="biz-title" style="margin-top:18px;">Comparaison des mois entre années</p>
         <p class="allergen-note">Toutes années confondues, indépendamment du filtre ci-dessus.</p>
@@ -1406,7 +1416,8 @@
     adMessages: [], // [{ text, rawFields }] — rawFields conservé pour préserver le padding d'origine
     sysRaw: { gru:null, isc:null, bco:null, tar:null, tra:null, ing:null, iop:null, ipr:null }, // fichiers systèmes bruts (passthrough ou édition avec padding conservé)
     salesHistory: {}, // { 'JJ.MM.AAAA': { [plu]: { nom, count, amount(centimes) } } }
-    ticketCounts: {} // { 'JJ.MM.AAAA': nombre de tickets, depuis les fichiers .PAY }
+    ticketCounts: {}, // { 'JJ.MM.AAAA': nombre de tickets, depuis les fichiers .PAY }
+    colWidths: {} // { [indexColonne]: largeurPx } — auto-calculé au premier affichage, ajustable ensuite à la main
   };
   // colonnes affichées par défaut en vue compacte (0-indexées) : PLU, Nom, Prix, Catégorie
   const COMPACT_COLS = [0,1,4,5];
@@ -1812,9 +1823,32 @@
       });
     }
 
+    // Estime une largeur de colonne "au plus juste" à partir du contenu réel (police
+    // à chasse fixe → simple comptage de caractères), utilisé une seule fois au premier
+    // affichage de la colonne — les largeurs ajustées à la main sont ensuite conservées.
+    function estimateColWidth(c){
+      const CHAR_W = 7.6;
+      const m = state.colMeta[c];
+      let maxLen = shortColLabel(c).length + 7; // + place pour le badge/l'icone tri
+      const sample = state.rows.length > 200 ? state.rows.filter((_,i)=> i%Math.ceil(state.rows.length/200)===0) : state.rows;
+      sample.forEach(r=>{
+        const v = (r[c]||'').toString().trim();
+        if(v.length>maxLen) maxLen = v.length;
+      });
+      maxLen = Math.min(maxLen, 42); // plafond pour les champs libres type description longue
+      return Math.max(56, Math.round(maxLen*CHAR_W + 22));
+    }
+
+    const colgroup = $('gridColgroup');
+    colgroup.innerHTML = '<col style="width:80px">';
     const headRow = $('headRow');
     headRow.innerHTML = '<th class="actions" style="background:#EAE0C4;"></th>';
     visibleCols.forEach(c=>{
+      if(state.colWidths[c]===undefined) state.colWidths[c] = estimateColWidth(c);
+      const col = document.createElement('col');
+      col.style.width = state.colWidths[c]+'px';
+      colgroup.appendChild(col);
+
       const m = state.colMeta[c];
       const th = document.createElement('th');
       th.innerHTML = `<span class="colnum">${shortColLabel(c)}</span>` +
@@ -1828,6 +1862,28 @@
           render();
         });
       }
+      const handle = document.createElement('span');
+      handle.className = 'col-resize-handle';
+      handle.title = 'Glisser pour redimensionner';
+      handle.addEventListener('mousedown', (e)=>{
+        e.preventDefault(); e.stopPropagation();
+        const startX = e.clientX;
+        const startWidth = state.colWidths[c];
+        handle.classList.add('resizing');
+        function onMove(ev){
+          const newWidth = Math.max(40, startWidth + (ev.clientX-startX));
+          state.colWidths[c] = newWidth;
+          col.style.width = newWidth+'px';
+        }
+        function onUp(){
+          handle.classList.remove('resizing');
+          document.removeEventListener('mousemove', onMove);
+          document.removeEventListener('mouseup', onUp);
+        }
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+      });
+      th.appendChild(handle);
       headRow.appendChild(th);
     });
 
@@ -2934,6 +2990,7 @@
       while(parts.length < TOTAL_COLS) parts.push('');
       return parts.slice(0, TOTAL_COLS);
     });
+    state.colWidths = {}; // nouveau fichier -> largeurs de colonnes recalculées au plus juste
     refreshSuppliersList();
     analyzeColumns();
     render();
@@ -3825,52 +3882,13 @@
 
   // Graphique en courbes SVG, plusieurs séries superposées (ex. période actuelle vs
   // période précédente, alignées par index de jour plutôt que par date calendaire).
-  function lineChart(container, series, formatY){
-    const W = 640, H = 220, padL = 46, padR = 12, padT = 12, padB = 26;
-    const maxLen = Math.max(1, ...series.map(s=>s.points.length));
-    const allY = series.flatMap(s=>s.points.map(p=>p.y));
-    const maxY = Math.max(1, ...allY, 0);
-    const xStep = maxLen>1 ? (W-padL-padR)/(maxLen-1) : 0;
-    const yScale = v => (H-padB) - (v/maxY)*(H-padT-padB);
-
-    let svg = `<svg viewBox="0 0 ${W} ${H}" style="width:100%; max-width:640px; height:auto; display:block;">`;
-    const gridN = 4;
-    for(let i=0;i<=gridN;i++){
-      const v = maxY*i/gridN;
-      const y = yScale(v);
-      svg += `<line x1="${padL}" y1="${y.toFixed(1)}" x2="${W-padR}" y2="${y.toFixed(1)}" stroke="#E1D6BA" stroke-width="1"/>`;
-      svg += `<text x="${padL-5}" y="${(y+3).toFixed(1)}" font-size="8" text-anchor="end" fill="#6B6154" font-family="IBM Plex Mono, monospace">${formatY(v)}</text>`;
-    }
-    series.forEach(s=>{
-      if(s.points.length===0) return;
-      const pts = s.points.map((p,i)=> `${(padL+i*xStep).toFixed(1)},${yScale(p.y).toFixed(1)}`).join(' ');
-      svg += `<polyline points="${pts}" fill="none" stroke="${s.color}" stroke-width="2.2" ${s.dashed?'stroke-dasharray="4 3"':''} />`;
-    });
-    const longest = series.reduce((a,b)=> b.points.length>a.points.length?b:a, series[0]||{points:[]});
-    const labelEvery = Math.max(1, Math.ceil(maxLen/8));
-    longest.points.forEach((p,i)=>{
-      if(i%labelEvery!==0 && i!==maxLen-1) return;
-      const x = padL+i*xStep;
-      svg += `<text x="${x.toFixed(1)}" y="${H-8}" font-size="7.5" text-anchor="middle" fill="#6B6154" font-family="IBM Plex Mono, monospace">${p.label}</text>`;
-    });
-    svg += `</svg>`;
-
-    const legend = series.map(s=>
-      `<span style="display:inline-flex; align-items:center; gap:5px; margin-right:16px; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink);">
-        <span style="width:14px; height:2px; background:${s.color}; display:inline-block; ${s.dashed?'background-image:repeating-linear-gradient(90deg,'+s.color+' 0 3px,transparent 3px 5px); background-color:transparent;':''}"></span>${s.name}
-      </span>`
-    ).join('');
-
-    container.innerHTML = `<div>${svg}</div><div style="margin-top:8px;">${legend}</div>`;
-  }
-
   // Graphique combiné : barres (CA, échelle gauche) + courbe (nombre de ventes,
   // échelle droite) sur un même axe des jours en abscisse — deux échelles distinctes
   // car CA et nombre de ventes n'ont pas du tout le même ordre de grandeur.
-  function comboChart(container, labels, barValues, lineValues, formatBar, formatLine){
+  function comboChart(container, labels, barValues, lineValues, formatBar, formatLine, barValuesPrev){
     const W = 680, H = 240, padL = 50, padR = 44, padT = 12, padB = 30;
     const n = labels.length;
-    const maxBar = Math.max(1, ...barValues);
+    const maxBar = Math.max(1, ...barValues, ...(barValuesPrev||[]));
     const maxLine = Math.max(1, ...lineValues);
     const slot = n>0 ? (W-padL-padR)/n : 0;
     const barW = Math.min(slot*0.6, 26);
@@ -3894,6 +3912,11 @@
       const y = yBar(v);
       svg += `<rect x="${(cx-barW/2).toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${(H-padB-y).toFixed(1)}" fill="#B8853A" fill-opacity="0.85" rx="1.5"/>`;
     });
+    // CA periode precedente (pointilles, alignes par position — n'apparait que si fourni)
+    if(barValuesPrev && barValuesPrev.length){
+      const prevPts = barValuesPrev.map((v,i)=> `${(padL+slot*i+slot/2).toFixed(1)},${yBar(v||0).toFixed(1)}`).join(' ');
+      svg += `<polyline points="${prevPts}" fill="none" stroke="#8A8172" stroke-width="2" stroke-dasharray="4 3"/>`;
+    }
     // courbe nombre de ventes
     const linePts = labels.map((lbl,i)=> `${(padL+slot*i+slot/2).toFixed(1)},${yLine(lineValues[i]||0).toFixed(1)}`).join(' ');
     svg += `<polyline points="${linePts}" fill="none" stroke="#5C7A5B" stroke-width="2.2"/>`;
@@ -3914,9 +3937,12 @@
       <span style="display:inline-flex; align-items:center; gap:5px; margin-right:16px; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink);">
         <span style="width:11px; height:11px; background:#B8853A; display:inline-block; border-radius:2px;"></span>Chiffre d'affaires (échelle gauche)
       </span>
-      <span style="display:inline-flex; align-items:center; gap:5px; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink);">
+      <span style="display:inline-flex; align-items:center; gap:5px; margin-right:16px; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink);">
         <span style="width:14px; height:2px; background:#5C7A5B; display:inline-block;"></span>Nombre de ventes (échelle droite)
-      </span>`;
+      </span>${barValuesPrev && barValuesPrev.length ? `
+      <span style="display:inline-flex; align-items:center; gap:5px; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink);">
+        <span style="width:14px; height:2px; background:repeating-linear-gradient(90deg,#8A8172 0 3px,transparent 3px 5px);"></span>CA période précédente
+      </span>` : ''}`;
 
     container.innerHTML = `<div>${svg}</div><div style="margin-top:8px;">${legend}</div>`;
   }
@@ -4043,6 +4069,7 @@
   }
 
   let currentByDayForCombo = [];
+  let currentPrevDayForCombo = [];
   const MONTH_NAMES = ['Janv','Fév','Mars','Avr','Mai','Juin','Juil','Août','Sept','Oct','Nov','Déc'];
 
   function aggregateByGranularity(byDay, granularity){
@@ -4099,17 +4126,36 @@
 
   function renderComboChart(){
     const granularity = $('salesGranularity').value;
+    const cumul = $('salesCumulToggle').checked;
     const rows = aggregateByGranularity(currentByDayForCombo, granularity);
+
+    let amounts = rows.map(r=>r.amount);
+    let counts = rows.map(r=>r.count);
+
+    let prevAmounts = null;
+    if($('salesCompareToggle').checked && currentPrevDayForCombo.length){
+      const prevRows = aggregateByGranularity(currentPrevDayForCombo, granularity);
+      prevAmounts = prevRows.map(r=>r.amount);
+    }
+
+    if(cumul){
+      let run=0; amounts = amounts.map(v=> run+=v);
+      let runC=0; counts = counts.map(v=> runC+=v);
+      if(prevAmounts){ let runP=0; prevAmounts = prevAmounts.map(v=> runP+=v); }
+    }
+
     comboChart(
       $('salesChartCombo'),
       rows.map(r=>r.label),
-      rows.map(r=>r.amount),
-      rows.map(r=>r.count),
+      amounts,
+      counts,
       v=>eurosFromCents(Math.round(v)),
-      v=> granularity==='jour_semaine' ? v.toFixed(1).replace('.',',') : String(Math.round(v))
+      v=> (!cumul && granularity==='jour_semaine') ? v.toFixed(1).replace('.',',') : String(Math.round(v)),
+      prevAmounts
     );
   }
   $('salesGranularity').addEventListener('change', renderComboChart);
+  $('salesCumulToggle').addEventListener('change', renderComboChart);
 
   function renderDayProductsChart(date){
     const container = $('salesChartDayProducts');
@@ -4380,7 +4426,7 @@
       byDay.push({ date, amount: dayTotal, count: dayCount, weight: dayWeight });
     });
 
-    // ---- CA par mois ----
+    // ---- Mois présents sur la période (sert de référence aux graphiques poids/unités) ----
     const byMonth = {};
     byDay.forEach(d=>{
       const [dd,mm,yy] = d.date.split('.');
@@ -4392,12 +4438,6 @@
       const [ma,ya] = a.split('.'), [mb,yb] = b.split('.');
       return new Date(ya,ma-1,1) - new Date(yb,mb-1,1);
     });
-    const monthRows = monthKeys.map(k=>{
-      const [mm,yy] = k.split('.');
-      return { label: `${MONTH_NAMES[parseInt(mm,10)-1]} ${yy}`, value: byMonth[k] };
-    });
-    const maxMonth = Math.max(1, ...monthRows.map(r=>r.value));
-    chartBars($('salesChartMonths'), monthRows, maxMonth, v=>eurosFromCents(v));
 
     // ---- Poids (produits au poids) vs quantité en unités (produits à la pièce) ----
     // Le type de chaque PLU vient de la base articles chargée — c'est ce qui évite
@@ -4654,30 +4694,6 @@
       prevDaily = computePeriodDaily(prevFrom, prevTo, categoryFilterVal);
     }
 
-    // ---- Évolution du CA : période actuelle vs précédente, alignées par index de jour ----
-    const evoSeries = [{
-      name: 'Période actuelle', color: '#B8853A',
-      points: byDay.map((d,i)=>({ label:`J${i+1}`, y:d.amount }))
-    }];
-    if(compareEnabled && prevDaily.length){
-      evoSeries.push({
-        name: 'Période précédente', color: '#8A8172', dashed:true,
-        points: prevDaily.map((d,i)=>({ label:`J${i+1}`, y:d.amount }))
-      });
-    }
-    lineChart($('salesChartEvolution'), evoSeries, v=>eurosFromCents(Math.round(v)));
-
-    // ---- CA cumulé (rythme de progression) ----
-    let running = 0;
-    const cumulCurrent = byDay.map((d,i)=>{ running += d.amount; return { label:`J${i+1}`, y:running }; });
-    const cumulSeries = [{ name:'Période actuelle (cumulé)', color:'#5C7A5B', points:cumulCurrent }];
-    if(compareEnabled && prevDaily.length){
-      let runningPrev = 0;
-      const cumulPrev = prevDaily.map((d,i)=>{ runningPrev += d.amount; return { label:`J${i+1}`, y:runningPrev }; });
-      cumulSeries.push({ name:'Période précédente (cumulé)', color:'#8A8172', dashed:true, points:cumulPrev });
-    }
-    lineChart($('salesChartCumulative'), cumulSeries, v=>eurosFromCents(Math.round(v)));
-
     const statsDiv = $('salesStats');
     statsDiv.innerHTML = '';
     const stats = [
@@ -4697,6 +4713,7 @@
 
     // ---- CA & nombre de ventes combinés, regroupés selon la granularité choisie ----
     currentByDayForCombo = byDay;
+    currentPrevDayForCombo = prevDaily;
     renderComboChart();
 
     // ---- Cumul du CA par jour de la semaine (lundi -> dimanche) ----
