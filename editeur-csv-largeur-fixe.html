@@ -305,6 +305,11 @@
     text-overflow:ellipsis;
   }
   tbody td{ overflow:hidden; text-overflow:ellipsis; }
+  .cellval.locked{ cursor:default; }
+  .cellval.locked:focus{ background:none; }
+  .biz-checkbox-cell{ display:flex; align-items:center; justify-content:center; height:100%; }
+  .biz-checkbox-cell input[type=checkbox]{ width:16px; height:16px; cursor:pointer; }
+  .biz-checkbox-cell input[type=checkbox]:disabled{ cursor:default; opacity:.55; }
   .col-resize-handle{
     position:absolute;
     right:-3px; top:0; bottom:0;
@@ -923,6 +928,7 @@
   </details>
 
   <button class="btn ghost" id="btnLabels" disabled>🏷 Étiquettes</button>
+  <button class="btn ghost" id="btnEditMode" disabled>🔒 Verrouillé (lecture seule)</button>
 
   <details class="menu">
     <summary class="btn ghost" id="menuVentes">📊 Ventes ▾</summary>
@@ -1074,6 +1080,16 @@
             <input type="checkbox" id="salesCumulToggle">
             <span class="toggleSwitch"></span>
             Cumulé (rythme de progression)
+          </label>
+          <label class="toggleLabel" style="margin:0;">
+            <input type="checkbox" id="salesShowCA" checked>
+            <span class="toggleSwitch"></span>
+            Chiffre d'affaires
+          </label>
+          <label class="toggleLabel" style="margin:0;">
+            <input type="checkbox" id="salesShowCount" checked>
+            <span class="toggleSwitch"></span>
+            Nombre de ventes
           </label>
         </div>
         <div id="salesChartCombo"></div>
@@ -1398,6 +1414,7 @@
 (function(){
   const state = {
     rows: [],          // array of array of string values (already stripped of surrounding quotes)
+    editMode: false,   // verrouillage des cellules de la grille — évite les modifications accidentelles
     colMeta: [],        // per column: {fixed:bool, width:number}
     lineEnding: '\r\n',
     trailingNewline: true,
@@ -1439,6 +1456,7 @@
   const btnRenumber = $('btnRenumber');
   const btnCatalog = $('btnCatalog');
   const btnLabels = $('btnLabels');
+  const btnEditMode = $('btnEditMode');
   const btnImportAllergens = $('btnImportAllergens');
   const allergensFileInput = $('allergensFileInput');
   const btnExportAllergens = $('btnExportAllergens');
@@ -1788,6 +1806,7 @@
     btnRenumber.disabled = false;
     btnCatalog.disabled = false;
     btnLabels.disabled = false;
+    btnEditMode.disabled = false;
     updateLabelsButtonCount();
     btnImportAllergens.disabled = false;
     btnExportAllergens.disabled = false;
@@ -1946,12 +1965,30 @@
         const raw = row[c]!==undefined ? row[c] : '';
         const trimmed = meta.fixed ? raw.replace(/\s+$/,'') : raw;
         const td = document.createElement('td');
+
+        // Bio / Local : case à cocher directe plutôt qu'un champ texte "1"/"0"
+        if(c===BIZCOL.BIO || c===BIZCOL.LOCAL){
+          const wrapCb = document.createElement('div');
+          wrapCb.className = 'biz-checkbox-cell';
+          const cb = document.createElement('input');
+          cb.type = 'checkbox';
+          cb.checked = trimmed.trim()==='1';
+          cb.disabled = !state.editMode;
+          cb.addEventListener('change', ()=>{
+            state.rows[ri][c] = cb.checked ? '1' : '0';
+          });
+          wrapCb.appendChild(cb);
+          td.appendChild(wrapCb);
+          tr.appendChild(td);
+          return;
+        }
+
         const wrap = document.createElement('div');
         wrap.className = 'cellwrap';
 
         const val = document.createElement('span');
-        val.className = 'cellval';
-        val.contentEditable = 'true';
+        val.className = 'cellval' + (state.editMode ? '' : ' locked');
+        val.contentEditable = state.editMode ? 'true' : 'false';
         val.textContent = trimmed;
         val.dataset.row = ri;
         val.dataset.col = c;
@@ -1960,9 +1997,11 @@
         const hasComma = trimmed.includes(',');
         if(overflow || hasComma) td.classList.add(overflow?'overflow':'comma-error');
 
-        val.addEventListener('focus', onCellFocus);
-        val.addEventListener('input', onCellInput);
-        val.addEventListener('blur', onCellBlur);
+        if(state.editMode){
+          val.addEventListener('focus', onCellFocus);
+          val.addEventListener('input', onCellInput);
+          val.addEventListener('blur', onCellBlur);
+        }
         wrap.appendChild(val);
 
         if(meta.fixed){
@@ -3544,6 +3583,13 @@
   function closeLabelsModal(){ labelsOverlay.classList.remove('show'); }
 
   btnLabels.addEventListener('click', openLabelsModal);
+  btnEditMode.addEventListener('click', ()=>{
+    state.editMode = !state.editMode;
+    btnEditMode.textContent = state.editMode ? '🔓 Modification activée' : '🔒 Verrouillé (lecture seule)';
+    btnEditMode.classList.toggle('primary', state.editMode);
+    btnEditMode.classList.toggle('ghost', !state.editMode);
+    render();
+  });
   $('labelsClose').addEventListener('click', closeLabelsModal);
   $('labelsCancel').addEventListener('click', closeLabelsModal);
   labelsOverlay.addEventListener('click', (e)=>{ if(e.target===labelsOverlay) closeLabelsModal(); });
@@ -3885,7 +3931,8 @@
   // Graphique combiné : barres (CA, échelle gauche) + courbe (nombre de ventes,
   // échelle droite) sur un même axe des jours en abscisse — deux échelles distinctes
   // car CA et nombre de ventes n'ont pas du tout le même ordre de grandeur.
-  function comboChart(container, labels, barValues, lineValues, formatBar, formatLine, barValuesPrev){
+  function comboChart(container, labels, barValues, lineValues, formatBar, formatLine, barValuesPrev, showBar, showLine){
+    showBar = showBar !== false; showLine = showLine !== false;
     const W = 680, H = 240, padL = 50, padR = 44, padT = 12, padB = 30;
     const n = labels.length;
     const maxBar = Math.max(1, ...barValues, ...(barValuesPrev||[]));
@@ -3898,32 +3945,34 @@
     let svg = `<svg viewBox="0 0 ${W} ${H}" style="width:100%; max-width:${W}px; height:auto; display:block;">`;
     const gridN = 4;
     for(let i=0;i<=gridN;i++){
-      const v = maxBar*i/gridN;
-      const y = yBar(v);
+      const y = yBar(maxBar*i/gridN);
       svg += `<line x1="${padL}" y1="${y.toFixed(1)}" x2="${W-padR}" y2="${y.toFixed(1)}" stroke="#E1D6BA" stroke-width="1"/>`;
-      svg += `<text x="${padL-5}" y="${(y+3).toFixed(1)}" font-size="8" text-anchor="end" fill="#B8853A" font-family="IBM Plex Mono, monospace">${formatBar(v)}</text>`;
-      const vr = maxLine*i/gridN;
-      svg += `<text x="${W-padR+5}" y="${(y+3).toFixed(1)}" font-size="8" text-anchor="start" fill="#5C7A5B" font-family="IBM Plex Mono, monospace">${formatLine(vr)}</text>`;
+      if(showBar) svg += `<text x="${padL-5}" y="${(y+3).toFixed(1)}" font-size="8" text-anchor="end" fill="#B8853A" font-family="IBM Plex Mono, monospace">${formatBar(maxBar*i/gridN)}</text>`;
+      if(showLine) svg += `<text x="${W-padR+5}" y="${(y+3).toFixed(1)}" font-size="8" text-anchor="start" fill="#5C7A5B" font-family="IBM Plex Mono, monospace">${formatLine(maxLine*i/gridN)}</text>`;
     }
     // barres CA
-    labels.forEach((lbl,i)=>{
-      const cx = padL + slot*i + slot/2;
-      const v = barValues[i]||0;
-      const y = yBar(v);
-      svg += `<rect x="${(cx-barW/2).toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${(H-padB-y).toFixed(1)}" fill="#B8853A" fill-opacity="0.85" rx="1.5"/>`;
-    });
-    // CA periode precedente (pointilles, alignes par position — n'apparait que si fourni)
-    if(barValuesPrev && barValuesPrev.length){
-      const prevPts = barValuesPrev.map((v,i)=> `${(padL+slot*i+slot/2).toFixed(1)},${yBar(v||0).toFixed(1)}`).join(' ');
-      svg += `<polyline points="${prevPts}" fill="none" stroke="#8A8172" stroke-width="2" stroke-dasharray="4 3"/>`;
+    if(showBar){
+      labels.forEach((lbl,i)=>{
+        const cx = padL + slot*i + slot/2;
+        const v = barValues[i]||0;
+        const y = yBar(v);
+        svg += `<rect x="${(cx-barW/2).toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${(H-padB-y).toFixed(1)}" fill="#B8853A" fill-opacity="0.85" rx="1.5"/>`;
+      });
+      // CA periode precedente (pointilles, alignes par position — n'apparait que si fourni)
+      if(barValuesPrev && barValuesPrev.length){
+        const prevPts = barValuesPrev.map((v,i)=> `${(padL+slot*i+slot/2).toFixed(1)},${yBar(v||0).toFixed(1)}`).join(' ');
+        svg += `<polyline points="${prevPts}" fill="none" stroke="#8A8172" stroke-width="2" stroke-dasharray="4 3"/>`;
+      }
     }
     // courbe nombre de ventes
-    const linePts = labels.map((lbl,i)=> `${(padL+slot*i+slot/2).toFixed(1)},${yLine(lineValues[i]||0).toFixed(1)}`).join(' ');
-    svg += `<polyline points="${linePts}" fill="none" stroke="#5C7A5B" stroke-width="2.2"/>`;
-    labels.forEach((lbl,i)=>{
-      const cx = padL+slot*i+slot/2, cy = yLine(lineValues[i]||0);
-      svg += `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="2.4" fill="#5C7A5B"/>`;
-    });
+    if(showLine){
+      const linePts = labels.map((lbl,i)=> `${(padL+slot*i+slot/2).toFixed(1)},${yLine(lineValues[i]||0).toFixed(1)}`).join(' ');
+      svg += `<polyline points="${linePts}" fill="none" stroke="#5C7A5B" stroke-width="2.2"/>`;
+      labels.forEach((lbl,i)=>{
+        const cx = padL+slot*i+slot/2, cy = yLine(lineValues[i]||0);
+        svg += `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="2.4" fill="#5C7A5B"/>`;
+      });
+    }
     // labels X (sous-echantillonnes si trop nombreux)
     const labelEvery = Math.max(1, Math.ceil(n/10));
     labels.forEach((lbl,i)=>{
@@ -3933,16 +3982,19 @@
     });
     svg += `</svg>`;
 
-    const legend = `
+    let legend = '';
+    if(showBar) legend += `
       <span style="display:inline-flex; align-items:center; gap:5px; margin-right:16px; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink);">
         <span style="width:11px; height:11px; background:#B8853A; display:inline-block; border-radius:2px;"></span>Chiffre d'affaires (échelle gauche)
-      </span>
+      </span>`;
+    if(showLine) legend += `
       <span style="display:inline-flex; align-items:center; gap:5px; margin-right:16px; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink);">
         <span style="width:14px; height:2px; background:#5C7A5B; display:inline-block;"></span>Nombre de ventes (échelle droite)
-      </span>${barValuesPrev && barValuesPrev.length ? `
+      </span>`;
+    if(showBar && barValuesPrev && barValuesPrev.length) legend += `
       <span style="display:inline-flex; align-items:center; gap:5px; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink);">
         <span style="width:14px; height:2px; background:repeating-linear-gradient(90deg,#8A8172 0 3px,transparent 3px 5px);"></span>CA période précédente
-      </span>` : ''}`;
+      </span>`;
 
     container.innerHTML = `<div>${svg}</div><div style="margin-top:8px;">${legend}</div>`;
   }
@@ -4151,11 +4203,15 @@
       counts,
       v=>eurosFromCents(Math.round(v)),
       v=> (!cumul && granularity==='jour_semaine') ? v.toFixed(1).replace('.',',') : String(Math.round(v)),
-      prevAmounts
+      prevAmounts,
+      $('salesShowCA').checked,
+      $('salesShowCount').checked
     );
   }
   $('salesGranularity').addEventListener('change', renderComboChart);
   $('salesCumulToggle').addEventListener('change', renderComboChart);
+  $('salesShowCA').addEventListener('change', renderComboChart);
+  $('salesShowCount').addEventListener('change', renderComboChart);
 
   function renderDayProductsChart(date){
     const container = $('salesChartDayProducts');
