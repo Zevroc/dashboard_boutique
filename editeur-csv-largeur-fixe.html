@@ -82,10 +82,26 @@
     gap:10px;
     flex-wrap:wrap;
     align-items:center;
-    background:var(--graphite-2);
-    padding:12px 16px;
-    border-radius:8px;
   }
+  .toolbar-inview .btn{
+    background:#EFE7CF;
+    color:var(--ink);
+    border-color:var(--paper-line);
+  }
+  .toolbar-inview .btn:hover{ background:#E7DEC3; border-color:var(--brass); }
+  .toolbar-inview .btn.primary{
+    background:var(--brass);
+    border-color:var(--brass);
+    color:#221A0C;
+  }
+  .toolbar-inview .btn.primary:hover{ background:#c7943f; }
+  .toolbar-inview .menu-panel{
+    background:var(--paper);
+    border:1px solid var(--paper-line);
+    color:var(--ink);
+  }
+  .toolbar-inview .menu-item{ color:var(--ink); }
+  .toolbar-inview .menu-item:hover{ background:#EFE7CF; }
   .btn{
     font-family:'Space Grotesk',sans-serif;
     font-weight:600;
@@ -4378,8 +4394,20 @@
     });
     const years = Array.from(new Set(Object.values(byMonthYear).flatMap(o=>Object.keys(o)))).sort();
 
+    const pctCell = (current, prev)=>{
+      if(current===undefined || prev===undefined || prev===0) return '—';
+      const pct = ((current-prev)/Math.abs(prev))*100;
+      const cls = pct>0.5 ? 'marge-pos' : pct<-0.5 ? 'marge-neg' : '';
+      const sign = pct>0 ? '+' : '';
+      return `<span class="${cls}">${sign}${pct.toFixed(1).replace('.',',')}%</span>`;
+    };
+
     const head = $('salesYearCompareHead');
-    head.innerHTML = '<th>Mois</th>' + years.map(y=>`<th>${y}</th>`).join('');
+    head.innerHTML = '<th>Mois</th>' + years.map((y,i)=>
+      `<th>${y}</th>` +
+      (i>=1 ? `<th>% vs ${years[i-1]}</th>` : '') +
+      (i>=2 ? `<th>% vs ${years[i-2]}</th>` : '')
+    ).join('');
 
     const body = $('salesYearCompareBody');
     body.innerHTML = '';
@@ -4389,11 +4417,24 @@
       const tdMonth = document.createElement('td');
       tdMonth.textContent = MONTH_NAMES_FULL[m-1];
       tr.appendChild(tdMonth);
-      years.forEach(y=>{
-        const td = document.createElement('td');
+      years.forEach((y,i)=>{
         const val = byMonthYear[mm] ? byMonthYear[mm][y] : undefined;
+        const td = document.createElement('td');
         td.textContent = val!==undefined ? eurosFromCents(val) : '—';
         tr.appendChild(td);
+
+        if(i>=1){
+          const valN1 = byMonthYear[mm] ? byMonthYear[mm][years[i-1]] : undefined;
+          const tdN1 = document.createElement('td');
+          tdN1.innerHTML = pctCell(val, valN1);
+          tr.appendChild(tdN1);
+        }
+        if(i>=2){
+          const valN2 = byMonthYear[mm] ? byMonthYear[mm][years[i-2]] : undefined;
+          const tdN2 = document.createElement('td');
+          tdN2.innerHTML = pctCell(val, valN2);
+          tr.appendChild(tdN2);
+        }
       });
       body.appendChild(tr);
     }
