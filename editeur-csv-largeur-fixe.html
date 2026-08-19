@@ -3222,6 +3222,16 @@
     const categoryFile = dolibarrCategoryFile;
     if(!productFile || !categoryFile) return;
 
+    if(state.rows.length === 0){
+      const proceed = confirm(
+        "⚠ Aucune base articles n'est actuellement chargée dans l'outil.\n\n" +
+        "Sans elle, les champs que Dolibarr ne connaît pas encore bien (notamment le Type poids/pièce, souvent vide côté Dolibarr) n'auront aucune valeur de repli et tomberont sur des valeurs par défaut génériques (\"à la pièce\" pour tous).\n\n" +
+        "Recommandé : Annule, charge d'abord ton ancienne base via \"Importer/fusionner un CSV balance\" ou ta dernière base_articles_complete.csv, PUIS relance cet import Dolibarr par-dessus.\n\n" +
+        "Continuer quand même sans base de référence ?"
+      );
+      if(!proceed) return;
+    }
+
     let productRows, categoryRows;
     try{
       [productRows, categoryRows] = await Promise.all([
@@ -3260,7 +3270,7 @@
     });
 
     const newRows = [];
-    let fromExisting = 0, brandNew = 0;
+    let fromExisting = 0, brandNew = 0, typeDefaulted = 0;
     const seenPlu = new Set();
 
     productRows.forEach(d=>{
@@ -3299,7 +3309,8 @@
       const typeVente = String(d['Type Vente']||'').trim().toLowerCase();
       if(typeVente==='poids' || typeVente==='p' || typeVente==='0') row[3] = 'P';
       else if(typeVente==='piece' || typeVente==='pièce' || typeVente==='c' || typeVente==='1') row[3] = 'C';
-      else row[3] = existing ? existing[3] : 'C';
+      else if(existing) row[3] = existing[3];
+      else { row[3] = 'C'; typeDefaulted++; }
 
       // Champs metier (colonnes 19+)
       row[BIZCOL.FOURNISSEUR] = String(d['Fournisseur']||(existing?existing[BIZCOL.FOURNISSEUR]:'')||'').trim();
@@ -3341,6 +3352,9 @@
     persistSession();
 
     let msg = `Import Dolibarr terminé : ${newRows.length} produit(s) chargé(s) (${fromExisting} rapprochés avec la base précédente, ${brandNew} nouveaux sans historique technique balance).`;
+    if(typeDefaulted > 0){
+      msg += `\n\n⚠ ${typeDefaulted} produit(s) sans champ "Type Vente" renseigné dans Dolibarr ET sans base précédente pour se replier — mis par défaut sur "à la pièce" (C). Remplis le champ "Type Vente" dans Dolibarr pour ces produits, ou recharge une base contenant l'info avant de refaire cet import.`;
+    }
     if(missingFromDolibarr.length){
       msg += `\n\n⚠ ${missingFromDolibarr.length} PLU présent(s) dans l'ancienne base mais absent(s) de cet export Dolibarr (retirés de la base actuelle) : ${missingFromDolibarr.slice(0,20).join(', ')}${missingFromDolibarr.length>20?'…':''}`;
     }
