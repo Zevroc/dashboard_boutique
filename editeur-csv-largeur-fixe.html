@@ -3930,7 +3930,7 @@
     doc.setFont('helvetica','bold');
     doc.setFontSize(13);
     const nomLines = doc.splitTextToSize((r[1]||'').trim(), w-2*pad);
-    doc.text(nomLines.slice(0,3), x+pad, y+16);
+    doc.text(nomLines.slice(0,3), x+w/2, y+16, { align:'center' });
 
     // logo au centre de l'étiquette
     const iconW = Math.min(w,h)*0.32, iconH = iconW/LOGO_ICON_RATIO;
