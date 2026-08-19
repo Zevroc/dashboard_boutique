@@ -3281,17 +3281,11 @@
       const existing = existingByPlu[pluNum];
       const row = new Array(19+BIZ_COL_COUNT).fill('');
 
-      // Colonnes techniques balance : 11 sur 13 sont constantes partout (vérifié sur
-      // toute la base), donc jamais besoin de les stocker où que ce soit. La seule vraie
-      // inconnue restante ("Champ12", 0-3, jamais identifiée) vient de l'extrafield
-      // Dolibarr "donnees_balance" (format "champ12=X") si renseigné, sinon reprise de
-      // l'ancienne base si elle est chargée, sinon valeur par défaut la plus fréquente (1).
+      // Colonnes techniques balance : les 13 sont constantes sur toute la base (vérifié),
+      // y compris "Champ12" (0-3, jamais identifié — probablement un simple format
+      // d'étiquette/ticket côté balance, sans incidence business, cf. échange du
+      // 2026). Aucune ne nécessite plus d'être stockée où que ce soit, Dolibarr seul suffit.
       BALANCE_CONST_DEFAULTS.forEach((v,i)=>{ row[2+i] = v; });
-      const balanceExtra = String(d['donnees_balance']||d['Données balance']||'').trim();
-      const champ12Match = balanceExtra.match(/champ12=(\d)/i);
-      if(champ12Match) row[11] = champ12Match[1];
-      else if(existing && existing[11]!==undefined) row[11] = existing[11];
-      // sinon reste sur la valeur par défaut ('1', déjà posée par BALANCE_CONST_DEFAULTS)
       if(existing) fromExisting++; else brandNew++;
 
       row[0] = pluStr;
