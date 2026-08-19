@@ -9,6 +9,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   :root{
     --graphite: #1C1A17;
@@ -924,6 +925,9 @@
     <div class="menu-panel">
       <button class="menu-item" id="btnImportBalance">⇪ Importer/fusionner un CSV balance</button>
       <input type="file" id="balanceFileInput" accept=".csv,.CSV,text/csv">
+      <button class="menu-item" id="btnImportDolibarr">⇪ Importer un export Dolibarr (produits + catégories)</button>
+      <input type="file" id="dolibarrProductInput" accept=".xlsx,.xls,.csv,.CSV">
+      <input type="file" id="dolibarrCategoryInput" accept=".xlsx,.xls,.csv,.CSV">
       <button class="menu-item" id="btnExport" disabled>⇩ Exporter le CSV corrigé (balance)</button>
       <button class="menu-item" id="btnExportExcel" disabled title="Ajoute la ligne sep=, en tête pour un affichage correct dans Excel — ne pas recharger cette copie dans la balance">⇩ Copie pour Excel (sep=,)</button>
     </div>
@@ -3112,6 +3116,183 @@
     persistSession();
     alert(`CSV balance fusionné : ${updated} produit(s) mis à jour, ${added} nouveau(x) produit(s) ajouté(s) (à compléter dans la base articles : fournisseur, achat, stock...).`);
   }
+
+  // ---------- Import depuis Dolibarr (produits + catégories) ----------
+  // Dolibarr devient la référence pour ce qu'il connaît (prix, TVA, fournisseur,
+  // stock, bio/local, description, catégorie, statut actif...). Les champs 100%
+  // techniques propres à la balance (code B000, département, code long...) que
+  // Dolibarr ne connaît pas sont repris de la base déjà chargée quand le PLU existe
+  // déjà, sinon complétés avec les valeurs constantes observées sur le reste du fichier.
+  const BALANCE_CONST_DEFAULTS = ['','0','0','0','0','0','1','B000','P1','D0','O000000000000000000000000000000000000','0','','D0'];
+  // index 0..13 correspond aux colonnes 2..18 les moins variables (champ3, champ7-12,
+  // code, statut, departement, codelong, champ17, champ18, champ19)
+
+  function readSpreadsheetFile(file){
+    return new Promise((resolve, reject)=>{
+      const reader = new FileReader();
+      reader.onload = ()=>{
+        try{
+          const isCsv = /\.csv$/i.test(file.name);
+          let rowsAsObjects;
+          if(isCsv){
+            let text = reader.result;
+            if(typeof text !== 'string') text = new TextDecoder('utf-8').decode(text);
+            if(text.charCodeAt(0)===0xFEFF) text = text.slice(1);
+            const delim = text.split('\n')[0].includes(';') ? ';' : ',';
+            const lines = text.split(/\r\n|\n/).filter(l=>l.trim()!=='');
+            const hdr = lines[0].split(delim).map(h=>h.replace(/^"|"$/g,'').trim());
+            rowsAsObjects = lines.slice(1).map(l=>{
+              const cells = l.split(delim).map(c=>c.replace(/^"|"$/g,'').trim());
+              const obj = {};
+              hdr.forEach((h,i)=> obj[h] = cells[i]!==undefined ? cells[i] : '');
+              return obj;
+            });
+          } else {
+            const data = new Uint8Array(reader.result);
+            const wb = XLSX.read(data, { type:'array' });
+            const sheet = wb.Sheets[wb.SheetNames[0]];
+            rowsAsObjects = XLSX.utils.sheet_to_json(sheet, { defval:'' });
+          }
+          resolve(rowsAsObjects);
+        } catch(err){ reject(err); }
+      };
+      reader.onerror = reject;
+      if(/\.csv$/i.test(file.name)) reader.readAsArrayBuffer(file);
+      else reader.readAsArrayBuffer(file);
+    });
+  }
+
+  $('btnImportDolibarr').addEventListener('click', ()=>{
+    $('dolibarrProductInput').value = '';
+    $('dolibarrProductInput').click();
+  });
+
+  $('dolibarrProductInput').addEventListener('change', async (e)=>{
+    const productFile = e.target.files[0];
+    if(!productFile) return;
+    alert("Fichier produits sélectionné. Choisis maintenant le fichier des catégories exporté depuis Dolibarr.");
+    $('dolibarrCategoryInput').value = '';
+    $('dolibarrCategoryInput').dataset.pendingProductFile = 'true';
+    window._dolibarrProductFile = productFile;
+    $('dolibarrCategoryInput').click();
+  });
+
+  $('dolibarrCategoryInput').addEventListener('change', async (e)=>{
+    const categoryFile = e.target.files[0];
+    const productFile = window._dolibarrProductFile;
+    if(!productFile || !categoryFile) return;
+
+    let productRows, categoryRows;
+    try{
+      [productRows, categoryRows] = await Promise.all([
+        readSpreadsheetFile(productFile),
+        readSpreadsheetFile(categoryFile)
+      ]);
+    } catch(err){
+      alert("Erreur de lecture des fichiers : " + err.message);
+      return;
+    }
+
+    // Catégorie : PLU (Réf.) -> libellé -> code numérique (via state.categoryLabels)
+    const labelToCode = {};
+    Object.entries(state.categoryLabels).forEach(([code,label])=>{
+      labelToCode[label.trim().toLowerCase()] = code;
+    });
+    const categoryByPlu = {};
+    categoryRows.forEach(r=>{
+      const plu = String(r['Réf.']||'').trim();
+      const label = String(r['Libellé']||'').trim();
+      if(plu && label) categoryByPlu[plu] = labelToCode[label.toLowerCase()] || '';
+    });
+
+    // Base existante indexee par PLU (numerique) pour recuperer les champs techniques connus
+    const existingByPlu = {};
+    state.rows.forEach(r=>{
+      const n = parseInt((r[0]||'').trim(),10);
+      if(!isNaN(n)) existingByPlu[n] = r;
+    });
+
+    const newRows = [];
+    let fromExisting = 0, brandNew = 0;
+    const seenPlu = new Set();
+
+    productRows.forEach(d=>{
+      const pluStr = String(d['Réf.']||'').trim();
+      if(!pluStr) return;
+      const pluNum = parseInt(pluStr,10);
+      if(isNaN(pluNum)) return;
+      seenPlu.add(pluNum);
+
+      const existing = existingByPlu[pluNum];
+      const row = new Array(19+BIZ_COL_COUNT).fill('');
+
+      // Colonnes techniques balance peu/jamais variables : reprises de l'existant si connu, sinon valeurs par defaut constantes
+      if(existing){
+        for(let i=2;i<=18;i++) row[i] = existing[i]!==undefined ? existing[i] : '';
+        fromExisting++;
+      } else {
+        BALANCE_CONST_DEFAULTS.forEach((v,i)=>{ row[2+i] = v; });
+        brandNew++;
+      }
+
+      row[0] = pluStr;
+      row[1] = String(d['Libellé']||'').trim();
+
+      const prixTtc = parseFloat(String(d['Prix unitaire TTC']||'').replace(',','.'));
+      row[4] = !isNaN(prixTtc) ? String(Math.round(prixTtc*100)) : (existing?existing[4]:'0');
+
+      const cat = categoryByPlu[pluStr];
+      row[5] = cat || (existing?existing[5]:'');
+
+      // Statut actif/inactif <- "En vente" natif Dolibarr
+      const enVente = String(d['En vente']||'').trim();
+      if(enVente!=='') row[13] = (enVente==='1') ? 'P1' : 'P0';
+
+      // Type de vente (P=poids, C=piece) <- extrafield "Type Vente", repli sur l'existant sinon 'C'
+      const typeVente = String(d['Type Vente']||'').trim().toLowerCase();
+      if(typeVente==='poids' || typeVente==='p' || typeVente==='0') row[3] = 'P';
+      else if(typeVente==='piece' || typeVente==='pièce' || typeVente==='c' || typeVente==='1') row[3] = 'C';
+      else row[3] = existing ? existing[3] : 'C';
+
+      // Champs metier (colonnes 19+)
+      row[BIZCOL.FOURNISSEUR] = String(d['Fournisseur']||(existing?existing[BIZCOL.FOURNISSEUR]:'')||'').trim();
+      const prixAchat = parseFloat(String(d["Prix d'achat"]||'').replace(',','.'));
+      row[BIZCOL.ACHAT_HT] = !isNaN(prixAchat) ? String(Math.round(prixAchat*100)) : (existing?existing[BIZCOL.ACHAT_HT]:'');
+      row[BIZCOL.TVA] = String(d['Taux TVA']||(existing?existing[BIZCOL.TVA]:'')||'').trim();
+      row[BIZCOL.STOCK] = String(d['Stock']||'').trim();
+      row[BIZCOL.STOCK_MINI] = String(d['Limite stock pour alerte']||'').trim();
+      row[BIZCOL.STOCK_MAXI] = String(d['Stock désiré optimal']||'').trim();
+      row[BIZCOL.BIO] = String(d['Produit Bio']||'').trim()==='1' ? '1' : '0';
+      row[BIZCOL.LOCAL] = String(d['Produit Local']||'').trim()==='1' ? '1' : '0';
+      row[BIZCOL.TEMPLATE] = existing ? existing[BIZCOL.TEMPLATE] : '';
+      const affPrix = String(d['Affichage Prix']||'').trim().toLowerCase();
+      row[BIZCOL.UNIT_DISPLAY] = (affPrix==='100g'||affPrix==='1') ? '100g' : (existing?existing[BIZCOL.UNIT_DISPLAY]:'kg');
+      row[BIZCOL.GROUP] = existing ? existing[BIZCOL.GROUP] : '';
+      row[BIZCOL.PACK_SIZE] = existing ? existing[BIZCOL.PACK_SIZE] : '';
+      row[BIZCOL.ORDER_PERIOD] = existing ? existing[BIZCOL.ORDER_PERIOD] : '';
+      row[BIZCOL.DESC_LONGUE] = String(d['Description']||'').trim();
+
+      newRows.push(row);
+    });
+
+    const missingFromDolibarr = Object.keys(existingByPlu)
+      .map(Number)
+      .filter(n=> !seenPlu.has(n));
+
+    state.rows = newRows;
+    state.colWidths = {};
+    refreshSuppliersList();
+    analyzeColumns();
+    render();
+    persistSession();
+
+    let msg = `Import Dolibarr terminé : ${newRows.length} produit(s) chargé(s) (${fromExisting} rapprochés avec la base précédente, ${brandNew} nouveaux sans historique technique balance).`;
+    if(missingFromDolibarr.length){
+      msg += `\n\n⚠ ${missingFromDolibarr.length} PLU présent(s) dans l'ancienne base mais absent(s) de cet export Dolibarr (retirés de la base actuelle) : ${missingFromDolibarr.slice(0,20).join(', ')}${missingFromDolibarr.length>20?'…':''}`;
+    }
+    alert(msg);
+    window._dolibarrProductFile = null;
+  });
 
   let masterDbFileHandle = null; // lien vers le fichier cible (File System Access API), si le navigateur le permet
   const btnResetMasterDbLink = $('btnResetMasterDbLink');
