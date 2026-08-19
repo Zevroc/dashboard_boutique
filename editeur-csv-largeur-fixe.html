@@ -1835,7 +1835,7 @@
     const prev = state.categoryFilter;
     categoryFilter.innerHTML = '<option value="ALL">Toutes</option>' +
       values.map(v=>{
-        const label = v==='' ? '(vide)' : v;
+        const label = v==='' ? '(vide)' : (state.categoryLabels[v] || v);
         return `<option value="${v.replace(/"/g,'&quot;')}">${label} (${counts[v]})</option>`;
       }).join('');
     if(prev!=='ALL' && !values.includes(prev)) state.categoryFilter = 'ALL';
@@ -3260,7 +3260,14 @@
     categoryRows.forEach(r=>{
       const plu = String(r['Réf.']||'').trim();
       const label = String(r['Libellé']||'').trim();
-      if(plu && label) categoryByPlu[plu] = findCategoryCodeByLabel(label);
+      if(plu && label){
+        const code = findCategoryCodeByLabel(label);
+        categoryByPlu[plu] = code;
+        // aligne le libellé de l'outil sur celui de Dolibarr (qui devient la référence) —
+        // ainsi le filtre catégorie de la grille reste toujours à jour avec Dolibarr,
+        // même en cas de renommage côté Dolibarr.
+        if(code && state.categoryLabels[code] !== label) state.categoryLabels[code] = label;
+      }
     });
 
     // Base existante indexee par PLU (numerique) pour recuperer les champs techniques connus
@@ -5652,10 +5659,11 @@
 
       const body = items.map((r,i)=>{
         const pu = priceAndUnitFor(r);
+        const uniteCell = pu.showKgSecondary ? `${pu.unitLabel}\n(${pu.priceKgStr}/kg)` : pu.unitLabel;
         const row = [
           (r[0]||'').trim(),
           (r[1]||'').trim(),
-          pu.unitLabel,
+          uniteCell,
           pu.priceStr
         ];
         if(isAlimentaire) row.splice(2, 0, allergenCodes[i].join(','));
