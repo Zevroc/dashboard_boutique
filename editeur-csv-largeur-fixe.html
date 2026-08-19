@@ -3211,15 +3211,22 @@
     }
 
     // Catégorie : PLU (Réf.) -> libellé -> code numérique (via state.categoryLabels)
-    const labelToCode = {};
-    Object.entries(state.categoryLabels).forEach(([code,label])=>{
-      labelToCode[label.trim().toLowerCase()] = code;
-    });
+    // Correspondance souple (pas seulement exacte) : Dolibarr peut avoir "Bazar" quand
+    // l'outil a "Bazar / Accessoires" — un simple match exact laisserait ces cas vides.
+    function findCategoryCodeByLabel(dolibarrLabel){
+      const target = dolibarrLabel.trim().toLowerCase();
+      if(!target) return '';
+      for(const [code,label] of Object.entries(state.categoryLabels)){
+        const l = label.trim().toLowerCase();
+        if(l===target || l.startsWith(target) || target.startsWith(l)) return code;
+      }
+      return '';
+    }
     const categoryByPlu = {};
     categoryRows.forEach(r=>{
       const plu = String(r['Réf.']||'').trim();
       const label = String(r['Libellé']||'').trim();
-      if(plu && label) categoryByPlu[plu] = labelToCode[label.toLowerCase()] || '';
+      if(plu && label) categoryByPlu[plu] = findCategoryCodeByLabel(label);
     });
 
     // Base existante indexee par PLU (numerique) pour recuperer les champs techniques connus
@@ -3296,6 +3303,13 @@
       .map(Number)
       .filter(n=> !seenPlu.has(n));
 
+    const emptyCategoryPlu = newRows.filter(r=> !r[5]).map(r=>r[0]);
+    const unmatchedLabels = Array.from(new Set(
+      categoryRows
+        .filter(r=> String(r['Réf.']||'').trim() && !findCategoryCodeByLabel(String(r['Libellé']||'')))
+        .map(r=> String(r['Libellé']||'').trim())
+    ));
+
     state.rows = newRows;
     state.colWidths = {};
     refreshSuppliersList();
@@ -3306,6 +3320,9 @@
     let msg = `Import Dolibarr terminé : ${newRows.length} produit(s) chargé(s) (${fromExisting} rapprochés avec la base précédente, ${brandNew} nouveaux sans historique technique balance).`;
     if(missingFromDolibarr.length){
       msg += `\n\n⚠ ${missingFromDolibarr.length} PLU présent(s) dans l'ancienne base mais absent(s) de cet export Dolibarr (retirés de la base actuelle) : ${missingFromDolibarr.slice(0,20).join(', ')}${missingFromDolibarr.length>20?'…':''}`;
+    }
+    if(unmatchedLabels.length){
+      msg += `\n\n⚠ Libellé(s) de catégorie Dolibarr sans correspondance dans l'outil : ${unmatchedLabels.join(', ')} — ${emptyCategoryPlu.length} produit(s) resteront sans catégorie (PLU : ${emptyCategoryPlu.slice(0,15).join(', ')}${emptyCategoryPlu.length>15?'…':''}). Renomme la catégorie dans Dolibarr ou dans l'outil (menu ⚙️ Système) pour qu'ils correspondent.`;
     }
     alert(msg);
     dolibarrProductFile = null; dolibarrCategoryFile = null;
