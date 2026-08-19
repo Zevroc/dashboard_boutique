@@ -3978,13 +3978,13 @@
     const iconCy = y+h/2;
     doc.addImage(LOGO_ICON_URI, 'PNG', x+w/2-iconW/2, iconCy-iconH/2, iconW, iconH);
 
-    // badges bio / local, centrés juste sous le logo OPEV
+    // badges bio / local, sous le logo OPEV avec un espace plus marqué
     const nomLower = (r[1]||'').toLowerCase();
     const bioStored = (r[BIZCOL.BIO]||'').trim();
     const localStored = (r[BIZCOL.LOCAL]||'').trim();
     const isBio = bioStored!=='' ? bioStored==='1' : nomLower.includes('bio');
     const isLocal = localStored!=='' ? localStored==='1' : nomLower.includes('local');
-    const badgeY = iconCy + iconH/2 + 4;
+    const badgeY = iconCy + iconH/2 + 9;
     const abW = 5.5, abH = abW/LOGO_AB_RATIO, pinW = 5.5;
     let badgesWidth = 0;
     if(isBio) badgesWidth += abW;
@@ -3999,7 +3999,7 @@
 
     const pu = priceAndUnitFor(r);
     doc.setFont('helvetica','bold');
-    doc.setFontSize(22);
+    doc.setFontSize(13);
     doc.setTextColor(...BRAND_COLOR);
     doc.text(pu.priceStr, x+w/2, y+h-18, { align:'center' });
     if(pu.unitLabel){
