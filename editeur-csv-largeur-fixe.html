@@ -2489,16 +2489,17 @@
       unitDispWrap.innerHTML = `<div class="field-label"><span class="name">Affichage prix (produits au poids)</span></div>`;
       const unitDispSelect = document.createElement('select');
       unitDispSelect.id = 'bizUnitDisplay';
-      [['kg','Par kg (prix affiché tel quel)'],['100g','Par 100g (converti automatiquement)']].forEach(([val,label])=>{
+      [['kg','Par kg (prix affiché tel quel)'],['100g','Par 100g'],['250g','Par 250g'],['500g','Par 500g']].forEach(([val,label])=>{
         const opt = document.createElement('option');
         opt.value = val; opt.textContent = label;
-        if((row[BIZCOL.UNIT_DISPLAY]||'kg').trim() === val) opt.selected = true;
+        const cur = (row[BIZCOL.UNIT_DISPLAY]||'kg').trim().toLowerCase();
+        if(cur === val || (val==='kg' && (cur===''||cur==='0'))) opt.selected = true;
         unitDispSelect.appendChild(opt);
       });
       unitDispWrap.appendChild(unitDispSelect);
       const unitDispNote = document.createElement('p');
       unitDispNote.className = 'allergen-note';
-      unitDispNote.textContent = "S'applique uniquement aux produits de type P (au poids) — le prix reste toujours saisi au kilo dans le champ ci-dessus ; catalogue et étiquettes convertissent automatiquement si \"par 100g\" est choisi.";
+      unitDispNote.textContent = "S'applique uniquement aux produits de type P (au poids) — le prix reste toujours saisi au kilo dans le champ ci-dessus. Le catalogue et les étiquettes convertissent et affichent ce prix automatiquement ; sur l'étiquette détaillée, le prix au kilo réapparaît en plus petit sous le prix principal si une conversion est choisie.";
       unitDispWrap.appendChild(unitDispNote);
       biz.appendChild(unitDispWrap);
 
@@ -3643,24 +3644,34 @@
     return '';
   }
 
-  // Fonction partagée catalogue + étiquettes : gère la conversion kg -> 100g pour
-  // l'affichage. Le prix stocké (colonne 5) reste TOUJOURS au kilo, on ne convertit
-  // jamais la donnée elle-même — uniquement ce qui est affiché.
+  // Fonction partagée catalogue + étiquettes : gère la conversion kg -> unité choisie
+  // (100g, 250g, 500g...) pour l'affichage. Le prix stocké (colonne 5) reste TOUJOURS
+  // au kilo, on ne convertit jamais la donnée elle-même — uniquement ce qui est affiché.
+  // priceKgStr et showKgSecondary permettent d'afficher le prix/kg en complément, en
+  // plus petit, quand une conversion est active (demande spécifique étiquettes).
   function priceAndUnitFor(r){
     const t = (r[3]||'').trim().toUpperCase();
     const priceCents = parseInt((r[4]||'0').trim(), 10);
     if(t === 'C'){
-      return { priceStr: eurosFromCents(priceCents), unitLabel: 'à la pièce' };
+      return { priceStr: eurosFromCents(priceCents), unitLabel: 'à la pièce', showKgSecondary:false };
     }
     if(t === 'P'){
-      const pref = (r[BIZCOL.UNIT_DISPLAY]||'kg').trim();
-      if(pref === '100g'){
-        const per100g = Math.round(priceCents/10);
-        return { priceStr: eurosFromCents(per100g), unitLabel: 'par 100g' };
+      const pref = (r[BIZCOL.UNIT_DISPLAY]||'').trim().toLowerCase();
+      let grams = 1000; // vide, '0' ou 'kg' -> pas de conversion, affichage au kilo
+      if(pref && pref!=='0' && pref!=='kg'){
+        const n = parseInt(pref.replace(/[^0-9]/g,''), 10);
+        if(!isNaN(n) && n>0) grams = n;
       }
-      return { priceStr: eurosFromCents(priceCents), unitLabel: 'par kg' };
+      const dispCents = Math.round(priceCents * grams/1000);
+      const unitLabel = grams===1000 ? 'par kg' : `par ${grams}g`;
+      return {
+        priceStr: eurosFromCents(dispCents),
+        unitLabel,
+        priceKgStr: eurosFromCents(priceCents),
+        showKgSecondary: grams !== 1000
+      };
     }
-    return { priceStr: eurosFromCents(priceCents), unitLabel: '' };
+    return { priceStr: eurosFromCents(priceCents), unitLabel: '', showKgSecondary:false };
   }
 
   const LOGO_BRAND_URI = "data:image/png;base64,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";
@@ -3929,7 +3940,8 @@
       doc.setFont('helvetica','normal');
       doc.setFontSize(6);
       doc.setTextColor(120,120,120);
-      doc.text(pu.unitLabel, x+w-pad, y+h-1.2, { align:'right' });
+      const secondLine = pu.unitLabel + (pu.showKgSecondary ? ` · ${pu.priceKgStr}/kg` : '');
+      doc.text(secondLine, x+w-pad, y+h-1.2, { align:'right' });
     }
   }
 
@@ -3980,6 +3992,12 @@
       doc.setFontSize(9);
       doc.setTextColor(120,120,120);
       doc.text(pu.unitLabel, x+w/2, y+h-10, { align:'center' });
+    }
+    if(pu.showKgSecondary){
+      doc.setFont('helvetica','normal');
+      doc.setFontSize(7);
+      doc.setTextColor(150,150,150);
+      doc.text(`soit ${pu.priceKgStr}/kg`, x+w/2, y+h-6, { align:'center' });
     }
 
     const realCat = (r[5]||'').trim();
