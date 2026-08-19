@@ -3332,7 +3332,13 @@
       row[BIZCOL.LOCAL] = String(d['Produit Local']||'').trim()==='1' ? '1' : '0';
       row[BIZCOL.TEMPLATE] = existing ? existing[BIZCOL.TEMPLATE] : '';
       const affPrix = String(d['Affichage Prix']||'').trim().toLowerCase();
-      row[BIZCOL.UNIT_DISPLAY] = (affPrix==='100g'||affPrix==='1') ? '100g' : (existing?existing[BIZCOL.UNIT_DISPLAY]:'kg');
+      const AFFICHAGE_PRIX_INDEX_MAP = ['kg','100g','250g','500g']; // ordre des options dans l'extrafield Dolibarr
+      let unitDisplayVal;
+      if(affPrix==='' ) unitDisplayVal = null; // rien renseigne -> repli sur l'existant
+      else if(['kg','100g','250g','500g'].includes(affPrix)) unitDisplayVal = affPrix; // texte litteral direct
+      else if(/^[0-3]$/.test(affPrix)) unitDisplayVal = AFFICHAGE_PRIX_INDEX_MAP[parseInt(affPrix,10)]; // index de liste Dolibarr
+      else unitDisplayVal = null;
+      row[BIZCOL.UNIT_DISPLAY] = unitDisplayVal || (existing ? existing[BIZCOL.UNIT_DISPLAY] : 'kg');
       row[BIZCOL.GROUP] = existing ? existing[BIZCOL.GROUP] : '';
       row[BIZCOL.PACK_SIZE] = existing ? existing[BIZCOL.PACK_SIZE] : '';
       row[BIZCOL.ORDER_PERIOD] = existing ? existing[BIZCOL.ORDER_PERIOD] : '';
