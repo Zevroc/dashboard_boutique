@@ -1372,8 +1372,14 @@
       <p class="renum-intro">
         Articles cochés dans le tableau principal. Choisis une trame pour chacun — les étiquettes de même trame sont regroupées ensemble sur les pages A4, avec traits de découpe.
       </p>
-      <div style="display:flex; gap:10px; margin-bottom:12px;">
+      <div style="display:flex; gap:10px; margin-bottom:12px; align-items:center; flex-wrap:wrap;">
         <button class="btn ghost" id="labelsSelectNone">Vider la sélection</button>
+        <label class="filterLabel" style="display:inline-flex;">
+          Appliquer une trame à tous
+          <select id="labelsApplyAllTpl">
+            <option value="">— choisir —</option>
+          </select>
+        </label>
       </div>
       <table class="renum-table">
         <thead>
@@ -1898,7 +1904,16 @@
     const colgroup = $('gridColgroup');
     colgroup.innerHTML = '<col style="width:80px">';
     const headRow = $('headRow');
-    headRow.innerHTML = '<th class="actions" style="background:#EAE0C4;"></th>';
+    const selectAllTh = document.createElement('th');
+    selectAllTh.className = 'actions';
+    selectAllTh.style.background = '#EAE0C4';
+    const selectAllCb = document.createElement('input');
+    selectAllCb.type = 'checkbox';
+    selectAllCb.id = 'selectAllLabelsCb';
+    selectAllCb.title = "Sélectionner tous les articles affichés pour l'impression d'étiquettes";
+    selectAllTh.appendChild(selectAllCb);
+    headRow.innerHTML = '';
+    headRow.appendChild(selectAllTh);
     visibleCols.forEach(c=>{
       if(state.colWidths[c]===undefined) state.colWidths[c] = estimateColWidth(c);
       const col = document.createElement('col');
@@ -1951,6 +1966,14 @@
       .map((row, ri)=>({row, ri}))
       .filter(x => state.categoryFilter==='ALL' || (x.row[CATCOL]||'').trim() === state.categoryFilter)
       .filter(x => !q || (x.row[0]||'').toLowerCase().includes(q) || (x.row[1]||'').toLowerCase().includes(q));
+
+    const visiblePlus = visibleRows.map(x=> (x.row[0]||'').trim());
+    selectAllCb.checked = visiblePlus.length>0 && visiblePlus.every(p=> state.labelSelection.has(p));
+    selectAllCb.addEventListener('change', ()=>{
+      if(selectAllCb.checked) visiblePlus.forEach(p=> state.labelSelection.add(p));
+      else visiblePlus.forEach(p=> state.labelSelection.delete(p));
+      render();
+    });
 
     visibleRows.forEach(({row, ri})=>{
       const tr = document.createElement('tr');
@@ -3810,6 +3833,7 @@
 
       const tdTrame = document.createElement('td');
       const sel = document.createElement('select');
+      sel.className = 'label-tpl-select';
       sel.dataset.ri = ri;
       Object.entries(LABEL_TEMPLATES).forEach(([key,def])=>{
         const opt = document.createElement('option');
@@ -3823,9 +3847,21 @@
       labelsBody.appendChild(tr);
     });
     labelsCount.textContent = `${selected.length} article(s) sélectionné(s)`;
+    const applyAllSel = $('labelsApplyAllTpl');
+    applyAllSel.innerHTML = '<option value="">— choisir —</option>' +
+      Object.entries(LABEL_TEMPLATES).map(([key,def])=>`<option value="${key}">${def.name}</option>`).join('');
+    applyAllSel.value = '';
     labelsOverlay.classList.add('show');
   }
   function closeLabelsModal(){ labelsOverlay.classList.remove('show'); }
+
+  $('labelsApplyAllTpl').addEventListener('change', ()=>{
+    const key = $('labelsApplyAllTpl').value;
+    if(!key) return;
+    document.querySelectorAll('#labelsBody .label-tpl-select').forEach(sel=>{
+      sel.value = key;
+    });
+  });
 
   btnLabels.addEventListener('click', openLabelsModal);
   btnEditMode.addEventListener('click', ()=>{
