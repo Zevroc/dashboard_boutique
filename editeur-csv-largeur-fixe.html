@@ -925,9 +925,12 @@
     <div class="menu-panel">
       <button class="menu-item" id="btnImportBalance">⇪ Importer/fusionner un CSV balance</button>
       <input type="file" id="balanceFileInput" accept=".csv,.CSV,text/csv">
-      <button class="menu-item" id="btnImportDolibarr">⇪ Importer un export Dolibarr (produits + catégories)</button>
+      <div class="menu-item" style="cursor:default; font-size:11px; color:#B9B2A2; padding-bottom:0;">Import Dolibarr (produits + catégories)</div>
+      <button class="menu-item" id="btnPickDolibarrProduct">1. Choisir le fichier Produits</button>
       <input type="file" id="dolibarrProductInput" accept=".xlsx,.xls,.csv,.CSV">
+      <button class="menu-item" id="btnPickDolibarrCategory">2. Choisir le fichier Catégories</button>
       <input type="file" id="dolibarrCategoryInput" accept=".xlsx,.xls,.csv,.CSV">
+      <button class="menu-item" id="btnRunDolibarrImport" disabled>3. Lancer la fusion</button>
       <button class="menu-item" id="btnExport" disabled>⇩ Exporter le CSV corrigé (balance)</button>
       <button class="menu-item" id="btnExportExcel" disabled title="Ajoute la ligne sep=, en tête pour un affichage correct dans Excel — ne pas recharger cette copie dans la balance">⇩ Copie pour Excel (sep=,)</button>
     </div>
@@ -3162,24 +3165,38 @@
     });
   }
 
-  $('btnImportDolibarr').addEventListener('click', ()=>{
+  let dolibarrProductFile = null, dolibarrCategoryFile = null;
+  const btnRunDolibarrImport = $('btnRunDolibarrImport');
+
+  function updateDolibarrImportReadiness(){
+    btnRunDolibarrImport.disabled = !(dolibarrProductFile && dolibarrCategoryFile);
+    $('btnPickDolibarrProduct').textContent = dolibarrProductFile
+      ? `1. Produits ✓ (${dolibarrProductFile.name})` : '1. Choisir le fichier Produits';
+    $('btnPickDolibarrCategory').textContent = dolibarrCategoryFile
+      ? `2. Catégories ✓ (${dolibarrCategoryFile.name})` : '2. Choisir le fichier Catégories';
+  }
+
+  $('btnPickDolibarrProduct').addEventListener('click', ()=>{
     $('dolibarrProductInput').value = '';
     $('dolibarrProductInput').click();
   });
-
-  $('dolibarrProductInput').addEventListener('change', async (e)=>{
-    const productFile = e.target.files[0];
-    if(!productFile) return;
-    alert("Fichier produits sélectionné. Choisis maintenant le fichier des catégories exporté depuis Dolibarr.");
-    $('dolibarrCategoryInput').value = '';
-    $('dolibarrCategoryInput').dataset.pendingProductFile = 'true';
-    window._dolibarrProductFile = productFile;
-    $('dolibarrCategoryInput').click();
+  $('dolibarrProductInput').addEventListener('change', (e)=>{
+    dolibarrProductFile = e.target.files[0] || null;
+    updateDolibarrImportReadiness();
   });
 
-  $('dolibarrCategoryInput').addEventListener('change', async (e)=>{
-    const categoryFile = e.target.files[0];
-    const productFile = window._dolibarrProductFile;
+  $('btnPickDolibarrCategory').addEventListener('click', ()=>{
+    $('dolibarrCategoryInput').value = '';
+    $('dolibarrCategoryInput').click();
+  });
+  $('dolibarrCategoryInput').addEventListener('change', (e)=>{
+    dolibarrCategoryFile = e.target.files[0] || null;
+    updateDolibarrImportReadiness();
+  });
+
+  btnRunDolibarrImport.addEventListener('click', async ()=>{
+    const productFile = dolibarrProductFile;
+    const categoryFile = dolibarrCategoryFile;
     if(!productFile || !categoryFile) return;
 
     let productRows, categoryRows;
@@ -3291,7 +3308,8 @@
       msg += `\n\n⚠ ${missingFromDolibarr.length} PLU présent(s) dans l'ancienne base mais absent(s) de cet export Dolibarr (retirés de la base actuelle) : ${missingFromDolibarr.slice(0,20).join(', ')}${missingFromDolibarr.length>20?'…':''}`;
     }
     alert(msg);
-    window._dolibarrProductFile = null;
+    dolibarrProductFile = null; dolibarrCategoryFile = null;
+    updateDolibarrImportReadiness();
   });
 
   let masterDbFileHandle = null; // lien vers le fichier cible (File System Access API), si le navigateur le permet
