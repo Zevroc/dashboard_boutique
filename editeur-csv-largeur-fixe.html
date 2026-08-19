@@ -3934,7 +3934,27 @@
 
     // logo au centre de l'étiquette
     const iconW = Math.min(w,h)*0.32, iconH = iconW/LOGO_ICON_RATIO;
-    doc.addImage(LOGO_ICON_URI, 'PNG', x+w/2-iconW/2, y+h/2-iconH/2, iconW, iconH);
+    const iconCy = y+h/2;
+    doc.addImage(LOGO_ICON_URI, 'PNG', x+w/2-iconW/2, iconCy-iconH/2, iconW, iconH);
+
+    // badges bio / local, centrés juste sous le logo OPEV
+    const nomLower = (r[1]||'').toLowerCase();
+    const bioStored = (r[BIZCOL.BIO]||'').trim();
+    const localStored = (r[BIZCOL.LOCAL]||'').trim();
+    const isBio = bioStored!=='' ? bioStored==='1' : nomLower.includes('bio');
+    const isLocal = localStored!=='' ? localStored==='1' : nomLower.includes('local');
+    const badgeY = iconCy + iconH/2 + 4;
+    const abW = 5.5, abH = abW/LOGO_AB_RATIO, pinW = 5.5;
+    let badgesWidth = 0;
+    if(isBio) badgesWidth += abW;
+    if(isLocal) badgesWidth += pinW;
+    if(isBio && isLocal) badgesWidth += 2.5;
+    let bx = x+w/2 - badgesWidth/2;
+    if(isBio){
+      doc.addImage(LOGO_AB_URI, 'PNG', bx, badgeY-abH/2, abW, abH);
+      bx += abW+2.5;
+    }
+    if(isLocal){ drawMapPin(doc, bx+1.8, badgeY, 2.2); bx += pinW; }
 
     const pu = priceAndUnitFor(r);
     doc.setFont('helvetica','bold');
@@ -3947,21 +3967,6 @@
       doc.setTextColor(120,120,120);
       doc.text(pu.unitLabel, x+w/2, y+h-10, { align:'center' });
     }
-
-    // badges bio / local / allergènes, en bas de l'étiquette
-    let bx = x+pad;
-    const by = y+h-4;
-    const nomLower = (r[1]||'').toLowerCase();
-    const bioStored = (r[BIZCOL.BIO]||'').trim();
-    const localStored = (r[BIZCOL.LOCAL]||'').trim();
-    const isBio = bioStored!=='' ? bioStored==='1' : nomLower.includes('bio');
-    const isLocal = localStored!=='' ? localStored==='1' : nomLower.includes('local');
-    if(isBio){
-      const abW = 5.5, abH = abW/LOGO_AB_RATIO;
-      doc.addImage(LOGO_AB_URI, 'PNG', bx, by-abH/2, abW, abH);
-      bx += abW+2.5;
-    }
-    if(isLocal){ drawMapPin(doc, bx+1.8, by, 2.2); bx += 5.5; }
 
     const realCat = (r[5]||'').trim();
     if(realCat === '1'){
