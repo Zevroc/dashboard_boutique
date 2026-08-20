@@ -925,12 +925,14 @@
     <div class="menu-panel">
       <button class="menu-item" id="btnImportBalance">⇪ Importer/fusionner un CSV balance</button>
       <input type="file" id="balanceFileInput" accept=".csv,.CSV,text/csv">
-      <div class="menu-item" style="cursor:default; font-size:11px; color:#B9B2A2; padding-bottom:0;">Import Dolibarr (produits + catégories)</div>
+      <div class="menu-item" style="cursor:default; font-size:11px; color:#B9B2A2; padding-bottom:0;">Import Dolibarr (produits + catégories + tags bio/local/allergènes)</div>
       <button class="menu-item" id="btnPickDolibarrProduct">1. Choisir le fichier Produits</button>
       <input type="file" id="dolibarrProductInput" accept=".xlsx,.xls,.csv,.CSV">
-      <button class="menu-item" id="btnPickDolibarrCategory">2. Choisir le fichier Catégories</button>
+      <button class="menu-item" id="btnPickDolibarrCategoryList">2. Choisir le fichier Liste des catégories</button>
+      <input type="file" id="dolibarrCategoryListInput" accept=".xlsx,.xls,.csv,.CSV">
+      <button class="menu-item" id="btnPickDolibarrCategory">3. Choisir le fichier Catégories par produit</button>
       <input type="file" id="dolibarrCategoryInput" accept=".xlsx,.xls,.csv,.CSV">
-      <button class="menu-item" id="btnRunDolibarrImport" disabled>3. Lancer la fusion</button>
+      <button class="menu-item" id="btnRunDolibarrImport" disabled>4. Lancer la fusion</button>
       <button class="menu-item" id="btnExport" disabled>⇩ Exporter le CSV corrigé (balance)</button>
       <button class="menu-item" id="btnExportExcel" disabled title="Ajoute la ligne sep=, en tête pour un affichage correct dans Excel — ne pas recharger cette copie dans la balance">⇩ Copie pour Excel (sep=,)</button>
     </div>
@@ -3193,15 +3195,17 @@
     });
   }
 
-  let dolibarrProductFile = null, dolibarrCategoryFile = null;
+  let dolibarrProductFile = null, dolibarrCategoryListFile = null, dolibarrCategoryFile = null;
   const btnRunDolibarrImport = $('btnRunDolibarrImport');
 
   function updateDolibarrImportReadiness(){
-    btnRunDolibarrImport.disabled = !(dolibarrProductFile && dolibarrCategoryFile);
+    btnRunDolibarrImport.disabled = !(dolibarrProductFile && dolibarrCategoryListFile && dolibarrCategoryFile);
     $('btnPickDolibarrProduct').textContent = dolibarrProductFile
       ? `1. Produits ✓ (${dolibarrProductFile.name})` : '1. Choisir le fichier Produits';
+    $('btnPickDolibarrCategoryList').textContent = dolibarrCategoryListFile
+      ? `2. Liste catégories ✓ (${dolibarrCategoryListFile.name})` : '2. Choisir le fichier Liste des catégories';
     $('btnPickDolibarrCategory').textContent = dolibarrCategoryFile
-      ? `2. Catégories ✓ (${dolibarrCategoryFile.name})` : '2. Choisir le fichier Catégories';
+      ? `3. Catégories par produit ✓ (${dolibarrCategoryFile.name})` : '3. Choisir le fichier Catégories par produit';
   }
 
   $('btnPickDolibarrProduct').addEventListener('click', ()=>{
@@ -3210,6 +3214,15 @@
   });
   $('dolibarrProductInput').addEventListener('change', (e)=>{
     dolibarrProductFile = e.target.files[0] || null;
+    updateDolibarrImportReadiness();
+  });
+
+  $('btnPickDolibarrCategoryList').addEventListener('click', ()=>{
+    $('dolibarrCategoryListInput').value = '';
+    $('dolibarrCategoryListInput').click();
+  });
+  $('dolibarrCategoryListInput').addEventListener('change', (e)=>{
+    dolibarrCategoryListFile = e.target.files[0] || null;
     updateDolibarrImportReadiness();
   });
 
@@ -3224,13 +3237,15 @@
 
   btnRunDolibarrImport.addEventListener('click', async ()=>{
     const productFile = dolibarrProductFile;
+    const categoryListFile = dolibarrCategoryListFile;
     const categoryFile = dolibarrCategoryFile;
-    if(!productFile || !categoryFile) return;
+    if(!productFile || !categoryListFile || !categoryFile) return;
 
-    let productRows, categoryRows;
+    let productRows, categoryListRows, categoryRows;
     try{
-      [productRows, categoryRows] = await Promise.all([
+      [productRows, categoryListRows, categoryRows] = await Promise.all([
         readSpreadsheetFile(productFile),
+        readSpreadsheetFile(categoryListFile),
         readSpreadsheetFile(categoryFile)
       ]);
     } catch(err){
@@ -3238,11 +3253,9 @@
       return;
     }
 
-    // Catégorie : PLU (Réf.) -> libellé -> code numérique (via state.categoryLabels)
-    // Correspondance souple (pas seulement exacte) : Dolibarr peut avoir "Bazar" quand
-    // l'outil a "Bazar / Accessoires" — un simple match exact laisserait ces cas vides.
+    // ---- Liste des catégories : classe chaque ID (vraie catégorie / Bio / Local / allergène) ----
     function findCategoryCodeByLabel(dolibarrLabel){
-      const target = dolibarrLabel.trim().toLowerCase();
+      const target = (dolibarrLabel||'').trim().toLowerCase();
       if(!target) return '';
       for(const [code,label] of Object.entries(state.categoryLabels)){
         const l = label.trim().toLowerCase();
@@ -3250,17 +3263,56 @@
       }
       return '';
     }
+    const catMeta = {}; // id -> { label, parentLabel }
+    categoryListRows.forEach(r=>{
+      const id = String(r['ID du(de la) tag/catégorie']||'').trim();
+      if(!id) return;
+      catMeta[id] = {
+        label: String(r['Libellé']||'').trim(),
+        parentLabel: String(r['Libellé du tag/catégorie parent']||'').trim()
+      };
+    });
+    const realCategoryIdToCode = {}; // id Dolibarr -> code interne 1-5
+    const allergenIdToCode = {};     // id Dolibarr -> code allergene 1-14
+    const bioIds = new Set(), localIds = new Set();
+    Object.entries(catMeta).forEach(([id,m])=>{
+      if(m.parentLabel==='Produits'){
+        const code = findCategoryCodeByLabel(m.label);
+        if(code){
+          realCategoryIdToCode[id] = code;
+          if(state.categoryLabels[code] !== m.label) state.categoryLabels[code] = m.label;
+        }
+      } else if(m.parentLabel==='Label'){
+        if(m.label.toLowerCase()==='bio') bioIds.add(id);
+        else if(m.label.toLowerCase()==='local') localIds.add(id);
+      } else if(m.parentLabel==='Allergènes'){
+        const match = m.label.match(/^(\d+)\s*-/);
+        if(match) allergenIdToCode[id] = parseInt(match[1],10);
+      }
+    });
+
+    // ---- Catégories par produit : route chaque ligne selon la classification ci-dessus ----
     const categoryByPlu = {};
+    const bioByPlu = {}, localByPlu = {};
+    const allergensByPlu = {};
     categoryRows.forEach(r=>{
-      const plu = String(r['Réf.']||'').trim();
-      const label = String(r['Libellé']||'').trim();
-      if(plu && label){
-        const code = findCategoryCodeByLabel(label);
-        categoryByPlu[plu] = code;
-        // aligne le libellé de l'outil sur celui de Dolibarr (qui devient la référence) —
-        // ainsi le filtre catégorie de la grille reste toujours à jour avec Dolibarr,
-        // même en cas de renommage côté Dolibarr.
-        if(code && state.categoryLabels[code] !== label) state.categoryLabels[code] = label;
+      const plu = String(r['Réf.']||'').replace(/^ref:/i,'').trim();
+      const id = String(r['ID du(de la) tag/catégorie']||'').trim();
+      if(!plu || !id) return;
+      if(realCategoryIdToCode[id]) categoryByPlu[plu] = realCategoryIdToCode[id];
+      else if(bioIds.has(id)) bioByPlu[plu] = true;
+      else if(localIds.has(id)) localByPlu[plu] = true;
+      else if(allergenIdToCode[id]!==undefined){
+        if(!allergensByPlu[plu]) allergensByPlu[plu] = [];
+        allergensByPlu[plu].push(allergenIdToCode[id]);
+      }
+      // libellé ancien format (rétro-compatibilité si un export sans liste de catégories est réutilisé)
+      else {
+        const label = String(r['Libellé']||'').trim();
+        if(label){
+          const code = findCategoryCodeByLabel(label);
+          if(code) categoryByPlu[plu] = code;
+        }
       }
     });
 
@@ -3320,8 +3372,16 @@
       row[BIZCOL.STOCK] = String(d['Stock']||'').trim();
       row[BIZCOL.STOCK_MINI] = String(d['Limite stock pour alerte']||'').trim();
       row[BIZCOL.STOCK_MAXI] = String(d['Stock désiré optimal']||'').trim();
-      row[BIZCOL.BIO] = String(d['Produit Bio']||'').trim()==='1' ? '1' : '0';
-      row[BIZCOL.LOCAL] = String(d['Produit Local']||'').trim()==='1' ? '1' : '0';
+
+      // Bio / Local : priorité aux catégories (source de vérité désormais), repli sur
+      // les extrafields produit si le PLU n'a pas encore été tagué côté catégories.
+      if(bioByPlu[pluStr]!==undefined) row[BIZCOL.BIO] = '1';
+      else if(String(d['Produit Bio']||'').trim()==='1') row[BIZCOL.BIO] = '1';
+      else row[BIZCOL.BIO] = '0';
+      if(localByPlu[pluStr]!==undefined) row[BIZCOL.LOCAL] = '1';
+      else if(String(d['Produit Local']||'').trim()==='1') row[BIZCOL.LOCAL] = '1';
+      else row[BIZCOL.LOCAL] = '0';
+
       row[BIZCOL.TEMPLATE] = existing ? existing[BIZCOL.TEMPLATE] : '';
       const affPrix = String(d['Affichage Prix']||'').trim().toLowerCase();
       const AFFICHAGE_PRIX_INDEX_MAP = ['kg','100g','250g','500g']; // ordre des options dans l'extrafield Dolibarr
@@ -3336,6 +3396,17 @@
       row[BIZCOL.ORDER_PERIOD] = existing ? existing[BIZCOL.ORDER_PERIOD] : '';
       row[BIZCOL.DESC_LONGUE] = String(d['Description']||'').trim();
 
+      // Allergènes : priorité aux catégories, repli sur l'extrafield texte "Allergènes"
+      if(allergensByPlu[pluStr] && allergensByPlu[pluStr].length){
+        state.allergens[pluStr] = Array.from(new Set(allergensByPlu[pluStr])).sort((a,b)=>a-b);
+      } else {
+        const allergTxt = String(d['Allergènes']||'').trim();
+        if(allergTxt){
+          const codes = allergTxt.split(',').map(c=>parseInt(c.trim(),10)).filter(n=>!isNaN(n));
+          if(codes.length) state.allergens[pluStr] = Array.from(new Set(codes)).sort((a,b)=>a-b);
+        }
+      }
+
       newRows.push(row);
     });
 
@@ -3344,11 +3415,6 @@
       .filter(n=> !seenPlu.has(n));
 
     const emptyCategoryPlu = newRows.filter(r=> !r[5]).map(r=>r[0]);
-    const unmatchedLabels = Array.from(new Set(
-      categoryRows
-        .filter(r=> String(r['Réf.']||'').trim() && !findCategoryCodeByLabel(String(r['Libellé']||'')))
-        .map(r=> String(r['Libellé']||'').trim())
-    ));
 
     state.rows = newRows;
     state.colWidths = {};
@@ -3357,18 +3423,23 @@
     render();
     persistSession();
 
-    let msg = `Import Dolibarr terminé : ${newRows.length} produit(s) chargé(s) (${fromExisting} rapprochés avec la base précédente, ${brandNew} nouveaux sans historique technique balance).`;
+    const nBio = newRows.filter(r=>r[BIZCOL.BIO]==='1').length;
+    const nLocal = newRows.filter(r=>r[BIZCOL.LOCAL]==='1').length;
+    const nAllerg = Object.keys(state.allergens).length;
+
+    let msg = `Import Dolibarr terminé : ${newRows.length} produit(s) chargé(s) (${fromExisting} rapprochés avec la base précédente, ${brandNew} nouveaux sans historique technique balance).\n` +
+      `Bio : ${nBio} · Local : ${nLocal} · Produits avec allergène(s) renseigné(s) : ${nAllerg}.`;
     if(typeDefaulted > 0){
-      msg += `\n\n⚠ ${typeDefaulted} produit(s) sans champ "Type Vente" renseigné dans Dolibarr ET sans base précédente pour se replier — mis par défaut sur "à la pièce" (C). Remplis le champ "Type Vente" dans Dolibarr pour ces produits, ou recharge une base contenant l'info avant de refaire cet import.`;
+      msg += `\n\n⚠ ${typeDefaulted} produit(s) sans champ "Type Vente" renseigné dans Dolibarr ET sans base précédente pour se replier — mis par défaut sur "à la pièce" (C).`;
     }
     if(missingFromDolibarr.length){
       msg += `\n\n⚠ ${missingFromDolibarr.length} PLU présent(s) dans l'ancienne base mais absent(s) de cet export Dolibarr (retirés de la base actuelle) : ${missingFromDolibarr.slice(0,20).join(', ')}${missingFromDolibarr.length>20?'…':''}`;
     }
-    if(unmatchedLabels.length){
-      msg += `\n\n⚠ Libellé(s) de catégorie Dolibarr sans correspondance dans l'outil : ${unmatchedLabels.join(', ')} — ${emptyCategoryPlu.length} produit(s) resteront sans catégorie (PLU : ${emptyCategoryPlu.slice(0,15).join(', ')}${emptyCategoryPlu.length>15?'…':''}). Renomme la catégorie dans Dolibarr ou dans l'outil (menu ⚙️ Système) pour qu'ils correspondent.`;
+    if(emptyCategoryPlu.length){
+      msg += `\n\n⚠ ${emptyCategoryPlu.length} produit(s) sans catégorie reconnue (PLU : ${emptyCategoryPlu.slice(0,15).join(', ')}${emptyCategoryPlu.length>15?'…':''}).`;
     }
     alert(msg);
-    dolibarrProductFile = null; dolibarrCategoryFile = null;
+    dolibarrProductFile = null; dolibarrCategoryListFile = null; dolibarrCategoryFile = null;
     updateDolibarrImportReadiness();
   });
 
