@@ -988,6 +988,12 @@
       <option value="ALL">Toutes</option>
     </select>
   </label>
+  <label class="filterLabel" id="subCategoryFilterLabel" style="display:none;">
+    Sous-catégorie
+    <select id="subCategoryFilter">
+      <option value="ALL">Toutes</option>
+    </select>
+  </label>
   <label class="filterLabel" id="searchLabel" style="display:none;">
     Recherche
     <input type="text" id="searchInput" placeholder="nom ou PLU…">
@@ -1074,6 +1080,12 @@
         <label class="filterLabel">
           Catégorie
           <select id="salesCategoryFilter">
+            <option value="ALL">Toutes</option>
+          </select>
+        </label>
+        <label class="filterLabel">
+          Sous-catégorie
+          <select id="salesSubCategoryFilter">
             <option value="ALL">Toutes</option>
           </select>
         </label>
@@ -1470,6 +1482,7 @@
     selectedRow: -1,
     fileName: 'export.CSV',
     categoryFilter: 'ALL',
+    subCategoryFilter: 'ALL',
     searchText: '',
     showAllCols: false,
     allergens: {}, // PLU (string) -> array de codes allergènes [1..14]
@@ -1496,6 +1509,8 @@
   const statusEl = $('status');
   const filterLabel = $('filterLabel');
   const categoryFilter = $('categoryFilter');
+  const subCategoryFilterLabel = $('subCategoryFilterLabel');
+  const subCategoryFilter = $('subCategoryFilter');
   const searchLabel = $('searchLabel');
   const searchInput = $('searchInput');
   const searchClear = $('searchClear');
@@ -1555,7 +1570,7 @@
     'PLU','Nom','Champ 3','Type','Prix vente','Catégorie','Champ 7','Champ 8','Champ 9',
     'Champ 10','Champ 11','Champ 12','Code','Statut','Département','Code long','Champ 17','Champ 18','Champ 19'
   ];
-  const SHORT_BIZ_LABELS = ['Fournisseur','Prix achat','TVA','Stock','Stock mini','Stock maxi','Bio','Local','Trame étiquette','Affichage prix','Groupe variantes','Taille lot','Période commande','Description longue'];
+  const SHORT_BIZ_LABELS = ['Fournisseur','Prix achat','TVA','Stock','Stock mini','Stock maxi','Bio','Local','Trame étiquette','Affichage prix','Groupe variantes','Taille lot','Période commande','Description longue','Sous-catégorie'];
   function shortColLabel(c){
     if(c < SHORT_COL_LABELS.length) return SHORT_COL_LABELS[c];
     const bi = c - 19;
@@ -1566,9 +1581,9 @@
   // ---------- Base articles : champs métier ajoutés après les 19 colonnes balance ----------
   // Index 19 à 24. Ces colonnes ne sont JAMAIS envoyées dans le CSV balance (voir buildCsvText) —
   // elles ne vivent que dans la base articles complète.
-  const BIZCOL = { FOURNISSEUR:19, ACHAT_HT:20, TVA:21, STOCK:22, STOCK_MINI:23, STOCK_MAXI:24, BIO:25, LOCAL:26, TEMPLATE:27, UNIT_DISPLAY:28, GROUP:29, PACK_SIZE:30, ORDER_PERIOD:31, DESC_LONGUE:32 };
-  const BIZ_COL_COUNT = 14;
-  const BIZ_HEADERS = ['Fournisseur','Prix achat HT (centimes)','Taux TVA (%)','Stock actuel','Stock mini','Stock maxi','Bio (1/0)','Local (1/0)','Trame étiquette','Affichage prix (kg/100g)','Groupe de variantes','Taille du lot (unités)','Période de commande','Description longue'];
+  const BIZCOL = { FOURNISSEUR:19, ACHAT_HT:20, TVA:21, STOCK:22, STOCK_MINI:23, STOCK_MAXI:24, BIO:25, LOCAL:26, TEMPLATE:27, UNIT_DISPLAY:28, GROUP:29, PACK_SIZE:30, ORDER_PERIOD:31, DESC_LONGUE:32, SUB_CATEGORY:33 };
+  const BIZ_COL_COUNT = 15;
+  const BIZ_HEADERS = ['Fournisseur','Prix achat HT (centimes)','Taux TVA (%)','Stock actuel','Stock mini','Stock maxi','Bio (1/0)','Local (1/0)','Trame étiquette','Affichage prix (kg/100g)','Groupe de variantes','Taille du lot (unités)','Période de commande','Description longue','Sous-catégorie (Dolibarr, hors export balance)'];
   const ORDER_PERIODS = {
     hebdo:      { label:'Hebdomadaire (7 jours)', days:7 },
     quinzaine:  { label:'Toutes les 2 semaines (15 jours)', days:15 },
@@ -1848,6 +1863,37 @@
     categoryFilter.value = state.categoryFilter;
   }
 
+  function updateSubCategoryOptions(){
+    const SUBCATCOL = BIZCOL.SUB_CATEGORY;
+    const hasAny = state.rows.some(r=> (r[SUBCATCOL]||'').trim());
+    if(state.rows.length===0 || !hasAny){
+      subCategoryFilterLabel.style.display = 'none';
+      return;
+    }
+    subCategoryFilterLabel.style.display = 'flex';
+    const counts = {};
+    state.rows.forEach(r=>{
+      const raw = (r[SUBCATCOL]||'').trim();
+      if(!raw) return;
+      raw.split(',').map(s=>s.trim()).filter(Boolean).forEach(v=>{
+        counts[v] = (counts[v]||0)+1;
+      });
+    });
+    const values = Object.keys(counts).sort((a,b)=> a.localeCompare(b,'fr'));
+    const prev = state.subCategoryFilter;
+    subCategoryFilter.innerHTML = '<option value="ALL">Toutes</option>' +
+      values.map(v=> `<option value="${v.replace(/"/g,'&quot;')}">${v} (${counts[v]})</option>`).join('');
+    if(prev!=='ALL' && !values.includes(prev)) state.subCategoryFilter = 'ALL';
+    subCategoryFilter.value = state.subCategoryFilter;
+  }
+
+  function matchesSubCategoryFilter(row){
+    if(state.subCategoryFilter==='ALL') return true;
+    const raw = (row[BIZCOL.SUB_CATEGORY]||'').trim();
+    if(!raw) return false;
+    return raw.split(',').map(s=>s.trim()).includes(state.subCategoryFilter);
+  }
+
   function render(){
     dropzone.style.display = 'none';
     sheetWrap.classList.add('show');
@@ -1867,6 +1913,7 @@
     btnExport.disabled = false;
     btnExportExcel.disabled = false;
     updateCategoryOptions();
+    updateSubCategoryOptions();
     searchLabel.style.display = 'flex';
     allColsLabel.style.display = 'flex';
 
@@ -1971,6 +2018,7 @@
     const visibleRows = state.rows
       .map((row, ri)=>({row, ri}))
       .filter(x => state.categoryFilter==='ALL' || (x.row[CATCOL]||'').trim() === state.categoryFilter)
+      .filter(x => matchesSubCategoryFilter(x.row))
       .filter(x => !q || (x.row[0]||'').toLowerCase().includes(q) || (x.row[1]||'').toLowerCase().includes(q));
 
     const visiblePlus = visibleRows.map(x=> (x.row[0]||'').trim());
@@ -2183,9 +2231,10 @@
     const q = state.searchText.trim().toLowerCase();
     const visibleCount = state.rows
       .filter(r => state.categoryFilter==='ALL' || (r[CATCOL]||'').trim() === state.categoryFilter)
+      .filter(r => matchesSubCategoryFilter(r))
       .filter(r => !q || (r[0]||'').toLowerCase().includes(q) || (r[1]||'').toLowerCase().includes(q))
       .length;
-    const filtered = state.categoryFilter!=='ALL' || !!q;
+    const filtered = state.categoryFilter!=='ALL' || state.subCategoryFilter!=='ALL' || !!q;
     const rowsPill = filtered
       ? `${visibleCount} / ${state.rows.length} lignes affichées`
       : `${state.rows.length} lignes`;
@@ -2785,6 +2834,11 @@
     state.selectedRow = -1;
     render();
   });
+  subCategoryFilter.addEventListener('change', ()=>{
+    state.subCategoryFilter = subCategoryFilter.value;
+    state.selectedRow = -1;
+    render();
+  });
   searchInput.addEventListener('input', ()=>{
     state.searchText = searchInput.value;
     searchClear.style.display = state.searchText ? 'inline-flex' : 'none';
@@ -3263,16 +3317,17 @@
       }
       return '';
     }
-    const catMeta = {}; // id -> { label, parentLabel }
+    const catMeta = {}; // id -> { label, parentLabel, parentId }
     categoryListRows.forEach(r=>{
       const id = String(r['ID du(de la) tag/catégorie']||'').trim();
       if(!id) return;
       catMeta[id] = {
         label: String(r['Libellé']||'').trim(),
-        parentLabel: String(r['Libellé du tag/catégorie parent']||'').trim()
+        parentLabel: String(r['Libellé du tag/catégorie parent']||'').trim(),
+        parentId: String(r['ID du tag/catégorie parent']||'').trim()
       };
     });
-    const realCategoryIdToCode = {}; // id Dolibarr -> code interne 1-5
+    const realCategoryIdToCode = {}; // id Dolibarr -> code interne 1-5 (catégorie balance)
     const allergenIdToCode = {};     // id Dolibarr -> code allergene 1-14
     const bioIds = new Set(), localIds = new Set();
     Object.entries(catMeta).forEach(([id,m])=>{
@@ -3290,11 +3345,31 @@
         if(match) allergenIdToCode[id] = parseInt(match[1],10);
       }
     });
+    // Sous-catégorie : toute catégorie qui n'est ni Bio/Local/Allergène ni une des 5
+    // catégories principales, mais qui descend malgré tout de l'arbre "Produits"
+    // (directement ou plus profond, ex. Apéro > Alimentaire > Produits). Le libellé
+    // Dolibarr est repris tel quel — n'affecte JAMAIS la colonne catégorie balance (1-5).
+    function isUnderProduits(id, depth){
+      if(depth > 6) return false; // garde-fou anti-boucle
+      const m = catMeta[id];
+      if(!m) return false;
+      if(m.parentLabel==='Produits') return true;
+      if(!m.parentId || !catMeta[m.parentId]) return false;
+      return isUnderProduits(m.parentId, depth+1);
+    }
+    const subCategoryIds = new Set();
+    Object.entries(catMeta).forEach(([id,m])=>{
+      if(realCategoryIdToCode[id]) return; // deja classee comme categorie principale
+      if(bioIds.has(id) || localIds.has(id) || allergenIdToCode[id]!==undefined) return;
+      if(m.parentLabel==='Produits') return; // deja geree ci-dessus (cas non reconnu -> ignoree, pas une sous-cat)
+      if(isUnderProduits(id, 0)) subCategoryIds.add(id);
+    });
 
     // ---- Catégories par produit : route chaque ligne selon la classification ci-dessus ----
     const categoryByPlu = {};
     const bioByPlu = {}, localByPlu = {};
     const allergensByPlu = {};
+    const subCategoriesByPlu = {};
     categoryRows.forEach(r=>{
       const plu = String(r['Réf.']||'').replace(/^ref:/i,'').trim();
       const id = String(r['ID du(de la) tag/catégorie']||'').trim();
@@ -3305,6 +3380,11 @@
       else if(allergenIdToCode[id]!==undefined){
         if(!allergensByPlu[plu]) allergensByPlu[plu] = [];
         allergensByPlu[plu].push(allergenIdToCode[id]);
+      }
+      else if(subCategoryIds.has(id)){
+        if(!subCategoriesByPlu[plu]) subCategoriesByPlu[plu] = [];
+        const label = catMeta[id] ? catMeta[id].label : '';
+        if(label) subCategoriesByPlu[plu].push(label);
       }
       // libellé ancien format (rétro-compatibilité si un export sans liste de catégories est réutilisé)
       else {
@@ -3395,6 +3475,13 @@
       row[BIZCOL.PACK_SIZE] = existing ? existing[BIZCOL.PACK_SIZE] : '';
       row[BIZCOL.ORDER_PERIOD] = existing ? existing[BIZCOL.ORDER_PERIOD] : '';
       row[BIZCOL.DESC_LONGUE] = String(d['Description']||'').trim();
+      // Sous-catégorie(s) Dolibarr (ex. "Apéro", "Thé Vert") — jamais utilisée pour
+      // l'export balance, uniquement pour filtrer dans l'outil.
+      if(subCategoriesByPlu[pluStr] && subCategoriesByPlu[pluStr].length){
+        row[BIZCOL.SUB_CATEGORY] = Array.from(new Set(subCategoriesByPlu[pluStr])).join(', ');
+      } else {
+        row[BIZCOL.SUB_CATEGORY] = existing ? existing[BIZCOL.SUB_CATEGORY] : '';
+      }
 
       // Allergènes : priorité aux catégories, repli sur l'extrafield texte "Allergènes"
       if(allergensByPlu[pluStr] && allergensByPlu[pluStr].length){
@@ -4958,6 +5045,17 @@
       Object.entries(state.categoryLabels).map(([k,l])=>`<option value="${k}">${l}</option>`).join('');
     catSelect.value = Array.from(catSelect.options).some(o=>o.value===prevCatVal) ? prevCatVal : 'ALL';
     const categoryFilterVal = catSelect.value;
+
+    const subCatSelect = $('salesSubCategoryFilter');
+    const prevSubCatVal = subCatSelect.value || 'ALL';
+    const subCatValues = Array.from(new Set(
+      state.rows.flatMap(r=> (r[BIZCOL.SUB_CATEGORY]||'').split(',').map(s=>s.trim()).filter(Boolean))
+    )).sort((a,b)=> a.localeCompare(b,'fr'));
+    subCatSelect.innerHTML = '<option value="ALL">Toutes</option>' +
+      subCatValues.map(v=>`<option value="${v.replace(/"/g,'&quot;')}">${v}</option>`).join('');
+    subCatSelect.value = subCatValues.includes(prevSubCatVal) ? prevSubCatVal : 'ALL';
+    const subCategoryFilterVal = subCatSelect.value;
+
     const searchVal = $('salesSearchFilter').value.trim().toLowerCase();
     const compareEnabled = $('salesCompareToggle').checked;
 
@@ -4982,6 +5080,11 @@
           const row = findRowByPlu(plu);
           const cat = row ? (row[5]||'').trim() : '';
           if(cat !== categoryFilterVal) return;
+        }
+        if(subCategoryFilterVal!=='ALL'){
+          const row = findRowByPlu(plu);
+          const subCats = row ? (row[BIZCOL.SUB_CATEGORY]||'').split(',').map(s=>s.trim()) : [];
+          if(!subCats.includes(subCategoryFilterVal)) return;
         }
         totalAmount += d.amount; totalCount += d.count; dayTotal += d.amount; dayCount += d.count; dayWeight += (d.weight||0);
         if(!byArticle[plu]) byArticle[plu] = { nom:d.nom, count:0, amount:0, prices:{}, weight:0 };
@@ -5444,11 +5547,13 @@
   $('salesDateFrom').addEventListener('change', renderSalesDashboard);
   $('salesDateTo').addEventListener('change', renderSalesDashboard);
   $('salesCategoryFilter').addEventListener('change', renderSalesDashboard);
+  $('salesSubCategoryFilter').addEventListener('change', renderSalesDashboard);
   $('salesSearchFilter').addEventListener('input', renderSalesDashboard);
   $('salesCompareToggle').addEventListener('change', renderSalesDashboard);
   $('salesResetFilters').addEventListener('click', ()=>{
     $('salesPeriodPreset').value = 'ALL';
     $('salesCategoryFilter').value = 'ALL';
+    $('salesSubCategoryFilter').value = 'ALL';
     $('salesSearchFilter').value = '';
     $('salesCompareToggle').checked = false;
     applyPeriodPresetToInputs();
@@ -5722,6 +5827,7 @@
     const filtered = state.rows
       .filter(r => (r[1]||'').trim() && (r[1]||'').trim()!=='NON UTILISE')
       .filter(r => state.categoryFilter==='ALL' || (r[CATCOL]||'').trim() === state.categoryFilter)
+      .filter(r => matchesSubCategoryFilter(r))
       .filter(r => !q || (r[0]||'').toLowerCase().includes(q) || (r[1]||'').toLowerCase().includes(q));
 
     if(filtered.length === 0){
