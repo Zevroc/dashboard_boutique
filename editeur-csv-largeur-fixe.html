@@ -3437,10 +3437,15 @@
       const enVente = String(d['En vente']||'').trim();
       if(enVente!=='') row[13] = (enVente==='1') ? 'P1' : 'P0';
 
-      // Type de vente (P=poids, C=piece) <- extrafield "Type Vente", repli sur l'existant sinon 'C'
+      // Type de vente (P=poids, C=piece) : priorité à l'extrafield "Type Vente" si
+      // rempli, sinon déduit de l'unité de vente native Dolibarr (kg/g/l = poids,
+      // pièce/unité = à la pièce), sinon repli sur l'existant, sinon 'C' par défaut.
       const typeVente = String(d['Type Vente']||'').trim().toLowerCase();
+      const uniteVal = String(d['Unité']||d['Unité de vente']||d['Unité de mesure']||'').trim().toLowerCase();
       if(typeVente==='poids' || typeVente==='p' || typeVente==='0') row[3] = 'P';
       else if(typeVente==='piece' || typeVente==='pièce' || typeVente==='c' || typeVente==='1') row[3] = 'C';
+      else if(/^(kg|g|kilogramme|gramme|l|ml|litre)$/.test(uniteVal)) row[3] = 'P';
+      else if(/^(u|unité|unite|pièce|piece|pc)$/.test(uniteVal)) row[3] = 'C';
       else if(existing) row[3] = existing[3];
       else { row[3] = 'C'; typeDefaulted++; }
 
@@ -3517,7 +3522,7 @@
     let msg = `Import Dolibarr terminé : ${newRows.length} produit(s) chargé(s) (${fromExisting} rapprochés avec la base précédente, ${brandNew} nouveaux sans historique technique balance).\n` +
       `Bio : ${nBio} · Local : ${nLocal} · Produits avec allergène(s) renseigné(s) : ${nAllerg}.`;
     if(typeDefaulted > 0){
-      msg += `\n\n⚠ ${typeDefaulted} produit(s) sans champ "Type Vente" renseigné dans Dolibarr ET sans base précédente pour se replier — mis par défaut sur "à la pièce" (C).`;
+      msg += `\n\n⚠ ${typeDefaulted} produit(s) sans "Type Vente" NI unité reconnue (kg/g/l ou pièce/unité) dans Dolibarr, et sans base précédente pour se replier — mis par défaut sur "à la pièce" (C). Vérifie le champ "Unité" sur ces fiches produit dans Dolibarr.`;
     }
     if(missingFromDolibarr.length){
       msg += `\n\n⚠ ${missingFromDolibarr.length} PLU présent(s) dans l'ancienne base mais absent(s) de cet export Dolibarr (retirés de la base actuelle) : ${missingFromDolibarr.slice(0,20).join(', ')}${missingFromDolibarr.length>20?'…':''}`;
