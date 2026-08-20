@@ -3438,12 +3438,18 @@
       if(enVente!=='') row[13] = (enVente==='1') ? 'P1' : 'P0';
 
       // Type de vente (P=poids, C=piece) : priorité à l'extrafield "Type Vente" si
-      // rempli, sinon déduit de l'unité de vente native Dolibarr (kg/g/l = poids,
-      // pièce/unité = à la pièce), sinon repli sur l'existant, sinon 'C' par défaut.
+      // rempli, sinon déduit de l'unité de vente native Dolibarr — exportée en CODE
+      // numérique (table système Dolibarr des unités), pas en texte : 2=kg (poids),
+      // 28=pièce (à la pièce), confirmés le jour même. Repli texte littéral en secours
+      // (au cas où un export future donnerait le libellé plutôt que le code), puis
+      // repli sur l'existant, puis 'C' par défaut en dernier recours.
+      const UNIT_CODE_TO_TYPE = { '2':'P', '28':'C' }; // a completer si d'autres codes sont decouverts (g, L...)
       const typeVente = String(d['Type Vente']||'').trim().toLowerCase();
-      const uniteVal = String(d['Unité']||d['Unité de vente']||d['Unité de mesure']||'').trim().toLowerCase();
+      const uniteRaw = String(d['Unité']||d['Unité de vente']||d['Unité de mesure']||'').trim();
+      const uniteVal = uniteRaw.toLowerCase();
       if(typeVente==='poids' || typeVente==='p' || typeVente==='0') row[3] = 'P';
       else if(typeVente==='piece' || typeVente==='pièce' || typeVente==='c' || typeVente==='1') row[3] = 'C';
+      else if(UNIT_CODE_TO_TYPE[uniteRaw]) row[3] = UNIT_CODE_TO_TYPE[uniteRaw];
       else if(/^(kg|g|kilogramme|gramme|l|ml|litre)$/.test(uniteVal)) row[3] = 'P';
       else if(/^(u|unité|unite|pièce|piece|pc)$/.test(uniteVal)) row[3] = 'C';
       else if(existing) row[3] = existing[3];
