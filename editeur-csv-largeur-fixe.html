@@ -1191,6 +1191,10 @@
         <p class="allergen-note">
           Certains PLU sont parfois vendus à un prix différent du prix catalogue (ajustement manuel en caisse, autre qualité/lot). <span id="salesMultiPriceCount"></span>
         </p>
+        <label class="filterLabel" style="display:inline-flex; margin-bottom:10px; margin-right:10px;">
+          Rechercher
+          <input type="text" id="salesMultiPriceSearch" placeholder="nom ou PLU…" style="width:150px;">
+        </label>
         <label class="filterLabel" style="display:inline-flex; margin-bottom:10px;">
           Article
           <select id="salesMultiPricePicker"></select>
@@ -4085,7 +4089,10 @@
       byDate[date][plu].amount += amount;
       if(nom) byDate[date][plu].nom = nom; // garde le nom le plus recent rencontre
       if(!isNaN(unitPrice) && unitPrice>0){
-        byDate[date][plu].prices[unitPrice] = (byDate[date][plu].prices[unitPrice]||0) + 1;
+        const qtyLine = (amount/unitPrice)*1000; // g si au poids, sinon proportionnel au montant/prix (traité comme unités ci-dessous selon le type)
+        if(!byDate[date][plu].prices[unitPrice]) byDate[date][plu].prices[unitPrice] = { count:0, qty:0 };
+        byDate[date][plu].prices[unitPrice].count += 1;
+        byDate[date][plu].prices[unitPrice].qty += qtyLine;
         // poids (g) déduit de montant/prix_kg — reconstitué, pas un champ poids direct fiable
         byDate[date][plu].weight += (amount/unitPrice)*1000;
       }
@@ -4217,13 +4224,13 @@
   });
 
   function encodePriceDist(prices){
-    return Object.entries(prices||{}).map(([p,c])=>`${p}:${c}`).join(',');
+    return Object.entries(prices||{}).map(([p,pd])=>`${p}:${pd.count}:${Math.round(pd.qty)}`).join(',');
   }
   function decodePriceDist(str){
     const out = {};
     (str||'').split(',').forEach(pair=>{
-      const [p,c] = pair.split(':');
-      if(p && c) out[p] = parseInt(c,10)||0;
+      const [p,c,q] = pair.split(':');
+      if(p && c) out[p] = { count: parseInt(c,10)||0, qty: parseInt(q,10)||0 };
     });
     return out;
   }
@@ -4593,16 +4600,61 @@
   const WEEKDAY_NAMES = ['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
   let currentByWeekdayArticle = WEEKDAY_NAMES.map(()=>({}));
   let currentByArticle = {};
+  let currentMultiPricePlus = [];
+
+  function refreshMultiPricePicker(){
+    const multiPricePicker = $('salesMultiPricePicker');
+    const q = $('salesMultiPriceSearch').value.trim().toLowerCase();
+    const filtered = currentMultiPricePlus.filter(([plu,d])=>
+      !q || plu.toLowerCase().includes(q) || (d.nom||'').toLowerCase().includes(q)
+    );
+    const prevMultiPrice = multiPricePicker.value;
+    multiPricePicker.innerHTML = filtered.map(([plu,d])=>
+      `<option value="${plu}">${plu} — ${d.nom||'(nom inconnu)'}</option>`
+    ).join('');
+    if(filtered.length){
+      const toSelect = filtered.some(([plu])=>plu===prevMultiPrice) ? prevMultiPrice : filtered[0][0];
+      multiPricePicker.value = toSelect;
+      renderMultiPriceChart(toSelect, currentByArticle);
+    } else {
+      $('salesChartMultiPrice').innerHTML = '';
+    }
+  }
+  $('salesMultiPriceSearch').addEventListener('input', refreshMultiPricePicker);
 
   function renderMultiPriceChart(plu, byArticle){
     const container = $('salesChartMultiPrice');
     const d = byArticle[plu];
     if(!d){ container.innerHTML = ''; return; }
+    const weighed = isWeighedPlu(plu);
     const rows = Object.entries(d.prices)
-      .map(([price,c])=>({ label: eurosFromCents(parseInt(price,10)), value: c }))
-      .sort((a,b)=> b.value-a.value);
-    const maxVal = Math.max(1, ...rows.map(r=>r.value));
-    chartBars(container, rows, maxVal, v=>`${v} vente(s)`);
+      .map(([price,pd])=>({
+        label: eurosFromCents(parseInt(price,10)),
+        count: pd.count,
+        qtyLabel: weighed ? kgFmt(pd.qty) : `${pd.count} unité(s)`
+      }))
+      .sort((a,b)=> b.count-a.count);
+    const maxVal = Math.max(1, ...rows.map(r=>r.count));
+
+    container.innerHTML = '';
+    rows.forEach(r=>{
+      const row = document.createElement('div');
+      row.className = 'chart-row';
+      const lbl = document.createElement('div');
+      lbl.className = 'chart-label'; lbl.textContent = r.label; lbl.title = r.label;
+      const wrap = document.createElement('div');
+      wrap.className = 'chart-bar-wrap';
+      const bar = document.createElement('div');
+      bar.className = 'chart-bar';
+      bar.style.width = maxVal>0 ? `${Math.max(2,(r.count/maxVal)*100)}%` : '0%';
+      wrap.appendChild(bar);
+      const val = document.createElement('div');
+      val.className = 'chart-value'; val.textContent = `${r.count} vente(s)`;
+      const qtyVal = document.createElement('div');
+      qtyVal.className = 'chart-value'; qtyVal.style.color = 'var(--ink-soft)'; qtyVal.textContent = r.qtyLabel;
+      row.appendChild(lbl); row.appendChild(wrap); row.appendChild(val); row.appendChild(qtyVal);
+      container.appendChild(row);
+    });
   }
 
   function renderWeekdayProductsChart(widx){
@@ -4866,8 +4918,10 @@
         byArticle[plu].amount += d.amount;
         byArticle[plu].weight += (d.weight||0);
         if(d.nom) byArticle[plu].nom = d.nom;
-        Object.entries(d.prices||{}).forEach(([price,c])=>{
-          byArticle[plu].prices[price] = (byArticle[plu].prices[price]||0) + c;
+        Object.entries(d.prices||{}).forEach(([price,pd])=>{
+          if(!byArticle[plu].prices[price]) byArticle[plu].prices[price] = { count:0, qty:0 };
+          byArticle[plu].prices[price].count += pd.count;
+          byArticle[plu].prices[price].qty += pd.qty;
         });
       });
       byDay.push({ date, amount: dayTotal, count: dayCount, weight: dayWeight });
@@ -5042,24 +5096,13 @@
 
     // ---- Articles vendus à plusieurs prix différents ----
     currentByArticle = byArticle;
-    const multiPricePlus = Object.entries(byArticle)
+    currentMultiPricePlus = Object.entries(byArticle)
       .filter(([plu,d])=> Object.keys(d.prices).length > 1)
       .sort((a,b)=> b[1].amount - a[1].amount);
-    const multiPricePicker = $('salesMultiPricePicker');
-    const prevMultiPrice = multiPricePicker.value;
-    multiPricePicker.innerHTML = multiPricePlus.map(([plu,d])=>
-      `<option value="${plu}">${plu} — ${d.nom||'(nom inconnu)'}</option>`
-    ).join('');
-    $('salesMultiPriceCount').textContent = multiPricePlus.length
-      ? `${multiPricePlus.length} article(s) vendu(s) à plusieurs prix différents sur la période.`
+    $('salesMultiPriceCount').textContent = currentMultiPricePlus.length
+      ? `${currentMultiPricePlus.length} article(s) vendu(s) à plusieurs prix différents sur la période.`
       : "Aucun article vendu à plusieurs prix différents sur la période.";
-    if(multiPricePlus.length){
-      const toSelect = multiPricePlus.some(([plu])=>plu===prevMultiPrice) ? prevMultiPrice : multiPricePlus[0][0];
-      multiPricePicker.value = toSelect;
-      renderMultiPriceChart(toSelect, byArticle);
-    } else {
-      $('salesChartMultiPrice').innerHTML = '';
-    }
+    refreshMultiPricePicker();
 
     // ---- Rentabilité : cumul sur les articles dont le coût est connu ----
     let totalCost = 0, totalMarginKnown = 0, revenueWithKnownCost = 0;
