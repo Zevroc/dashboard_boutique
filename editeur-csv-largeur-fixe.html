@@ -1238,6 +1238,10 @@
           </thead>
           <tbody id="salesCategoryBody"></tbody>
         </table>
+
+        <p class="biz-title" style="margin-top:18px;">Comparaison des sous-catégories</p>
+        <p class="allergen-note" id="salesSubCatCompareNote">Sélectionne une catégorie précise dans le filtre en haut de page pour voir la répartition de ses sous-catégories.</p>
+        <div id="salesChartSubCatCompare"></div>
       </div>
 
       <div class="sales-tab-panel" data-panel="quantites">
@@ -5317,6 +5321,43 @@
     const maxCat = Math.max(1, ...catChartRows.map(r=>r.value));
     chartBars($('salesChartCategories'), catChartRows, maxCat, v=>eurosFromCents(v));
     donutChart($('salesChartCategoriesDonut'), catChartRows);
+
+    // ---- Comparaison des sous-catégories de la catégorie sélectionnée ----
+    // Recalculée indépendamment de byArticle : ignore volontairement le filtre
+    // sous-catégorie (sinon il ne resterait qu'une seule sous-catégorie à comparer),
+    // mais respecte bien la période et la catégorie principale choisie.
+    const subCatNote = $('salesSubCatCompareNote');
+    if(categoryFilterVal === 'ALL'){
+      subCatNote.textContent = "Sélectionne une catégorie précise dans le filtre en haut de page pour voir la répartition de ses sous-catégories.";
+      $('salesChartSubCatCompare').innerHTML = '';
+    } else {
+      const bySubCat = {};
+      dates.forEach(date=>{
+        Object.entries(state.salesHistory[date]).forEach(([plu,d])=>{
+          const row = findRowByPlu(plu);
+          if(!row) return;
+          const cat = (row[5]||'').trim();
+          if(cat !== categoryFilterVal) return;
+          const subCatsRaw = (row[BIZCOL.SUB_CATEGORY]||'').trim();
+          const subCats = subCatsRaw ? subCatsRaw.split(',').map(s=>s.trim()).filter(Boolean) : ['(sans sous-catégorie)'];
+          subCats.forEach(sc=>{
+            if(!bySubCat[sc]) bySubCat[sc] = { amount:0, count:0 };
+            bySubCat[sc].amount += d.amount;
+            bySubCat[sc].count += d.count;
+          });
+        });
+      });
+      const subCatRows = Object.entries(bySubCat)
+        .map(([label,d])=>({ label:`${label} (${d.count} vte)`, value:d.amount }))
+        .sort((a,b)=> b.value-a.value);
+      if(subCatRows.length){
+        subCatNote.textContent = `Répartition du CA de "${state.categoryLabels[categoryFilterVal]||categoryFilterVal}" entre ses sous-catégories, sur la période filtrée.`;
+        chartBars($('salesChartSubCatCompare'), subCatRows, Math.max(1,...subCatRows.map(r=>r.value)), v=>eurosFromCents(v));
+      } else {
+        subCatNote.textContent = `Aucune vente avec sous-catégorie renseignée pour "${state.categoryLabels[categoryFilterVal]||categoryFilterVal}" sur la période filtrée.`;
+        $('salesChartSubCatCompare').innerHTML = '';
+      }
+    }
 
     const catBody = $('salesCategoryBody');
     catBody.innerHTML = '';
