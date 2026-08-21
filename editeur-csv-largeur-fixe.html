@@ -1451,12 +1451,21 @@
             <option value="">— choisir —</option>
           </select>
         </label>
+        <label class="filterLabel" style="display:inline-flex;">
+          Trier par
+          <select id="labelsSortBy">
+            <option value="nom">Nom du produit</option>
+            <option value="emplacement">Emplacement</option>
+            <option value="plu">PLU</option>
+          </select>
+        </label>
       </div>
       <table class="renum-table">
         <thead>
           <tr>
             <th>PLU</th>
             <th>Nom du produit</th>
+            <th>Emplacement</th>
             <th>Trame</th>
           </tr>
         </thead>
@@ -1623,7 +1632,7 @@
     'PLU','Nom','Champ 3','Type','Prix vente','Catégorie','Champ 7','Champ 8','Champ 9',
     'Champ 10','Champ 11','Champ 12','Code','Statut','Département','Code long','Champ 17','Champ 18','Champ 19'
   ];
-  const SHORT_BIZ_LABELS = ['Fournisseur','Prix achat','TVA','Stock','Stock mini','Stock maxi','Bio','Local','Trame étiquette','Affichage prix','Groupe variantes','Taille lot','Période commande','Description longue','Sous-catégorie'];
+  const SHORT_BIZ_LABELS = ['Fournisseur','Prix achat','TVA','Stock','Stock mini','Stock maxi','Bio','Local','Trame étiquette','Affichage prix','Groupe variantes','Taille lot','Période commande','Description longue','Sous-catégorie','Emplacement'];
   function shortColLabel(c){
     if(c < SHORT_COL_LABELS.length) return SHORT_COL_LABELS[c];
     const bi = c - 19;
@@ -1634,9 +1643,9 @@
   // ---------- Base articles : champs métier ajoutés après les 19 colonnes balance ----------
   // Index 19 à 24. Ces colonnes ne sont JAMAIS envoyées dans le CSV balance (voir buildCsvText) —
   // elles ne vivent que dans la base articles complète.
-  const BIZCOL = { FOURNISSEUR:19, ACHAT_HT:20, TVA:21, STOCK:22, STOCK_MINI:23, STOCK_MAXI:24, BIO:25, LOCAL:26, TEMPLATE:27, UNIT_DISPLAY:28, GROUP:29, PACK_SIZE:30, ORDER_PERIOD:31, DESC_LONGUE:32, SUB_CATEGORY:33 };
-  const BIZ_COL_COUNT = 15;
-  const BIZ_HEADERS = ['Fournisseur','Prix achat HT (centimes)','Taux TVA (%)','Stock actuel','Stock mini','Stock maxi','Bio (1/0)','Local (1/0)','Trame étiquette','Affichage prix (kg/100g)','Groupe de variantes','Taille du lot (unités)','Période de commande','Description longue','Sous-catégorie (Dolibarr, hors export balance)'];
+  const BIZCOL = { FOURNISSEUR:19, ACHAT_HT:20, TVA:21, STOCK:22, STOCK_MINI:23, STOCK_MAXI:24, BIO:25, LOCAL:26, TEMPLATE:27, UNIT_DISPLAY:28, GROUP:29, PACK_SIZE:30, ORDER_PERIOD:31, DESC_LONGUE:32, SUB_CATEGORY:33, EMPLACEMENT:34 };
+  const BIZ_COL_COUNT = 16;
+  const BIZ_HEADERS = ['Fournisseur','Prix achat HT (centimes)','Taux TVA (%)','Stock actuel','Stock mini','Stock maxi','Bio (1/0)','Local (1/0)','Trame étiquette','Affichage prix (kg/100g)','Groupe de variantes','Taille du lot (unités)','Période de commande','Description longue','Sous-catégorie (Dolibarr, hors export balance)','Emplacement (Dolibarr, tri des étiquettes)'];
   const ORDER_PERIODS = {
     hebdo:      { label:'Hebdomadaire (7 jours)', days:7 },
     quinzaine:  { label:'Toutes les 2 semaines (15 jours)', days:15 },
@@ -3332,6 +3341,7 @@
     const realCategoryIdToCode = {}; // id Dolibarr -> code interne 1-5 (catégorie balance)
     const allergenIdToCode = {};     // id Dolibarr -> code allergene 1-14
     const bioIds = new Set(), localIds = new Set();
+    const emplacementIds = new Set(); // id -> reconnu via catMeta[id].label directement
     Object.entries(catMeta).forEach(([id,m])=>{
       if(m.parentLabel==='Produits'){
         const code = findCategoryCodeByLabel(m.label);
@@ -3345,6 +3355,8 @@
       } else if(m.parentLabel==='Allergènes'){
         const match = m.label.match(/^(\d+)\s*-/);
         if(match) allergenIdToCode[id] = parseInt(match[1],10);
+      } else if(m.parentLabel==='Emplacement'){
+        emplacementIds.add(id);
       }
     });
     // Sous-catégorie : toute catégorie qui n'est ni Bio/Local/Allergène ni une des 5
@@ -3362,7 +3374,7 @@
     const subCategoryIds = new Set();
     Object.entries(catMeta).forEach(([id,m])=>{
       if(realCategoryIdToCode[id]) return; // deja classee comme categorie principale
-      if(bioIds.has(id) || localIds.has(id) || allergenIdToCode[id]!==undefined) return;
+      if(bioIds.has(id) || localIds.has(id) || allergenIdToCode[id]!==undefined || emplacementIds.has(id)) return;
       if(m.parentLabel==='Produits') return; // deja geree ci-dessus (cas non reconnu -> ignoree, pas une sous-cat)
       if(isUnderProduits(id, 0)) subCategoryIds.add(id);
     });
@@ -3372,6 +3384,7 @@
     const bioByPlu = {}, localByPlu = {};
     const allergensByPlu = {};
     const subCategoriesByPlu = {};
+    const emplacementByPlu = {};
     categoryRows.forEach(r=>{
       const plu = String(r['Réf.']||'').replace(/^ref:/i,'').trim();
       const id = String(r['ID du(de la) tag/catégorie']||'').trim();
@@ -3382,6 +3395,9 @@
       else if(allergenIdToCode[id]!==undefined){
         if(!allergensByPlu[plu]) allergensByPlu[plu] = [];
         allergensByPlu[plu].push(allergenIdToCode[id]);
+      }
+      else if(emplacementIds.has(id)){
+        emplacementByPlu[plu] = catMeta[id] ? catMeta[id].label : '';
       }
       else if(subCategoryIds.has(id)){
         if(!subCategoriesByPlu[plu]) subCategoriesByPlu[plu] = [];
@@ -3495,6 +3511,11 @@
       } else {
         row[BIZCOL.SUB_CATEGORY] = existing ? existing[BIZCOL.SUB_CATEGORY] : '';
       }
+      // Emplacement (ex. "Rayon A", "Vitrine") — sert uniquement à trier les
+      // étiquettes à imprimer, jamais utilisé pour l'export balance.
+      row[BIZCOL.EMPLACEMENT] = emplacementByPlu[pluStr] !== undefined
+        ? emplacementByPlu[pluStr]
+        : (existing ? existing[BIZCOL.EMPLACEMENT] : '');
 
       // Allergènes : priorité aux catégories, repli sur l'extrafield texte "Allergènes"
       if(allergensByPlu[pluStr] && allergensByPlu[pluStr].length){
@@ -4010,15 +4031,31 @@
     btnLabels.textContent = n>0 ? `🏷 Étiquettes (${n})` : '🏷 Étiquettes';
   }
 
+  function sortSelectedForLabels(rows, sortBy){
+    const collator = (a,b)=> a.localeCompare(b,'fr',{numeric:true});
+    if(sortBy==='emplacement'){
+      return rows.slice().sort((a,b)=>{
+        const ea = (a.row[BIZCOL.EMPLACEMENT]||'').trim() || 'zzz-sans-emplacement';
+        const eb = (b.row[BIZCOL.EMPLACEMENT]||'').trim() || 'zzz-sans-emplacement';
+        return collator(ea,eb) || collator((a.row[1]||''),(b.row[1]||''));
+      });
+    }
+    if(sortBy==='plu'){
+      return rows.slice().sort((a,b)=> collator((a.row[0]||''),(b.row[0]||'')));
+    }
+    return rows.slice().sort((a,b)=> collator((a.row[1]||''),(b.row[1]||'')));
+  }
+
   function openLabelsModal(){
     if(state.labelSelection.size === 0){
       alert("Aucun article coché. Coche la case dédiée sur les lignes du tableau principal (à gauche du crayon ✎), puis rouvre ce menu.");
       return;
     }
-    const selected = state.rows
+    const base = state.rows
       .map((row,ri)=>({row,ri}))
-      .filter(x => state.labelSelection.has((x.row[0]||'').trim()))
-      .sort((a,b)=> (a.row[1]||'').toLowerCase().localeCompare((b.row[1]||'').toLowerCase(),'fr'));
+      .filter(x => state.labelSelection.has((x.row[0]||'').trim()));
+    const sortBy = $('labelsSortBy').value || 'nom';
+    const selected = sortSelectedForLabels(base, sortBy);
 
     labelsBody.innerHTML = '';
     selected.forEach(({row,ri})=>{
@@ -4031,6 +4068,11 @@
       const tdNom = document.createElement('td');
       tdNom.textContent = (row[1]||'').trim();
       tr.appendChild(tdNom);
+
+      const tdEmpl = document.createElement('td');
+      tdEmpl.textContent = (row[BIZCOL.EMPLACEMENT]||'').trim() || '—';
+      tdEmpl.style.color = 'var(--ink-soft)';
+      tr.appendChild(tdEmpl);
 
       const tdTrame = document.createElement('td');
       const sel = document.createElement('select');
@@ -4055,6 +4097,8 @@
     labelsOverlay.classList.add('show');
   }
   function closeLabelsModal(){ labelsOverlay.classList.remove('show'); }
+
+  $('labelsSortBy').addEventListener('change', openLabelsModal);
 
   $('labelsApplyAllTpl').addEventListener('change', ()=>{
     const key = $('labelsApplyAllTpl').value;
