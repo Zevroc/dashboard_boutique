@@ -78,24 +78,50 @@
     top:0;
     z-index:20;
   }
+  .ventes-toolbar{
+    display:flex;
+    flex-wrap:wrap;
+    gap:22px;
+    margin-bottom:16px;
+    padding:14px 18px;
+    background:#F3ECD8;
+    border:1px solid var(--paper-line);
+    border-radius:8px;
+  }
+  .ventes-toolbar-group{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    gap:8px;
+  }
+  .ventes-toolbar-label{
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:600;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:.04em;
+    color:var(--ink-soft);
+    margin-right:2px;
+  }
+
   .toolbar-inview{
     display:flex;
     gap:10px;
     flex-wrap:wrap;
     align-items:center;
   }
-  .toolbar-inview .btn{
+  .toolbar-inview .btn, .ventes-toolbar .btn{
     background:#EFE7CF;
     color:var(--ink);
     border-color:var(--paper-line);
   }
-  .toolbar-inview .btn:hover{ background:#E7DEC3; border-color:var(--brass); }
-  .toolbar-inview .btn.primary{
+  .toolbar-inview .btn:hover, .ventes-toolbar .btn:hover{ background:#E7DEC3; border-color:var(--brass); }
+  .toolbar-inview .btn.primary, .ventes-toolbar .btn.primary{
     background:var(--brass);
     border-color:var(--brass);
     color:#221A0C;
   }
-  .toolbar-inview .btn.primary:hover{ background:#c7943f; }
+  .toolbar-inview .btn.primary:hover, .ventes-toolbar .btn.primary:hover{ background:#c7943f; }
   .toolbar-inview .menu-panel{
     background:var(--paper);
     border:1px solid var(--paper-line);
@@ -916,8 +942,6 @@
 <main>
   <div id="viewArticles">
     <div class="toolbar">
-  <button class="btn primary" id="btnImport">⇪ Importer la base articles</button>
-  <input type="file" id="fileInput" accept=".csv,.CSV,text/csv">
   <button class="btn" id="btnAddRow" disabled>+ Ajouter une ligne</button>
 
   <details class="menu">
@@ -1008,8 +1032,7 @@
     </div>
 
     <div class="dropzone" id="dropzone">
-      Dépose ta <strong>base articles</strong> ici, ou clique sur <strong>Importer la base articles</strong>.<br>
-      Pas encore de base ? Utilise <strong>Fichier ▾ → Importer/fusionner un CSV balance</strong> pour démarrer directement depuis un export brut de la balance.<br>
+      Aucune base articles chargée. Utilise <strong>Fichier ▾ → Import Dolibarr</strong> (produits + catégories) pour charger tes données — Dolibarr est désormais la référence.<br>
       Le fichier reste dans ton navigateur — rien n'est envoyé sur un serveur.
     </div>
 
@@ -1029,22 +1052,23 @@
 
   <div id="viewVentes" style="display:none;">
 <div class="ventes-section" id="salesSection">
-  <div class="toolbar-inview" style="margin-bottom:14px;">
-  <button class="btn primary" id="btnImportSalesFolder">📁 Importer un dossier (.TXT + .PAY)</button>
-  <input type="file" id="salesFolderInput" webkitdirectory directory multiple>
-  <details class="menu">
-    <summary class="btn ghost" id="menuVentes">📊 Ventes ▾</summary>
-    <div class="menu-panel">
-      <button class="menu-item" id="btnImportSalesTxt">⇪ Importer des journaux (.TXT) séparément</button>
-      <input type="file" id="salesTxtFileInput" accept=".txt,.TXT" multiple>
-      <button class="menu-item" id="btnImportSalesPay">⇪ Importer les tickets (.PAY) séparément</button>
-      <input type="file" id="salesPayFileInput" accept=".pay,.PAY" multiple>
-      <button class="menu-item" id="btnImportSalesSynth">⇪ Importer une synthèse (CSV)</button>
-      <input type="file" id="salesSynthFileInput" accept=".csv,.CSV">
-      <button class="menu-item" id="btnExportSalesSynth">⇩ Enregistrer la synthèse (CSV)</button>
+  <div class="ventes-toolbar">
+    <div class="ventes-toolbar-group">
+      <span class="ventes-toolbar-label">Import rapide</span>
+      <button class="btn primary" id="btnImportSalesFolder">📁 Importer un dossier (.TXT + .PAY)</button>
+      <input type="file" id="salesFolderInput" webkitdirectory directory multiple>
     </div>
-  </details>
-</div>
+    <div class="ventes-toolbar-group">
+      <span class="ventes-toolbar-label">Import manuel / synthèse</span>
+      <button class="btn ghost" id="btnImportSalesTxt">⇪ Journaux (.TXT)</button>
+      <input type="file" id="salesTxtFileInput" accept=".txt,.TXT" multiple>
+      <button class="btn ghost" id="btnImportSalesPay">⇪ Tickets (.PAY)</button>
+      <input type="file" id="salesPayFileInput" accept=".pay,.PAY" multiple>
+      <button class="btn ghost" id="btnImportSalesSynth">⇪ Synthèse (CSV)</button>
+      <input type="file" id="salesSynthFileInput" accept=".csv,.CSV">
+      <button class="btn ghost" id="btnExportSalesSynth">⇩ Exporter synthèse</button>
+    </div>
+  </div>
 
 <div class="ventes-head">
     <div class="titles">
@@ -1111,6 +1135,7 @@
         <button class="sales-tab" data-tab="categories">Catégories</button>
         <button class="sales-tab" data-tab="quantites">Quantités / Poids</button>
         <button class="sales-tab" data-tab="rentabilite">Rentabilité</button>
+        <button class="sales-tab" data-tab="previsionnel">Prévisionnel</button>
       </div>
 
       <div class="sales-tab-panel active" data-panel="apercu">
@@ -1331,6 +1356,17 @@
           </thead>
           <tbody id="salesProfitBody"></tbody>
         </table>
+      </div>
+
+      <div class="sales-tab-panel" data-panel="previsionnel">
+        <p class="biz-title" style="margin-top:16px;">Chiffre d'affaires par semaine × jour — 2024, 2025, 2026 et prévision</p>
+        <p class="allergen-note">
+          Chaque point correspond à un jour précis (ex. "S01 Lun") aligné par position calendaire — semaine ISO 1 à 52, lundi à dimanche — pour comparer les années entre elles indépendamment des jours fériés mobiles. La partie non encore enregistrée de 2026 (pointillés) est une <strong>projection</strong>, pas une donnée réelle : calculée à partir de la moyenne 2024/2025 à cette même position, ajustée par la tendance de progression observée sur les semaines 2026 déjà connues. La zone ombrée est un <strong>intervalle à 50% de confiance</strong> (bande interquartile approximative à partir de l'écart 2024↔2025) — une estimation simple, pas un vrai modèle statistique : à prendre comme ordre de grandeur, pas comme engagement.
+        </p>
+        <div style="display:flex; gap:16px; flex-wrap:wrap; align-items:center; margin-bottom:10px;">
+          <button class="btn ghost" id="btnExportPrevisionnel">⇩ Télécharger le tableau complet (Excel)</button>
+        </div>
+        <div id="salesChartPrevisionnel"></div>
       </div>
     </div>
 </div>
@@ -2845,7 +2881,6 @@
   });
 
   // ---------- Actions ----------
-  $('btnImport').addEventListener('click', ()=> $('fileInput').click());
   categoryFilter.addEventListener('change', ()=>{
     state.categoryFilter = categoryFilter.value;
     state.selectedRow = -1;
@@ -2868,24 +2903,6 @@
     searchClear.style.display = 'none';
     render();
     searchInput.focus();
-  });
-
-  // ---- Import principal : base articles complète (fichier de référence) ----
-  $('fileInput').addEventListener('change', (e)=>{
-    const f = e.target.files[0];
-    if(f) loadMasterDbFile(f);
-  });
-
-  ['dragover','dragenter'].forEach(ev=>{
-    document.addEventListener(ev, e=>{ e.preventDefault(); dropzone.classList.add('drag'); });
-  });
-  ['dragleave','drop'].forEach(ev=>{
-    document.addEventListener(ev, e=>{ e.preventDefault(); dropzone.classList.remove('drag'); });
-  });
-  document.addEventListener('drop', e=>{
-    e.preventDefault();
-    const f = e.dataTransfer.files[0];
-    if(f) loadMasterDbFile(f);
   });
 
   // ---------- Persistance de session (dernier fichier ouvert) ----------
@@ -2930,21 +2947,6 @@
       render();
       footerNote.textContent = `Dernière session restaurée automatiquement : ${state.fileName} · ${state.rows.length} produits.`;
     } catch(e){ /* pas de session precedente valide : on garde l'etat vide par defaut */ }
-  }
-
-  function loadMasterDbFile(file){
-    state.fileName = file.name;
-    const reader = new FileReader();
-    reader.onload = ()=>{
-      let text = reader.result;
-      if(typeof text !== 'string') text = new TextDecoder('utf-8').decode(text);
-      const ok = parseMasterDbFull(text);
-      if(ok){
-        footerNote.textContent = `Base articles chargée : ${file.name} · ${state.rows.length} produits.`;
-        persistSession();
-      }
-    };
-    reader.readAsText(file, 'UTF-8');
   }
 
   // ---- Import secondaire : CSV balance brut (chargement initial ou fusion) ----
@@ -3157,23 +3159,6 @@
 
   // Chargement complet de la base articles (fichier de référence, avec en-têtes) —
   // remplace entièrement la session en cours.
-  function parseMasterDbFull(text){
-    if(text.charCodeAt(0)===0xFEFF) text = text.slice(1);
-    const lines = text.split(/\r\n|\n/).filter(l=>l.trim()!=='');
-    if(lines.length<2){ alert('Fichier base articles vide ou invalide.'); return false; }
-    const TOTAL_COLS = 19 + BIZ_COL_COUNT;
-    state.rows = lines.slice(1).map(line=>{
-      const parts = parseCsvLineSemicolon(line);
-      while(parts.length < TOTAL_COLS) parts.push('');
-      return parts.slice(0, TOTAL_COLS);
-    });
-    state.colWidths = {}; // nouveau fichier -> largeurs de colonnes recalculées au plus juste
-    refreshSuppliersList();
-    analyzeColumns();
-    render();
-    return true;
-  }
-
   // Import / fusion d'un CSV brut exporté par la balance (sans en-tête, 19 colonnes).
   // Si aucune base n'est encore chargée : chargement initial complet.
   // Si une base est déjà chargée : les lignes existantes (par PLU) sont mises à jour
@@ -4784,9 +4769,186 @@
   }
 
   const WEEKDAY_NAMES = ['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
+  const WEEKDAY_SHORT = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
   let currentByWeekdayArticle = WEEKDAY_NAMES.map(()=>({}));
   let currentByArticle = {};
   let currentMultiPricePlus = [];
+
+  // ---------- Prévisionnel : semaine ISO × jour, 2024/2025 vs 2026 + projection ----------
+  // Semaine ISO 8601 (lundi = jour 1, semaine 1 = celle contenant le premier jeudi de l'année).
+  function isoWeekYear(date){
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const dayNum = (d.getUTCDay() + 6) % 7; // lundi=0..dimanche=6
+    d.setUTCDate(d.getUTCDate() - dayNum + 3); // jeudi de cette semaine
+    const isoYear = d.getUTCFullYear();
+    const firstThursday = new Date(Date.UTC(isoYear, 0, 4));
+    const firstDayNum = (firstThursday.getUTCDay() + 6) % 7;
+    firstThursday.setUTCDate(firstThursday.getUTCDate() - firstDayNum + 3);
+    const week = 1 + Math.round((d - firstThursday) / (7*24*3600*1000));
+    return { week: Math.min(week, 52), year: isoYear, weekday: dayNum }; // semaine 53 fusionnée dans 52 pour aligner les années
+  }
+
+  // Construit les 364 positions (52 semaines x 7 jours) pour une année ISO donnée,
+  // avec CA et nombre de ventes agrégés depuis state.salesHistory.
+  function buildYearGrid(isoYear){
+    const grid = {}; // cle "S-J" (1-52, 0-6) -> {amount, count}
+    Object.entries(state.salesHistory).forEach(([dateStr, plus])=>{
+      const dObj = parseFrDate(dateStr);
+      const iso = isoWeekYear(dObj);
+      if(iso.year !== isoYear) return;
+      const key = `${iso.week}-${iso.weekday}`;
+      if(!grid[key]) grid[key] = { amount:0, count:0 };
+      Object.values(plus).forEach(d=>{ grid[key].amount += d.amount; grid[key].count += d.count; });
+    });
+    return grid;
+  }
+
+  function renderPrevisionnel(){
+    if(Object.keys(state.salesHistory).length===0){
+      $('salesChartPrevisionnel').innerHTML = '<p class="allergen-note">Aucune donnée de vente chargée.</p>';
+      return;
+    }
+    const now = new Date();
+    const grid2024 = buildYearGrid(2024);
+    const grid2025 = buildYearGrid(2025);
+    const grid2026 = buildYearGrid(2026);
+
+    // Position "actuelle" dans 2026 : tout ce qui est au-dela est a projeter
+    const nowIso = isoWeekYear(now);
+    const nowPos = (nowIso.year===2026) ? (nowIso.week-1)*7 + nowIso.weekday : 364;
+
+    // Facteur de tendance 2026 vs moyenne 2024/2025, calcule uniquement sur les
+    // positions ou 2026 ET au moins une annee de reference existent deja.
+    let sumReal = 0, sumBaseline = 0;
+    for(let w=1; w<=52; w++){
+      for(let j=0; j<7; j++){
+        const key = `${w}-${j}`;
+        const pos = (w-1)*7+j;
+        if(pos >= nowPos) continue;
+        const v24 = grid2024[key] ? grid2024[key].amount : null;
+        const v25 = grid2025[key] ? grid2025[key].amount : null;
+        const v26 = grid2026[key] ? grid2026[key].amount : 0;
+        const baseline = (v24!==null && v25!==null) ? (v24+v25)/2 : (v24!==null ? v24 : (v25!==null ? v25 : null));
+        if(baseline!==null && baseline>0){ sumReal += v26; sumBaseline += baseline; }
+      }
+    }
+    const trendFactor = sumBaseline>0 ? (sumReal/sumBaseline) : 1;
+
+    // Ecart type approximatif (bande 50%) : ecart absolu 2024<->2025 par position,
+    // moyenne globale utilisee en repli si une seule annee de reference existe.
+    let spreadSum = 0, spreadN = 0;
+    for(let w=1; w<=52; w++){
+      for(let j=0; j<7; j++){
+        const key = `${w}-${j}`;
+        const v24 = grid2024[key] ? grid2024[key].amount : null;
+        const v25 = grid2025[key] ? grid2025[key].amount : null;
+        if(v24!==null && v25!==null){ spreadSum += Math.abs(v24-v25); spreadN++; }
+      }
+    }
+    const avgSpread = spreadN>0 ? spreadSum/spreadN : 0;
+
+    const labels=[], s2024=[], s2025=[], s2026actual=[], forecastP50=[], forecastLow=[], forecastHigh=[];
+    const tableRows = [];
+    for(let w=1; w<=52; w++){
+      for(let j=0; j<7; j++){
+        const key = `${w}-${j}`;
+        const pos = (w-1)*7+j;
+        labels.push(`S${String(w).padStart(2,'0')} ${WEEKDAY_SHORT[j]}`);
+        const v24 = grid2024[key] ? grid2024[key].amount : null;
+        const v25 = grid2025[key] ? grid2025[key].amount : null;
+        const v26 = grid2026[key] ? grid2026[key].amount : null;
+        s2024.push(v24); s2025.push(v25);
+
+        const baseline = (v24!==null && v25!==null) ? (v24+v25)/2 : (v24!==null ? v24 : (v25!==null ? v25 : null));
+        let p50=null, low=null, high=null, actual=null;
+        if(pos < nowPos){
+          actual = v26; // deja passe : donnee reelle (0 si aucune vente ce jour-la)
+        } else if(baseline!==null){
+          p50 = baseline * trendFactor;
+          const band = avgSpread>0 ? (avgSpread*trendFactor)/2 : p50*0.15; // repli 15% si pas assez d'historique
+          low = Math.max(0, p50-band); high = p50+band;
+        }
+        s2026actual.push(actual); forecastP50.push(p50); forecastLow.push(low); forecastHigh.push(high);
+
+        tableRows.push({
+          semaine:`S${String(w).padStart(2,'0')}`, jour:WEEKDAY_NAMES[j],
+          ca2024: v24!==null?v24/100:'', ca2025: v25!==null?v25/100:'',
+          ca2026reel: actual!==null?actual/100:'', ca2026prevision: p50!==null?Math.round(p50)/100:'',
+          borneBasse: low!==null?Math.round(low)/100:'', borneHaute: high!==null?Math.round(high)/100:''
+        });
+      }
+    }
+
+    renderForecastChart($('salesChartPrevisionnel'), labels, s2024, s2025, s2026actual, forecastP50, forecastLow, forecastHigh);
+    window._previsionnelTableRows = tableRows; // pour l'export Excel
+  }
+
+  function renderForecastChart(container, labels, s2024, s2025, s2026actual, p50, low, high){
+    const W = 1000, H = 320, padL = 60, padR = 20, padT = 14, padB = 34;
+    const n = labels.length;
+    const allVals = [...s2024, ...s2025, ...s2026actual, ...high].filter(v=>v!==null && v!==undefined);
+    const maxY = Math.max(1, ...allVals);
+    const xStep = n>1 ? (W-padL-padR)/(n-1) : 0;
+    const yScale = v => (H-padB) - (v/maxY)*(H-padT-padB);
+    const xAt = i => padL + i*xStep;
+
+    let svg = `<svg viewBox="0 0 ${W} ${H}" style="width:100%; max-width:${W}px; height:auto; display:block;">`;
+    const gridN = 5;
+    for(let i=0;i<=gridN;i++){
+      const v = maxY*i/gridN, y = yScale(v);
+      svg += `<line x1="${padL}" y1="${y.toFixed(1)}" x2="${W-padR}" y2="${y.toFixed(1)}" stroke="#E1D6BA" stroke-width="1"/>`;
+      svg += `<text x="${padL-6}" y="${(y+3).toFixed(1)}" font-size="9" text-anchor="end" fill="#6B6154" font-family="IBM Plex Mono, monospace">${eurosFromCents(Math.round(v))}</text>`;
+    }
+
+    // bande de confiance 50% (zone ombree entre low et high)
+    let bandPts = [];
+    for(let i=0;i<n;i++){ if(high[i]!==null) bandPts.push(`${xAt(i).toFixed(1)},${yScale(high[i]).toFixed(1)}`); }
+    for(let i=n-1;i>=0;i--){ if(low[i]!==null) bandPts.push(`${xAt(i).toFixed(1)},${yScale(low[i]).toFixed(1)}`); }
+    if(bandPts.length) svg += `<polygon points="${bandPts.join(' ')}" fill="#B8853A" fill-opacity="0.12"/>`;
+
+    function linePath(series, color, dashed, width){
+      let d = ''; let started = false;
+      for(let i=0;i<n;i++){
+        if(series[i]===null || series[i]===undefined){ started = false; continue; }
+        const x = xAt(i), y = yScale(series[i]);
+        d += (started?' L':'M') + `${x.toFixed(1)},${y.toFixed(1)}`;
+        started = true;
+      }
+      return `<path d="${d}" fill="none" stroke="${color}" stroke-width="${width||1.8}" ${dashed?'stroke-dasharray="4 3"':''}/>`;
+    }
+    svg += linePath(s2024, '#B79A6B', false, 1.4);
+    svg += linePath(s2025, '#7C8B6F', false, 1.4);
+    svg += linePath(s2026actual, '#2A2420', false, 2.4);
+    svg += linePath(p50, '#B8853A', true, 2);
+
+    const labelEvery = Math.max(1, Math.ceil(n/16));
+    for(let i=0;i<n;i++){
+      if(i%labelEvery!==0 && i!==n-1) continue;
+      svg += `<text x="${xAt(i).toFixed(1)}" y="${H-10}" font-size="7.5" text-anchor="middle" fill="#6B6154" font-family="IBM Plex Mono, monospace">${labels[i]}</text>`;
+    }
+    svg += `</svg>`;
+
+    const legend = `
+      <span style="display:inline-flex; align-items:center; gap:5px; margin-right:16px; font-family:'IBM Plex Mono',monospace; font-size:11px;"><span style="width:14px; height:2px; background:#B79A6B; display:inline-block;"></span>2024</span>
+      <span style="display:inline-flex; align-items:center; gap:5px; margin-right:16px; font-family:'IBM Plex Mono',monospace; font-size:11px;"><span style="width:14px; height:2px; background:#7C8B6F; display:inline-block;"></span>2025</span>
+      <span style="display:inline-flex; align-items:center; gap:5px; margin-right:16px; font-family:'IBM Plex Mono',monospace; font-size:11px;"><span style="width:14px; height:2px; background:#2A2420; display:inline-block;"></span>2026 (réel)</span>
+      <span style="display:inline-flex; align-items:center; gap:5px; margin-right:16px; font-family:'IBM Plex Mono',monospace; font-size:11px;"><span style="width:14px; height:2px; background:repeating-linear-gradient(90deg,#B8853A 0 3px,transparent 3px 5px);"></span>2026 (projection)</span>
+      <span style="display:inline-flex; align-items:center; gap:5px; font-family:'IBM Plex Mono',monospace; font-size:11px;"><span style="width:11px; height:11px; background:#B8853A; opacity:.3; display:inline-block; border-radius:2px;"></span>Intervalle 50%</span>`;
+
+    container.innerHTML = `<div>${svg}</div><div style="margin-top:8px;">${legend}</div>`;
+  }
+
+  $('btnExportPrevisionnel').addEventListener('click', ()=>{
+    const rows = window._previsionnelTableRows;
+    if(!rows || !rows.length){ alert("Aucune donnée à exporter — ouvre l'onglet Prévisionnel d'abord."); return; }
+    const ws = XLSX.utils.json_to_sheet(rows, {
+      header:['semaine','jour','ca2024','ca2025','ca2026reel','ca2026prevision','borneBasse','borneHaute']
+    });
+    XLSX.utils.sheet_add_aoa(ws, [['Semaine','Jour','CA 2024 (€)','CA 2025 (€)','CA 2026 réel (€)','CA 2026 prévision (€)','Borne basse (€)','Borne haute (€)']], { origin:'A1' });
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Prévisionnel 2026');
+    XLSX.writeFile(wb, 'previsionnel_2026.xlsx');
+  });
 
   function refreshMultiPricePicker(){
     const multiPricePicker = $('salesMultiPricePicker');
@@ -5667,6 +5829,7 @@
       document.querySelectorAll('.sales-tab-panel').forEach(p=> p.classList.remove('active'));
       tab.classList.add('active');
       document.querySelector(`.sales-tab-panel[data-panel="${tab.dataset.tab}"]`).classList.add('active');
+      if(tab.dataset.tab==='previsionnel') renderPrevisionnel();
     });
   });
 
