@@ -1632,13 +1632,15 @@
               <input type="number" id="lsCompactPadding" min="0.5" max="8" step="0.5"></div>
           </div>
 
-          <p class="biz-title" style="margin-top:18px;">Badges Bio / Local (trame détaillée)</p>
+          <p class="biz-title" style="margin-top:18px;">Badges Bio / Local (trames détaillée et compacte)</p>
           <label class="toggleLabel" style="margin:8px 0;">
             <input type="checkbox" id="lsBioAsText">
             <span class="toggleSwitch"></span>
-            Afficher "BIO" en texte vert plutôt que le logo AB
+            Afficher "BIO" en texte vert plutôt que le logo AB (trame détaillée)
           </label>
           <div class="field-grid" style="margin-top:10px;">
+            <div class="field"><div class="field-label"><span class="name">Taille texte "BIO" (pt)</span></div>
+              <input type="number" id="lsBioFont" min="6" max="14" step="0.5"></div>
             <div class="field"><div class="field-label"><span class="name">Couleur texte "BIO"</span></div>
               <input type="color" id="lsBioColor"></div>
             <div class="field"><div class="field-label"><span class="name">Couleur épingle "Local"</span></div>
@@ -1761,6 +1763,7 @@
       detailNameFont: 14, detailPriceFont: 13,
       compactNameFont: 8.5, compactPriceFont: 13,
       bioAsText: true, // remplace le logo AB par un texte "BIO" en vert
+      bioFontSize: 8, // taille du texte "BIO" (pt, trame détaillée) — la trame compacte en dérive une taille réduite
       detailPadding: 4, compactPadding: 2.5, // marges internes (mm)
       detailAlign: 'center', // alignement du nom/prix/badges sur la trame détaillée : 'left' | 'center' | 'right'
       elementSpacing: 0, // espace additionnel (mm) entre le logo et les badges/champs optionnels, trame détaillée
@@ -1866,7 +1869,7 @@
     'PLU','Nom','Champ 3','Type','Prix vente','Catégorie','Champ 7','Champ 8','Champ 9',
     'Champ 10','Champ 11','Champ 12','Code','Statut','Département','Code long','Champ 17','Champ 18','Champ 19'
   ];
-  const SHORT_BIZ_LABELS = ['Fournisseur','Prix achat','TVA','Stock','Stock mini','Stock maxi','Bio','Local','Trame étiquette','Affichage prix','Groupe variantes','Taille lot','Période commande','Description longue','Sous-catégorie','Emplacement'];
+  const SHORT_BIZ_LABELS = ['Fournisseur','Prix achat','TVA','Stock','Stock mini','Stock maxi','Bio','Local','Trame étiquette','Affichage prix','Groupe variantes','Taille lot','Période commande','Description longue','Sous-catégorie','Emplacement','Pays'];
   function shortColLabel(c){
     if(c < SHORT_COL_LABELS.length) return SHORT_COL_LABELS[c];
     const bi = c - 19;
@@ -1875,11 +1878,11 @@
   }
 
   // ---------- Base articles : champs métier ajoutés après les 19 colonnes balance ----------
-  // Index 19 à 24. Ces colonnes ne sont JAMAIS envoyées dans le CSV balance (voir buildCsvText) —
+  // Index 19 à 25. Ces colonnes ne sont JAMAIS envoyées dans le CSV balance (voir buildCsvText) —
   // elles ne vivent que dans la base articles complète.
-  const BIZCOL = { FOURNISSEUR:19, ACHAT_HT:20, TVA:21, STOCK:22, STOCK_MINI:23, STOCK_MAXI:24, BIO:25, LOCAL:26, TEMPLATE:27, UNIT_DISPLAY:28, GROUP:29, PACK_SIZE:30, ORDER_PERIOD:31, DESC_LONGUE:32, SUB_CATEGORY:33, EMPLACEMENT:34 };
-  const BIZ_COL_COUNT = 16;
-  const BIZ_HEADERS = ['Fournisseur','Prix achat HT (centimes)','Taux TVA (%)','Stock actuel','Stock mini','Stock maxi','Bio (1/0)','Local (1/0)','Trame étiquette','Affichage prix (kg/100g)','Groupe de variantes','Taille du lot (unités)','Période de commande','Description longue','Sous-catégorie (Dolibarr, hors export balance)','Emplacement (Dolibarr, tri des étiquettes)'];
+  const BIZCOL = { FOURNISSEUR:19, ACHAT_HT:20, TVA:21, STOCK:22, STOCK_MINI:23, STOCK_MAXI:24, BIO:25, LOCAL:26, TEMPLATE:27, UNIT_DISPLAY:28, GROUP:29, PACK_SIZE:30, ORDER_PERIOD:31, DESC_LONGUE:32, SUB_CATEGORY:33, EMPLACEMENT:34, PAYS:35 };
+  const BIZ_COL_COUNT = 17;
+  const BIZ_HEADERS = ['Fournisseur','Prix achat HT (centimes)','Taux TVA (%)','Stock actuel','Stock mini','Stock maxi','Bio (1/0)','Local (1/0)','Trame étiquette','Affichage prix (kg/100g)','Groupe de variantes','Taille du lot (unités)','Période de commande','Description longue','Sous-catégorie (Dolibarr, hors export balance)','Emplacement (Dolibarr, tri des étiquettes)','Pays d\'origine (étiquette, si produit non local)'];
   const ORDER_PERIODS = {
     hebdo:      { label:'Hebdomadaire (7 jours)', days:7 },
     quinzaine:  { label:'Toutes les 2 semaines (15 jours)', days:15 },
@@ -2083,7 +2086,7 @@
       return out;
     });
 
-    // garantit toujours les 6 colonnes métier (19-24), même absentes du fichier balance brut
+    // garantit toujours les colonnes métier (19+), même absentes du fichier balance brut
     const TOTAL_COLS = 19 + BIZ_COL_COUNT;
     state.rows.forEach(r=>{
       while(r.length < TOTAL_COLS) r.push('');
@@ -2121,7 +2124,7 @@
     // gardée pour l'avertissement visuel de dépassement, mais jamais utilisée pour
     // le padding réel à l'export (voir buildCsvText).
     if(meta[0]) meta[0] = { fixed:true, width:4, coverage:1 };
-    // Colonnes métier (19-24, base articles) : jamais de padding, toujours libres.
+    // Colonnes métier (19+, base articles) : jamais de padding, toujours libres.
     for(let c=19; c<meta.length; c++) meta[c] = { fixed:false, width:0, coverage:1 };
     state.colMeta = meta;
   }
@@ -2968,6 +2971,22 @@
       labelsGrid.appendChild(mkChip('bizBio', '🌿 Bio (certifié AB)', bioChecked));
       labelsGrid.appendChild(mkChip('bizLocal', '📍 Local', localChecked));
       labelsWrap.appendChild(labelsGrid);
+
+      // Pays d'origine — texte libre, même style que le champ Fournisseur. Reste
+      // saisissable même quand "Local" n'est pas coché : c'est justement le cas d'usage
+      // (produit importé, non local, mais dont on connaît le pays) — voir badge étiquette.
+      const paysWrap = document.createElement('div');
+      paysWrap.className = 'field';
+      paysWrap.style.marginTop = '10px';
+      paysWrap.innerHTML = `<div class="field-label"><span class="name">Pays d'origine</span><span class="meta">affiché sur l'étiquette si le produit n'est pas local</span></div>`;
+      const paysInput = document.createElement('input');
+      paysInput.type = 'text';
+      paysInput.id = 'bizPays';
+      paysInput.placeholder = 'ex. Italie, Maroc…';
+      paysInput.value = (row[BIZCOL.PAYS]||'').trim();
+      paysWrap.appendChild(paysInput);
+      labelsWrap.appendChild(paysWrap);
+
       biz.appendChild(labelsWrap);
 
       sheetBody.appendChild(biz);
@@ -3085,6 +3104,8 @@
     if(bioEl) state.rows[sheetRow][BIZCOL.BIO] = bioEl.checked ? '1' : '0';
     const localEl = document.getElementById('bizLocal');
     if(localEl) state.rows[sheetRow][BIZCOL.LOCAL] = localEl.checked ? '1' : '0';
+    const paysEl = document.getElementById('bizPays');
+    if(paysEl) state.rows[sheetRow][BIZCOL.PAYS] = paysEl.value.trim();
     const unitDispEl = document.getElementById('bizUnitDisplay');
     if(unitDispEl) state.rows[sheetRow][BIZCOL.UNIT_DISPLAY] = unitDispEl.value;
     const groupEl = document.getElementById('bizGroup');
@@ -3774,6 +3795,9 @@
       row[BIZCOL.GROUP] = existing ? existing[BIZCOL.GROUP] : '';
       row[BIZCOL.PACK_SIZE] = existing ? existing[BIZCOL.PACK_SIZE] : '';
       row[BIZCOL.ORDER_PERIOD] = existing ? existing[BIZCOL.ORDER_PERIOD] : '';
+      // Pays d'origine : champ manuel, sans équivalent Dolibarr — préservé tel quel comme
+      // Groupe/Taille de lot/Période de commande ci-dessus.
+      row[BIZCOL.PAYS] = existing ? existing[BIZCOL.PAYS] : '';
       row[BIZCOL.DESC_LONGUE] = String(d['Description']||'').trim();
       // Sous-catégorie(s) Dolibarr (ex. "Apéro", "Thé Vert") — jamais utilisée pour
       // l'export balance, uniquement pour filtrer dans l'outil.
@@ -4457,6 +4481,7 @@
     detailNameFont: 14, detailPriceFont: 21,
     compactNameFont: 8.5, compactPriceFont: 13,
     bioAsText: true,
+    bioFontSize: 8, // taille du texte "BIO" (pt, trame détaillée) — la trame compacte en dérive une taille réduite
     detailPadding: 4, compactPadding: 2.5,
     detailAlign: 'center',
     elementSpacing: 0,
@@ -4474,7 +4499,8 @@
     compactNameFont: { min:5, max:11 },
     compactPriceFont: { min:6, max:16 },
     detailNameFont: { min:8, max:20 },
-    detailPriceFont: { min:8, max:28 }
+    detailPriceFont: { min:8, max:28 },
+    bioFontSize: { min:6, max:14 }
   };
   const clampLabelFont = (key, v)=>{
     const c = LABEL_FONT_CAPS[key];
@@ -4495,6 +4521,7 @@
     $('lsCompactPriceFont').value = s.compactPriceFont;
     $('lsCompactPadding').value = s.compactPadding;
     $('lsBioAsText').checked = !!s.bioAsText;
+    $('lsBioFont').value = s.bioFontSize;
     $('lsBioColor').value = s.bioColor;
     $('lsLocalColor').value = s.localColor;
     $('lsShowSupplier').checked = !!s.showSupplier;
@@ -4517,6 +4544,7 @@
       compactNameFont: clampLabelFont('compactNameFont', num('lsCompactNameFont', LABEL_SETTINGS_DEFAULTS.compactNameFont)),
       compactPriceFont: clampLabelFont('compactPriceFont', num('lsCompactPriceFont', LABEL_SETTINGS_DEFAULTS.compactPriceFont)),
       bioAsText: $('lsBioAsText').checked,
+      bioFontSize: clampLabelFont('bioFontSize', num('lsBioFont', LABEL_SETTINGS_DEFAULTS.bioFontSize)),
       detailPadding: num('lsDetailPadding', LABEL_SETTINGS_DEFAULTS.detailPadding),
       compactPadding: num('lsCompactPadding', LABEL_SETTINGS_DEFAULTS.compactPadding),
       detailAlign: $('lsDetailAlign').value || LABEL_SETTINGS_DEFAULTS.detailAlign,
@@ -4550,7 +4578,7 @@
   [
     'lsDetailW','lsDetailH','lsDetailNameFont','lsDetailPriceFont','lsDetailPadding','lsElementSpacing',
     'lsCompactCols','lsCompactRows','lsCompactNameFont','lsCompactPriceFont','lsCompactPadding',
-    'lsBioColor','lsLocalColor'
+    'lsBioFont','lsBioColor','lsLocalColor'
   ].forEach(id=> $(id).addEventListener('input', updateLabelPreview));
   ['lsDetailAlign','lsBioAsText','lsShowSupplier','lsShowDescription'].forEach(id=> $(id).addEventListener('change', updateLabelPreview));
 
@@ -4577,6 +4605,20 @@
     return shown;
   }
 
+  // Tronque un texte à une seule ligne pour qu'il tienne dans maxW (mm) avec la police jsPDF
+  // actuellement active (doc.setFont/setFontSize doivent être posés par l'appelant AVANT
+  // l'appel, car getTextWidth dépend de cet état). Utilisé pour les badges Local/Pays
+  // d'origine dont le texte est de longueur variable (contrairement à "BIO", toujours
+  // 3 lettres) — surtout critique en trame compacte où l'espace est très contraint.
+  function truncateTextToWidth(doc, text, maxW){
+    if(maxW <= 0 || !text) return '';
+    if(doc.getTextWidth(text) <= maxW) return text;
+    let t = text;
+    while(t.length > 0 && doc.getTextWidth(t+'…') > maxW) t = t.slice(0,-1);
+    if(t.length > 0) return t+'…';
+    return doc.getTextWidth('…') <= maxW ? '…' : '';
+  }
+
   function drawLabelCompact(doc, x, y, w, h, r){
     drawCutGuide(doc, x, y, w, h);
     const s = state.labelSettings;
@@ -4587,21 +4629,42 @@
     const pluStr = (r[0]||'').trim();
     doc.text(pluStr, x+pad, y+5);
 
-    // Repère bio/local minimal, à côté du PLU — la trame compacte est celle par défaut
-    // et en était totalement dépourvue jusqu'ici (revue-graphiste #1). Même logique de
-    // détection que la trame détaillée, réduite à un point plein (bio) et une épingle
-    // (local) de ~2,5 mm pour ne pas empiéter sur le prix.
+    // Repère bio/local, à côté du PLU — la trame compacte est celle par défaut et en était
+    // totalement dépourvue jusqu'ici (revue-graphiste #1). Même logique de détection que la
+    // trame détaillée : un point plein + "BIO" (bio) et une épingle + son texte (local, ou
+    // pays d'origine si le produit n'est pas local — cf. drawLabelDetail), à une taille de
+    // police réduite dérivée de s.bioFontSize pour tenir dans l'espace très contraint de
+    // cette trame.
     const nomLowerC = (r[1]||'').toLowerCase();
     const isBioC = (r[BIZCOL.BIO]||'').trim()!=='' ? (r[BIZCOL.BIO]||'').trim()==='1' : nomLowerC.includes('bio');
     const isLocalC = (r[BIZCOL.LOCAL]||'').trim()!=='' ? (r[BIZCOL.LOCAL]||'').trim()==='1' : nomLowerC.includes('local');
-    if(isBioC || isLocalC){
+    const paysC = (r[BIZCOL.PAYS]||'').trim();
+    const pinTextC = isLocalC ? 'Local' : paysC;
+    if(isBioC || pinTextC){
+      // bx mesuré avec la police du PLU encore active (6,5 pt normal, posée plus haut) —
+      // même principe que la mesure du PLU pour les colonnes du tableau (revue-graphiste).
       let bx = x+pad+doc.getTextWidth(pluStr)+2;
+      const badgeFontC = Math.max(4, Math.min(6, s.bioFontSize*0.65));
+      const maxBadgeRight = x+w-pad; // ne jamais déborder du bord droit de l'étiquette
       if(isBioC){
         doc.setFillColor(...hexToRgbArray(s.bioColor, [60,130,60]));
         doc.circle(bx+1.1, y+3.9, 1.1, 'F');
-        bx += 3;
+        bx += 2.6;
+        doc.setFont('helvetica','bold');
+        doc.setFontSize(badgeFontC);
+        doc.setTextColor(...hexToRgbArray(s.bioColor, [60,130,60]));
+        doc.text('BIO', bx, y+4.6);
+        bx += doc.getTextWidth('BIO') + 2;
       }
-      if(isLocalC) drawMapPin(doc, bx+1.1, y+4.6, 1.1, hexToRgbArray(s.localColor, PIN_RED));
+      if(pinTextC){
+        drawMapPin(doc, bx+1.1, y+4.6, 1.1, hexToRgbArray(s.localColor, PIN_RED));
+        bx += 2.6;
+        doc.setFont('helvetica','bold');
+        doc.setFontSize(badgeFontC);
+        doc.setTextColor(...hexToRgbArray(s.localColor, PIN_RED));
+        doc.text(truncateTextToWidth(doc, pinTextC, maxBadgeRight-bx), bx, y+4.6);
+      }
+      doc.setTextColor(42,36,32); // remet la couleur d'encre standard avant le nom du produit
     }
 
     doc.setFont('helvetica','bold');
@@ -4693,26 +4756,54 @@
     const localStored = (r[BIZCOL.LOCAL]||'').trim();
     const isBio = bioStored!=='' ? bioStored==='1' : nomLower.includes('bio');
     const isLocal = localStored!=='' ? localStored==='1' : nomLower.includes('local');
+    const paysOrigine = (r[BIZCOL.PAYS]||'').trim();
+    // Texte du badge "épingle" : "Local" si la catégorie Local est cochée, sinon le pays
+    // d'origine renseigné, sinon rien — l'épingle disparaît alors complètement, comme avant.
+    const pinText = isLocal ? 'Local' : paysOrigine;
     // sans fournisseur/description affichés, on retombe exactement sur la position d'origine (espacement par défaut = 0)
     const badgeY = Math.max(belowIconY+2, iconCy + iconH/2 + 9 + spacing);
-    const abW = s.bioAsText ? 9 : 5.5, abH = abW/LOGO_AB_RATIO, pinW = 5.5;
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(s.bioFontSize);
+    // Point vert à gauche du texte "BIO" (revue-graphiste — même principe que drawLabelCompact,
+    // à une échelle deux fois plus grande, cohérente avec l'épingle "Local" de cette trame qui
+    // est elle aussi deux fois plus grande qu'en trame compacte : 2,2 mm de rayon ici vs 1,1 mm).
+    const bioDotD = 4.4, bioDotGap = 0.8;
+    const abW = s.bioAsText ? (bioDotD+bioDotGap+doc.getTextWidth('BIO')) : 5.5, abH = abW/LOGO_AB_RATIO;
+    const pinIconW = 5.5; // empreinte de l'épingle seule, identique au comportement d'origine sans texte
+    // Largeur réelle du texte "Local"/pays mesurée à la police du badge (comme le PLU, ligne
+    // ~4598) — tronquée avec une ellipse si elle ne tient pas dans la largeur disponible de
+    // l'étiquette (le pays peut être nettement plus long que "Local").
+    let pinTextShown = pinText;
+    if(pinTextShown){
+      const maxPinTextW = w - 2*pad - pinIconW - (isBio ? abW+2.5 : 0);
+      pinTextShown = truncateTextToWidth(doc, pinTextShown, maxPinTextW);
+    }
+    const pinBlockW = pinTextShown ? pinIconW + doc.getTextWidth(pinTextShown) + 1 : 0;
     let badgesWidth = 0;
     if(isBio) badgesWidth += abW;
-    if(isLocal) badgesWidth += pinW;
-    if(isBio && isLocal) badgesWidth += 2.5;
+    if(pinTextShown) badgesWidth += pinBlockW;
+    if(isBio && pinTextShown) badgesWidth += 2.5;
     let bx = align==='left' ? x+pad : align==='right' ? x+w-pad-badgesWidth : x+w/2-badgesWidth/2;
     if(isBio){
       if(s.bioAsText){
+        doc.setFillColor(...hexToRgbArray(s.bioColor, [60,130,60]));
+        doc.circle(bx+bioDotD/2, badgeY-0.3, bioDotD/2, 'F');
         doc.setFont('helvetica','bold');
-        doc.setFontSize(8);
+        doc.setFontSize(s.bioFontSize);
         doc.setTextColor(...hexToRgbArray(s.bioColor, [60,130,60]));
-        doc.text('BIO', bx, badgeY+1.4);
+        doc.text('BIO', bx+bioDotD+bioDotGap, badgeY+1.4);
       } else {
         doc.addImage(LOGO_AB_URI, 'PNG', bx, badgeY-abH/2, abW, abH);
       }
       bx += abW+2.5;
     }
-    if(isLocal){ drawMapPin(doc, bx+1.8, badgeY, 2.2, hexToRgbArray(s.localColor, PIN_RED)); bx += pinW; }
+    if(pinTextShown){
+      drawMapPin(doc, bx+1.8, badgeY, 2.2, hexToRgbArray(s.localColor, PIN_RED));
+      doc.setFont('helvetica','bold');
+      doc.setFontSize(s.bioFontSize);
+      doc.setTextColor(...hexToRgbArray(s.localColor, PIN_RED));
+      doc.text(pinTextShown, bx+pinIconW, badgeY+1.4);
+    }
 
     // Bloc prix : positions proportionnelles à la police choisie (revue-graphiste #2) et
     // hiérarchie prix/unité — l'unité est dérivée de la police du prix mais toujours
@@ -4824,6 +4915,28 @@
     return svg;
   }
 
+  // Mesure la largeur réelle (mm) d'un texte à un corps donné (pt) avec la police des
+  // étiquettes — miroir HTML de doc.getTextWidth() côté génération PDF (jsPDF), nécessaire
+  // depuis que les badges Local/Pays d'origine portent un texte de longueur variable.
+  let lsMeasureCtx = null;
+  function lsMeasureTextWidthMm(text, fontSizePt, bold){
+    if(!lsMeasureCtx) lsMeasureCtx = document.createElement('canvas').getContext('2d');
+    // 1pt = 4/3 px CSS (96dpi) ; on redescend ensuite en mm (1px = 25.4/96 mm) pour rester
+    // dans la même unité que le reste du calcul de mise en page de l'aperçu.
+    lsMeasureCtx.font = `${bold?'bold ':''}${(fontSizePt*4/3).toFixed(2)}px 'Helvetica Neue', Helvetica, Arial, sans-serif`;
+    return lsMeasureCtx.measureText(text).width * (25.4/96);
+  }
+  // Tronque un texte à une seule ligne pour qu'il tienne dans maxWMm (mm) — miroir HTML de
+  // truncateTextToWidth côté PDF, pour les mêmes badges à texte variable.
+  function lsTruncateToWidth(text, fontSizePt, bold, maxWMm){
+    if(maxWMm <= 0 || !text) return '';
+    if(lsMeasureTextWidthMm(text, fontSizePt, bold) <= maxWMm) return text;
+    let t = text;
+    while(t.length > 0 && lsMeasureTextWidthMm(t+'…', fontSizePt, bold) > maxWMm) t = t.slice(0,-1);
+    if(t.length > 0) return t+'…';
+    return lsMeasureTextWidthMm('…', fontSizePt, bold) <= maxWMm ? '…' : '';
+  }
+
   // Construit l'aperçu de la trame détaillée dans `container`, à partir des réglages en cours (s) et d'un article (r).
   function renderDetailPreview(container, s, r){
     const w = s.detailW, h = s.detailH;
@@ -4898,27 +5011,46 @@
       belowIconY += 5.6;
     }
 
-    // Badges bio / local
+    // Badges bio / local — miroir de drawLabelDetail (point vert + "BIO", épingle + "Local"/pays)
     const bioStored = (r[BIZCOL.BIO]||'').trim();
     const localStored = (r[BIZCOL.LOCAL]||'').trim();
     const nomLower = nom.toLowerCase();
     const isBio = bioStored!=='' ? bioStored==='1' : nomLower.includes('bio');
     const isLocal = localStored!=='' ? localStored==='1' : nomLower.includes('local');
+    const paysOrigine = (r[BIZCOL.PAYS]||'').trim();
+    const pinText = isLocal ? 'Local' : paysOrigine;
     const badgeY = Math.max(belowIconY+2, iconCy + iconW/2 + 9 + spacing);
-    const abW = s.bioAsText ? 9 : 5.5, pinW = 5.5;
+    const bioDotD = 4.4, bioDotGap = 0.8; // deux fois la taille de la trame compacte, comme l'épingle "Local" ci-dessous
+    const abW = s.bioAsText ? (bioDotD+bioDotGap+lsMeasureTextWidthMm('BIO', s.bioFontSize, true)) : 5.5;
+    const pinIconW = 5.5; // même empreinte que l'ancienne épingle seule, sans texte
+    let pinTextShown = pinText;
+    if(pinTextShown){
+      const maxPinTextW = w - 2*pad - pinIconW - (isBio ? abW+2.5 : 0);
+      pinTextShown = lsTruncateToWidth(pinTextShown, s.bioFontSize, true, maxPinTextW);
+    }
+    const pinBlockW = pinTextShown ? pinIconW + lsMeasureTextWidthMm(pinTextShown, s.bioFontSize, true) + 1 : 0;
     let badgesWidth = 0;
     if(isBio) badgesWidth += abW;
-    if(isLocal) badgesWidth += pinW;
-    if(isBio && isLocal) badgesWidth += 2.5;
+    if(pinTextShown) badgesWidth += pinBlockW;
+    if(isBio && pinTextShown) badgesWidth += 2.5;
     let bx = align==='left' ? pad : align==='right' ? (w-pad-badgesWidth) : (w/2-badgesWidth/2);
+    const bioTextTopOffset = s.bioFontSize * 0.325; // proportion constatée sur l'ancien texte fixe à 8pt (offset 2,6mm)
     if(isBio){
       if(s.bioAsText){
+        const dot = document.createElement('div');
+        dot.style.left = (bx*scale)+'px';
+        dot.style.top = ((badgeY-bioDotD/2-0.3)*scale)+'px';
+        dot.style.width = (bioDotD*scale)+'px';
+        dot.style.height = (bioDotD*scale)+'px';
+        dot.style.borderRadius = '50%';
+        dot.style.background = s.bioColor;
+        label.appendChild(dot);
         const el = document.createElement('div');
         el.textContent = 'BIO';
-        el.style.left = (bx*scale)+'px';
-        el.style.top = ((badgeY-2.6)*scale)+'px';
+        el.style.left = ((bx+bioDotD+bioDotGap)*scale)+'px';
+        el.style.top = ((badgeY-bioTextTopOffset)*scale)+'px';
         el.style.fontWeight = '700';
-        el.style.fontSize = (8*0.3528*scale)+'px';
+        el.style.fontSize = (s.bioFontSize*0.3528*scale)+'px';
         el.style.color = s.bioColor;
         label.appendChild(el);
       } else {
@@ -4932,12 +5064,20 @@
       }
       bx += abW + 2.5;
     }
-    if(isLocal){
-      const pinPx = pinW*scale;
+    if(pinTextShown){
+      const pinPx = pinIconW*scale;
       const svg = lsBuildPinSvg(s.localColor, pinPx);
       svg.style.left = (bx*scale)+'px';
       svg.style.top = (badgeY*scale - pinPx*0.5)+'px';
       label.appendChild(svg);
+      const txt = document.createElement('div');
+      txt.textContent = pinTextShown;
+      txt.style.left = ((bx+pinIconW)*scale)+'px';
+      txt.style.top = ((badgeY-bioTextTopOffset)*scale)+'px';
+      txt.style.fontWeight = '700';
+      txt.style.fontSize = (s.bioFontSize*0.3528*scale)+'px';
+      txt.style.color = s.localColor;
+      label.appendChild(txt);
     }
 
     // Bloc prix : ancré depuis le bas (marge >= 4mm, revue-graphiste #5), empilé du bas
@@ -5020,13 +5160,20 @@
     pluEl.style.color = '#2A2420';
     label.appendChild(pluEl);
 
-    // Repère bio/local, à côté du PLU — reflète drawLabelCompact (revue-graphiste #1).
+    // Repère bio/local, à côté du PLU — reflète drawLabelCompact (revue-graphiste #1) : point
+    // + "BIO", épingle + "Local"/pays, taille de police réduite dérivée de s.bioFontSize.
     const nomLowerC = (r[1]||'').toLowerCase();
     const isBioC = (r[BIZCOL.BIO]||'').trim()!=='' ? (r[BIZCOL.BIO]||'').trim()==='1' : nomLowerC.includes('bio');
     const isLocalC = (r[BIZCOL.LOCAL]||'').trim()!=='' ? (r[BIZCOL.LOCAL]||'').trim()==='1' : nomLowerC.includes('local');
-    if(isBioC || isLocalC){
-      const badgeLeftMm = pad + pluStr.length*2.1 + 1.5; // approximation largeur texte (le rendu réel jsPDF mesure la police exacte)
+    const paysC = (r[BIZCOL.PAYS]||'').trim();
+    const pinTextC = isLocalC ? 'Local' : paysC;
+    if(isBioC || pinTextC){
+      const badgeFontC = Math.max(4, Math.min(6, s.bioFontSize*0.65));
+      // largeur réelle du PLU mesurée à sa police (6,5pt normal), comme côté jsPDF
+      const badgeLeftMm = pad + lsMeasureTextWidthMm(pluStr, 6.5, false) + 1.5;
       let bx = badgeLeftMm;
+      const maxBadgeRightMm = w - pad;
+      const badgeTextTopOffset = badgeFontC * 0.325;
       if(isBioC){
         const dot = document.createElement('div');
         dot.style.left = (bx*scale)+'px';
@@ -5036,9 +5183,18 @@
         dot.style.borderRadius = '50%';
         dot.style.background = s.bioColor || '#3C823C';
         label.appendChild(dot);
-        bx += 3;
+        bx += 2.6;
+        const txt = document.createElement('div');
+        txt.textContent = 'BIO';
+        txt.style.left = (bx*scale)+'px';
+        txt.style.top = ((1+2.4-badgeTextTopOffset)*scale)+'px';
+        txt.style.fontWeight = '700';
+        txt.style.fontSize = (badgeFontC*0.3528*scale)+'px';
+        txt.style.color = s.bioColor || '#3C823C';
+        label.appendChild(txt);
+        bx += lsMeasureTextWidthMm('BIO', badgeFontC, true) + 2;
       }
-      if(isLocalC){
+      if(pinTextC){
         const pin = document.createElement('div');
         pin.style.left = (bx*scale)+'px';
         pin.style.top = ((1+1)*scale)+'px';
@@ -5048,6 +5204,16 @@
         pin.style.transform = 'rotate(-45deg)';
         pin.style.background = s.localColor || '#DB4437';
         label.appendChild(pin);
+        bx += 2.6;
+        const shown = lsTruncateToWidth(pinTextC, badgeFontC, true, maxBadgeRightMm-bx);
+        const txt = document.createElement('div');
+        txt.textContent = shown;
+        txt.style.left = (bx*scale)+'px';
+        txt.style.top = ((1+2-badgeTextTopOffset)*scale)+'px';
+        txt.style.fontWeight = '700';
+        txt.style.fontSize = (badgeFontC*0.3528*scale)+'px';
+        txt.style.color = s.localColor || '#DB4437';
+        label.appendChild(txt);
       }
     }
 
