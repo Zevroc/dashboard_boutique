@@ -1633,18 +1633,35 @@
           </div>
 
           <p class="biz-title" style="margin-top:18px;">Badges Bio / Local (trames détaillée et compacte)</p>
+          <p class="renum-intro" style="margin:4px 0 10px;">Trame détaillée : le badge Bio (point + texte) se place au-dessus du logo OPEV, le badge Local (épingle + texte) en dessous — chacun empilé verticalement. Tailles du point/de l'épingle et des textes réglables indépendamment.</p>
           <label class="toggleLabel" style="margin:8px 0;">
             <input type="checkbox" id="lsBioAsText">
             <span class="toggleSwitch"></span>
             Afficher "BIO" en texte vert plutôt que le logo AB (trame détaillée)
           </label>
           <div class="field-grid" style="margin-top:10px;">
+            <div class="field"><div class="field-label"><span class="name">Taille point "Bio" (mm)</span></div>
+              <input type="number" id="lsBioDotSize" min="2" max="8" step="0.2"></div>
             <div class="field"><div class="field-label"><span class="name">Taille texte "BIO" (pt)</span></div>
               <input type="number" id="lsBioFont" min="6" max="14" step="0.5"></div>
             <div class="field"><div class="field-label"><span class="name">Couleur texte "BIO"</span></div>
               <input type="color" id="lsBioColor"></div>
+            <div class="field"><div class="field-label"><span class="name">Taille épingle "Local" (mm)</span></div>
+              <input type="number" id="lsLocalIconSize" min="2" max="8" step="0.2"></div>
+            <div class="field"><div class="field-label"><span class="name">Taille texte "Local"/pays (pt)</span></div>
+              <input type="number" id="lsLocalFont" min="6" max="14" step="0.5"></div>
             <div class="field"><div class="field-label"><span class="name">Couleur épingle "Local"</span></div>
               <input type="color" id="lsLocalColor"></div>
+          </div>
+
+          <p class="biz-title" style="margin-top:18px;">Autres tailles de police</p>
+          <div class="field-grid" style="margin-top:10px;">
+            <div class="field"><div class="field-label"><span class="name">Prix au kilo (pt, détaillée)</span></div>
+              <input type="number" id="lsDetailKgFont" min="5" max="10" step="0.5"></div>
+            <div class="field"><div class="field-label"><span class="name">Prix au kilo (pt, compacte)</span></div>
+              <input type="number" id="lsCompactKgFont" min="4" max="8" step="0.5"></div>
+            <div class="field"><div class="field-label"><span class="name">Mention allergènes (pt)</span></div>
+              <input type="number" id="lsAllergenFont" min="5" max="9" step="0.5"></div>
           </div>
 
           <p class="biz-title" style="margin-top:18px;">Champs affichés (trame détaillée)</p>
@@ -1764,6 +1781,12 @@
       compactNameFont: 8.5, compactPriceFont: 13,
       bioAsText: true, // remplace le logo AB par un texte "BIO" en vert
       bioFontSize: 8, // taille du texte "BIO" (pt, trame détaillée) — la trame compacte en dérive une taille réduite
+      localFontSize: 8, // taille du texte "Local"/pays (pt, trame détaillée) — indépendante de bioFontSize, la trame compacte en dérive une taille réduite
+      bioDotSize: 4.4, // diamètre (mm) du point vert Bio, trame détaillée — la trame compacte en dérive une taille réduite
+      localIconSize: 4.4, // diamètre (mm) de la tête de l'épingle Local, trame détaillée — la trame compacte en dérive une taille réduite
+      allergenFontSize: 6, // taille (pt) de la mention allergènes, trame détaillée
+      detailKgFont: 7, // taille (pt) de la ligne "soit X €/kg", trame détaillée
+      compactKgFont: 6, // taille (pt) de la ligne "soit X €/kg", trame compacte
       detailPadding: 4, compactPadding: 2.5, // marges internes (mm)
       detailAlign: 'center', // alignement du nom/prix/badges sur la trame détaillée : 'left' | 'center' | 'right'
       elementSpacing: 0, // espace additionnel (mm) entre le logo et les badges/champs optionnels, trame détaillée
@@ -4482,6 +4505,12 @@
     compactNameFont: 8.5, compactPriceFont: 13,
     bioAsText: true,
     bioFontSize: 8, // taille du texte "BIO" (pt, trame détaillée) — la trame compacte en dérive une taille réduite
+    localFontSize: 8, // taille du texte "Local"/pays (pt, trame détaillée) — indépendante de bioFontSize, la trame compacte en dérive une taille réduite
+    bioDotSize: 4.4, // diamètre (mm) du point vert Bio, trame détaillée — la trame compacte en dérive une taille réduite
+    localIconSize: 4.4, // diamètre (mm) de la tête de l'épingle Local, trame détaillée — la trame compacte en dérive une taille réduite
+    allergenFontSize: 6, // taille (pt) de la mention allergènes, trame détaillée
+    detailKgFont: 7, // taille (pt) de la ligne "soit X €/kg", trame détaillée
+    compactKgFont: 6, // taille (pt) de la ligne "soit X €/kg", trame compacte
     detailPadding: 4, compactPadding: 2.5,
     detailAlign: 'center',
     elementSpacing: 0,
@@ -4495,12 +4524,21 @@
   // (démontré par le test de stress avec une police prix compacte à 24 pt). Les
   // positions du bloc prix sont désormais proportionnelles à la police choisie (voir
   // drawLabelCompact/drawLabelDetail), mais ces plafonds restent la garantie de base.
+  // Depuis l'évolution "badges empilés", les mêmes plafonds couvrent aussi les tailles
+  // (mm) du point Bio et de l'épingle Local — clampLabelFont() est générique, seule
+  // l'unité change selon le réglage.
   const LABEL_FONT_CAPS = {
     compactNameFont: { min:5, max:11 },
     compactPriceFont: { min:6, max:16 },
     detailNameFont: { min:8, max:20 },
     detailPriceFont: { min:8, max:28 },
-    bioFontSize: { min:6, max:14 }
+    bioFontSize: { min:6, max:14 },
+    localFontSize: { min:6, max:14 },
+    bioDotSize: { min:2, max:8 },
+    localIconSize: { min:2, max:8 },
+    allergenFontSize: { min:5, max:9 },
+    detailKgFont: { min:5, max:10 },
+    compactKgFont: { min:4, max:8 }
   };
   const clampLabelFont = (key, v)=>{
     const c = LABEL_FONT_CAPS[key];
@@ -4522,8 +4560,14 @@
     $('lsCompactPadding').value = s.compactPadding;
     $('lsBioAsText').checked = !!s.bioAsText;
     $('lsBioFont').value = s.bioFontSize;
+    $('lsLocalFont').value = s.localFontSize;
+    $('lsBioDotSize').value = s.bioDotSize;
+    $('lsLocalIconSize').value = s.localIconSize;
     $('lsBioColor').value = s.bioColor;
     $('lsLocalColor').value = s.localColor;
+    $('lsAllergenFont').value = s.allergenFontSize;
+    $('lsDetailKgFont').value = s.detailKgFont;
+    $('lsCompactKgFont').value = s.compactKgFont;
     $('lsShowSupplier').checked = !!s.showSupplier;
     $('lsShowDescription').checked = !!s.showDescription;
     updateLabelPreview(); // reflète immédiatement les réglages courants dans l'aperçu à l'ouverture du panneau
@@ -4545,6 +4589,12 @@
       compactPriceFont: clampLabelFont('compactPriceFont', num('lsCompactPriceFont', LABEL_SETTINGS_DEFAULTS.compactPriceFont)),
       bioAsText: $('lsBioAsText').checked,
       bioFontSize: clampLabelFont('bioFontSize', num('lsBioFont', LABEL_SETTINGS_DEFAULTS.bioFontSize)),
+      localFontSize: clampLabelFont('localFontSize', num('lsLocalFont', LABEL_SETTINGS_DEFAULTS.localFontSize)),
+      bioDotSize: clampLabelFont('bioDotSize', num('lsBioDotSize', LABEL_SETTINGS_DEFAULTS.bioDotSize)),
+      localIconSize: clampLabelFont('localIconSize', num('lsLocalIconSize', LABEL_SETTINGS_DEFAULTS.localIconSize)),
+      allergenFontSize: clampLabelFont('allergenFontSize', num('lsAllergenFont', LABEL_SETTINGS_DEFAULTS.allergenFontSize)),
+      detailKgFont: clampLabelFont('detailKgFont', num('lsDetailKgFont', LABEL_SETTINGS_DEFAULTS.detailKgFont)),
+      compactKgFont: clampLabelFont('compactKgFont', num('lsCompactKgFont', LABEL_SETTINGS_DEFAULTS.compactKgFont)),
       detailPadding: num('lsDetailPadding', LABEL_SETTINGS_DEFAULTS.detailPadding),
       compactPadding: num('lsCompactPadding', LABEL_SETTINGS_DEFAULTS.compactPadding),
       detailAlign: $('lsDetailAlign').value || LABEL_SETTINGS_DEFAULTS.detailAlign,
@@ -4578,7 +4628,8 @@
   [
     'lsDetailW','lsDetailH','lsDetailNameFont','lsDetailPriceFont','lsDetailPadding','lsElementSpacing',
     'lsCompactCols','lsCompactRows','lsCompactNameFont','lsCompactPriceFont','lsCompactPadding',
-    'lsBioFont','lsBioColor','lsLocalColor'
+    'lsBioFont','lsLocalFont','lsBioDotSize','lsLocalIconSize','lsBioColor','lsLocalColor',
+    'lsAllergenFont','lsDetailKgFont','lsCompactKgFont'
   ].forEach(id=> $(id).addEventListener('input', updateLabelPreview));
   ['lsDetailAlign','lsBioAsText','lsShowSupplier','lsShowDescription'].forEach(id=> $(id).addEventListener('change', updateLabelPreview));
 
@@ -4632,9 +4683,12 @@
     // Repère bio/local, à côté du PLU — la trame compacte est celle par défaut et en était
     // totalement dépourvue jusqu'ici (revue-graphiste #1). Même logique de détection que la
     // trame détaillée : un point plein + "BIO" (bio) et une épingle + son texte (local, ou
-    // pays d'origine si le produit n'est pas local — cf. drawLabelDetail), à une taille de
-    // police réduite dérivée de s.bioFontSize pour tenir dans l'espace très contraint de
-    // cette trame.
+    // pays d'origine si le produit n'est pas local — cf. drawLabelDetail). L'espace de cette
+    // trame est trop contraint pour empiler les badges autour du logo comme en trame
+    // détaillée (nom, prix et logo se disputent déjà les ~33 mm de hauteur disponibles) : ils
+    // restent en ligne, à côté du PLU, mais leurs tailles dérivent désormais des réglages
+    // dédiés (bioDotSize/localIconSize/bioFontSize/localFontSize), proportionnellement
+    // réduites pour tenir dans l'espace disponible, plutôt que de constantes fixes.
     const nomLowerC = (r[1]||'').toLowerCase();
     const isBioC = (r[BIZCOL.BIO]||'').trim()!=='' ? (r[BIZCOL.BIO]||'').trim()==='1' : nomLowerC.includes('bio');
     const isLocalC = (r[BIZCOL.LOCAL]||'').trim()!=='' ? (r[BIZCOL.LOCAL]||'').trim()==='1' : nomLowerC.includes('local');
@@ -4644,23 +4698,26 @@
       // bx mesuré avec la police du PLU encore active (6,5 pt normal, posée plus haut) —
       // même principe que la mesure du PLU pour les colonnes du tableau (revue-graphiste).
       let bx = x+pad+doc.getTextWidth(pluStr)+2;
-      const badgeFontC = Math.max(4, Math.min(6, s.bioFontSize*0.65));
+      const bioDotRC = Math.max(0.6, Math.min(1.6, s.bioDotSize*0.25));
+      const pinRC = Math.max(0.6, Math.min(1.6, s.localIconSize*0.25));
+      const bioBadgeFontC = Math.max(4, Math.min(6, s.bioFontSize*0.65));
+      const localBadgeFontC = Math.max(4, Math.min(6, s.localFontSize*0.65));
       const maxBadgeRight = x+w-pad; // ne jamais déborder du bord droit de l'étiquette
       if(isBioC){
         doc.setFillColor(...hexToRgbArray(s.bioColor, [60,130,60]));
-        doc.circle(bx+1.1, y+3.9, 1.1, 'F');
-        bx += 2.6;
+        doc.circle(bx+bioDotRC, y+3.9, bioDotRC, 'F');
+        bx += bioDotRC*2+0.4;
         doc.setFont('helvetica','bold');
-        doc.setFontSize(badgeFontC);
+        doc.setFontSize(bioBadgeFontC);
         doc.setTextColor(...hexToRgbArray(s.bioColor, [60,130,60]));
         doc.text('BIO', bx, y+4.6);
         bx += doc.getTextWidth('BIO') + 2;
       }
       if(pinTextC){
-        drawMapPin(doc, bx+1.1, y+4.6, 1.1, hexToRgbArray(s.localColor, PIN_RED));
-        bx += 2.6;
+        drawMapPin(doc, bx+pinRC, y+4.6, pinRC, hexToRgbArray(s.localColor, PIN_RED));
+        bx += pinRC*2+0.4;
         doc.setFont('helvetica','bold');
-        doc.setFontSize(badgeFontC);
+        doc.setFontSize(localBadgeFontC);
         doc.setTextColor(...hexToRgbArray(s.localColor, PIN_RED));
         doc.text(truncateTextToWidth(doc, pinTextC, maxBadgeRight-bx), bx, y+4.6);
       }
@@ -4688,10 +4745,10 @@
     let cursorY = y+h-marginBottom;
     if(pu.showKgSecondary){
       doc.setFont('helvetica','normal');
-      doc.setFontSize(6);
+      doc.setFontSize(s.compactKgFont);
       doc.setTextColor(130,124,114);
       doc.text(`soit ${pu.priceKgStr}/kg`, x+w-pad, cursorY, { align:'right' });
-      cursorY -= 6*0.42 + 1.4;
+      cursorY -= s.compactKgFont*0.42 + 1.4;
     }
     if(pu.unitLabel){
       doc.setFont('helvetica','normal');
@@ -4725,13 +4782,81 @@
     const nomLines = doc.splitTextToSize((r[1]||'').trim(), w-2*pad);
     doc.text(ellipsizeLines(nomLines, 3), tx, y+16, opt); // ellipse si le nom dépasse 3 lignes (revue-graphiste #3)
 
-    // logo au centre de l'étiquette (réduit de 10%) — toujours centré, sert de repère visuel constant
+    // Repères bio / local (détection depuis les données) — calculés avant le logo car la
+    // présence du badge Bio conditionne désormais la position verticale de celui-ci
+    // (évolution "badges empilés" : Bio au-dessus du logo, Local en dessous).
+    const nomLower = (r[1]||'').toLowerCase();
+    const bioStored = (r[BIZCOL.BIO]||'').trim();
+    const localStored = (r[BIZCOL.LOCAL]||'').trim();
+    const isBio = bioStored!=='' ? bioStored==='1' : nomLower.includes('bio');
+    const isLocal = localStored!=='' ? localStored==='1' : nomLower.includes('local');
+    const paysOrigine = (r[BIZCOL.PAYS]||'').trim();
+    // Texte du badge "épingle" : "Local" si la catégorie Local est cochée, sinon le pays
+    // d'origine renseigné, sinon rien — l'épingle disparaît alors complètement, comme avant.
+    const pinText = isLocal ? 'Local' : paysOrigine;
+    let pinTextShown = pinText;
+    if(pinTextShown){
+      doc.setFont('helvetica','bold');
+      doc.setFontSize(s.localFontSize);
+      // le badge est désormais empilé (épingle au-dessus du texte) et n'a donc plus à
+      // partager sa largeur avec le badge Bio, placé au-dessus du logo — seule la largeur
+      // utile de l'étiquette limite encore la troncature.
+      pinTextShown = truncateTextToWidth(doc, pinTextShown, w-2*pad);
+    }
+
+    // logo au centre de l'étiquette (réduit de 10%) — toujours centré horizontalement, sert
+    // de repère visuel constant. Verticalement, il descend d'une demi-hauteur de badge quand
+    // le badge Bio est actif au-dessus de lui (revue-graphiste badges #1) ; sans badge Bio, il
+    // remonte naturellement au centre exact de l'étiquette, sans laisser d'espace vide.
     const iconW = Math.min(w,h)*0.32*0.9, iconH = iconW/LOGO_ICON_RATIO;
-    const iconCy = y+h/2;
+    const badgeLogoGap = 2 + spacing; // mm, entre un badge (bio ou local) et le logo
+    const bioDotD = s.bioDotSize, bioDotGap = 0.8; // gap entre le point et le texte "BIO"
+    const bioTxtH = s.bioFontSize * 0.42; // hauteur de ligne approx (mm), même facteur que le bloc prix ci-dessous
+    const abImgW = 5.5, abImgH = abImgW/LOGO_AB_RATIO; // logo AB image, utilisé si bioAsText est désactivé
+    const bioBadgeH = isBio ? (s.bioAsText ? (bioDotD+bioDotGap+bioTxtH) : abImgH) : 0;
+    const iconCy = y+h/2 + (isBio ? (bioBadgeH+badgeLogoGap)/2 : 0);
+    const cx = x+w/2; // les badges empilés restent alignés sur l'axe du logo, toujours centré (indépendant de detailAlign)
     doc.addImage(LOGO_ICON_URI, 'PNG', x+w/2-iconW/2, iconCy-iconH/2, iconW, iconH);
 
-    // fournisseur / description (optionnels), juste sous le logo
-    let belowIconY = iconCy + iconH/2 + 4 + spacing;
+    // Badge Bio, empilé au-dessus du logo : point plein puis "BIO" en dessous (ou logo AB seul).
+    if(isBio){
+      const iconTop = iconCy - iconH/2;
+      const badgeBottom = iconTop - badgeLogoGap; // bas du badge, juste au-dessus du logo
+      if(s.bioAsText){
+        const textBaseline = badgeBottom;
+        const dotCy = textBaseline - bioTxtH - bioDotGap - bioDotD/2;
+        doc.setFillColor(...hexToRgbArray(s.bioColor, [60,130,60]));
+        doc.circle(cx, dotCy, bioDotD/2, 'F');
+        doc.setFont('helvetica','bold');
+        doc.setFontSize(s.bioFontSize);
+        doc.setTextColor(...hexToRgbArray(s.bioColor, [60,130,60]));
+        doc.text('BIO', cx, textBaseline, { align:'center' });
+      } else {
+        doc.addImage(LOGO_AB_URI, 'PNG', cx-abImgW/2, badgeBottom-abImgH, abImgW, abImgH);
+      }
+      doc.setTextColor(42,36,32);
+    }
+
+    // Badge Local, empilé sous le logo : épingle puis "Local"/pays en dessous.
+    const localGap = 0.8; // gap entre la pointe de l'épingle et le texte
+    const localTxtH = s.localFontSize * 0.42;
+    let belowIconY = iconCy + iconH/2 + badgeLogoGap;
+    if(pinTextShown){
+      const headR = s.localIconSize/2;
+      const pinTopY = belowIconY; // haut de la tête de l'épingle, cf. drawMapPin (top = cy - headR*1.4)
+      const pinCenterParam = pinTopY + headR*1.4;
+      const pinTipY = pinTopY + headR*2.9; // pointe de l'épingle, cf. drawMapPin (tip = cy + headR*1.5)
+      drawMapPin(doc, cx, pinCenterParam, headR, hexToRgbArray(s.localColor, PIN_RED));
+      const textBaseline = pinTipY + localGap + localTxtH*0.8;
+      doc.setFont('helvetica','bold');
+      doc.setFontSize(s.localFontSize);
+      doc.setTextColor(...hexToRgbArray(s.localColor, PIN_RED));
+      doc.text(pinTextShown, cx, textBaseline, { align:'center' });
+      doc.setTextColor(42,36,32);
+      belowIconY = textBaseline + 2.5;
+    }
+
+    // fournisseur / description (optionnels), juste après le badge Local (avant le bloc prix)
     const fournisseur = (r[BIZCOL.FOURNISSEUR]||'').trim();
     const description = (r[BIZCOL.DESC_LONGUE]||'').trim();
     if(s.showSupplier && fournisseur){
@@ -4750,61 +4875,6 @@
       belowIconY += descLines.length*2.8;
     }
 
-    // badges bio / local, sous le logo OPEV (et sous fournisseur/description si affichés) avec un espace plus marqué
-    const nomLower = (r[1]||'').toLowerCase();
-    const bioStored = (r[BIZCOL.BIO]||'').trim();
-    const localStored = (r[BIZCOL.LOCAL]||'').trim();
-    const isBio = bioStored!=='' ? bioStored==='1' : nomLower.includes('bio');
-    const isLocal = localStored!=='' ? localStored==='1' : nomLower.includes('local');
-    const paysOrigine = (r[BIZCOL.PAYS]||'').trim();
-    // Texte du badge "épingle" : "Local" si la catégorie Local est cochée, sinon le pays
-    // d'origine renseigné, sinon rien — l'épingle disparaît alors complètement, comme avant.
-    const pinText = isLocal ? 'Local' : paysOrigine;
-    // sans fournisseur/description affichés, on retombe exactement sur la position d'origine (espacement par défaut = 0)
-    const badgeY = Math.max(belowIconY+2, iconCy + iconH/2 + 9 + spacing);
-    doc.setFont('helvetica','bold');
-    doc.setFontSize(s.bioFontSize);
-    // Point vert à gauche du texte "BIO" (revue-graphiste — même principe que drawLabelCompact,
-    // à une échelle deux fois plus grande, cohérente avec l'épingle "Local" de cette trame qui
-    // est elle aussi deux fois plus grande qu'en trame compacte : 2,2 mm de rayon ici vs 1,1 mm).
-    const bioDotD = 4.4, bioDotGap = 0.8;
-    const abW = s.bioAsText ? (bioDotD+bioDotGap+doc.getTextWidth('BIO')) : 5.5, abH = abW/LOGO_AB_RATIO;
-    const pinIconW = 5.5; // empreinte de l'épingle seule, identique au comportement d'origine sans texte
-    // Largeur réelle du texte "Local"/pays mesurée à la police du badge (comme le PLU, ligne
-    // ~4598) — tronquée avec une ellipse si elle ne tient pas dans la largeur disponible de
-    // l'étiquette (le pays peut être nettement plus long que "Local").
-    let pinTextShown = pinText;
-    if(pinTextShown){
-      const maxPinTextW = w - 2*pad - pinIconW - (isBio ? abW+2.5 : 0);
-      pinTextShown = truncateTextToWidth(doc, pinTextShown, maxPinTextW);
-    }
-    const pinBlockW = pinTextShown ? pinIconW + doc.getTextWidth(pinTextShown) + 1 : 0;
-    let badgesWidth = 0;
-    if(isBio) badgesWidth += abW;
-    if(pinTextShown) badgesWidth += pinBlockW;
-    if(isBio && pinTextShown) badgesWidth += 2.5;
-    let bx = align==='left' ? x+pad : align==='right' ? x+w-pad-badgesWidth : x+w/2-badgesWidth/2;
-    if(isBio){
-      if(s.bioAsText){
-        doc.setFillColor(...hexToRgbArray(s.bioColor, [60,130,60]));
-        doc.circle(bx+bioDotD/2, badgeY-0.3, bioDotD/2, 'F');
-        doc.setFont('helvetica','bold');
-        doc.setFontSize(s.bioFontSize);
-        doc.setTextColor(...hexToRgbArray(s.bioColor, [60,130,60]));
-        doc.text('BIO', bx+bioDotD+bioDotGap, badgeY+1.4);
-      } else {
-        doc.addImage(LOGO_AB_URI, 'PNG', bx, badgeY-abH/2, abW, abH);
-      }
-      bx += abW+2.5;
-    }
-    if(pinTextShown){
-      drawMapPin(doc, bx+1.8, badgeY, 2.2, hexToRgbArray(s.localColor, PIN_RED));
-      doc.setFont('helvetica','bold');
-      doc.setFontSize(s.bioFontSize);
-      doc.setTextColor(...hexToRgbArray(s.localColor, PIN_RED));
-      doc.text(pinTextShown, bx+pinIconW, badgeY+1.4);
-    }
-
     // Bloc prix : positions proportionnelles à la police choisie (revue-graphiste #2) et
     // hiérarchie prix/unité — l'unité est dérivée de la police du prix mais toujours
     // sensiblement plus petite et plus légère (revue-graphiste #4). Marge basse : 4 mm
@@ -4816,10 +4886,10 @@
     let cursorYD = y+h-marginBottomD;
     if(pu.showKgSecondary){
       doc.setFont('helvetica','normal');
-      doc.setFontSize(7);
+      doc.setFontSize(s.detailKgFont);
       doc.setTextColor(150,150,150);
       doc.text(`soit ${pu.priceKgStr}/kg`, tx, cursorYD, opt);
-      cursorYD -= 7*0.42 + 1.8;
+      cursorYD -= s.detailKgFont*0.42 + 1.8;
     }
     if(pu.unitLabel){
       doc.setFont('helvetica','normal');
@@ -4839,7 +4909,7 @@
       const codes = state.allergens[plu] !== undefined ? state.allergens[plu] : detectAllergens(r[1]);
       if(codes.length){
         doc.setFont('helvetica','normal');
-        doc.setFontSize(6);
+        doc.setFontSize(s.allergenFontSize);
         doc.setTextColor(120,120,120);
         doc.text('Allerg. '+codes.join(','), x+w-pad, y+h-4, { align:'right' }); // >= 3-4 mm avant le repère de découpe (revue-graphiste #5)
       }
@@ -4972,9 +5042,32 @@
     lsApplyAlignX(nomEl, align, w, pad, scale);
     label.appendChild(nomEl);
 
-    // Logo, toujours centré (repère visuel constant, comme sur le PDF)
-    const iconW = Math.min(w,h)*0.32*0.9;
-    const iconCy = h/2;
+    // Repères bio / local (détection depuis les données) — calculés avant le logo, la présence
+    // du badge Bio conditionnant la position verticale du logo (miroir de drawLabelDetail).
+    const bioStored = (r[BIZCOL.BIO]||'').trim();
+    const localStored = (r[BIZCOL.LOCAL]||'').trim();
+    const nomLower = nom.toLowerCase();
+    const isBio = bioStored!=='' ? bioStored==='1' : nomLower.includes('bio');
+    const isLocal = localStored!=='' ? localStored==='1' : nomLower.includes('local');
+    const paysOrigine = (r[BIZCOL.PAYS]||'').trim();
+    const pinText = isLocal ? 'Local' : paysOrigine;
+    let pinTextShown = pinText;
+    if(pinTextShown){
+      pinTextShown = lsTruncateToWidth(pinTextShown, s.localFontSize, true, w-2*pad);
+    }
+
+    // Logo, centré horizontalement (repère visuel constant) ; verticalement, descend d'une
+    // demi-hauteur de badge quand le badge Bio est actif au-dessus de lui — miroir de
+    // drawLabelDetail — sans badge Bio, il remonte naturellement au centre exact, sans
+    // laisser d'espace vide.
+    const iconW = Math.min(w,h)*0.32*0.9; // logo carré (LOGO_ICON_RATIO=1) : iconH === iconW
+    const badgeLogoGap = 2 + spacing; // mm, entre un badge (bio ou local) et le logo
+    const bioDotD = s.bioDotSize, bioDotGap = 0.8;
+    const bioTxtH = s.bioFontSize * 0.42;
+    const abImgW = 5.5, abImgH = abImgW/LOGO_AB_RATIO; // logo AB image, utilisé si bioAsText est désactivé
+    const bioBadgeH = isBio ? (s.bioAsText ? (bioDotD+bioDotGap+bioTxtH) : abImgH) : 0;
+    const iconCy = h/2 + (isBio ? (bioBadgeH+badgeLogoGap)/2 : 0);
+    const cxMm = w/2; // les badges empilés restent alignés sur l'axe du logo, toujours centré (indépendant de align)
     const logoEl = document.createElement('img');
     logoEl.src = LOGO_ICON_URI;
     logoEl.style.left = '50%';
@@ -4984,8 +5077,67 @@
     logoEl.style.opacity = '.92';
     label.appendChild(logoEl);
 
-    // Fournisseur / description (optionnels), sous le logo
-    let belowIconY = iconCy + iconW/2 + 4 + spacing;
+    // Badge Bio, empilé au-dessus du logo : point plein puis "BIO" en dessous (ou logo AB seul).
+    if(isBio){
+      const iconTop = iconCy - iconW/2;
+      const badgeBottom = iconTop - badgeLogoGap;
+      if(s.bioAsText){
+        const textBaseline = badgeBottom;
+        const dotCy = textBaseline - bioTxtH - bioDotGap - bioDotD/2;
+        const dot = document.createElement('div');
+        dot.style.left = ((cxMm-bioDotD/2)*scale)+'px';
+        dot.style.top = ((dotCy-bioDotD/2)*scale)+'px';
+        dot.style.width = (bioDotD*scale)+'px';
+        dot.style.height = (bioDotD*scale)+'px';
+        dot.style.borderRadius = '50%';
+        dot.style.background = s.bioColor;
+        label.appendChild(dot);
+        const el = document.createElement('div');
+        el.textContent = 'BIO';
+        el.style.left = '50%';
+        el.style.transform = 'translateX(-50%)';
+        el.style.top = ((textBaseline - s.bioFontSize*0.325)*scale)+'px';
+        el.style.fontWeight = '700';
+        el.style.fontSize = (s.bioFontSize*0.3528*scale)+'px';
+        el.style.color = s.bioColor;
+        label.appendChild(el);
+      } else {
+        const el = document.createElement('img');
+        el.src = LOGO_AB_URI;
+        el.style.left = ((cxMm-abImgW/2)*scale)+'px';
+        el.style.top = ((badgeBottom-abImgH)*scale)+'px';
+        el.style.width = (abImgW*scale)+'px';
+        label.appendChild(el);
+      }
+    }
+
+    // Badge Local, empilé sous le logo : épingle puis "Local"/pays en dessous.
+    const localGap = 0.8;
+    const localTxtH = s.localFontSize * 0.42;
+    let belowIconY = iconCy + iconW/2 + badgeLogoGap;
+    if(pinTextShown){
+      const pinD = s.localIconSize;
+      const pinPx = pinD*scale;
+      const pinTopY = belowIconY;
+      const pinTipY = pinTopY + pinD*1.2; // approximation propre au tracé de lsBuildPinSvg (viewBox 20x26, tête + pointe)
+      const svg = lsBuildPinSvg(s.localColor, pinPx);
+      svg.style.left = ((cxMm-pinD/2)*scale)+'px';
+      svg.style.top = (pinTopY*scale)+'px';
+      label.appendChild(svg);
+      const textBaseline = pinTipY + localGap + localTxtH*0.8;
+      const txt = document.createElement('div');
+      txt.textContent = pinTextShown;
+      txt.style.left = '50%';
+      txt.style.transform = 'translateX(-50%)';
+      txt.style.top = ((textBaseline - s.localFontSize*0.325)*scale)+'px';
+      txt.style.fontWeight = '700';
+      txt.style.fontSize = (s.localFontSize*0.3528*scale)+'px';
+      txt.style.color = s.localColor;
+      label.appendChild(txt);
+      belowIconY = textBaseline + 2.5;
+    }
+
+    // Fournisseur / description (optionnels), juste après le badge Local (avant le bloc prix)
     const fournisseur = (r[BIZCOL.FOURNISSEUR]||'').trim();
     const description = (r[BIZCOL.DESC_LONGUE]||'').trim();
     if(s.showSupplier && fournisseur){
@@ -5011,75 +5163,6 @@
       belowIconY += 5.6;
     }
 
-    // Badges bio / local — miroir de drawLabelDetail (point vert + "BIO", épingle + "Local"/pays)
-    const bioStored = (r[BIZCOL.BIO]||'').trim();
-    const localStored = (r[BIZCOL.LOCAL]||'').trim();
-    const nomLower = nom.toLowerCase();
-    const isBio = bioStored!=='' ? bioStored==='1' : nomLower.includes('bio');
-    const isLocal = localStored!=='' ? localStored==='1' : nomLower.includes('local');
-    const paysOrigine = (r[BIZCOL.PAYS]||'').trim();
-    const pinText = isLocal ? 'Local' : paysOrigine;
-    const badgeY = Math.max(belowIconY+2, iconCy + iconW/2 + 9 + spacing);
-    const bioDotD = 4.4, bioDotGap = 0.8; // deux fois la taille de la trame compacte, comme l'épingle "Local" ci-dessous
-    const abW = s.bioAsText ? (bioDotD+bioDotGap+lsMeasureTextWidthMm('BIO', s.bioFontSize, true)) : 5.5;
-    const pinIconW = 5.5; // même empreinte que l'ancienne épingle seule, sans texte
-    let pinTextShown = pinText;
-    if(pinTextShown){
-      const maxPinTextW = w - 2*pad - pinIconW - (isBio ? abW+2.5 : 0);
-      pinTextShown = lsTruncateToWidth(pinTextShown, s.bioFontSize, true, maxPinTextW);
-    }
-    const pinBlockW = pinTextShown ? pinIconW + lsMeasureTextWidthMm(pinTextShown, s.bioFontSize, true) + 1 : 0;
-    let badgesWidth = 0;
-    if(isBio) badgesWidth += abW;
-    if(pinTextShown) badgesWidth += pinBlockW;
-    if(isBio && pinTextShown) badgesWidth += 2.5;
-    let bx = align==='left' ? pad : align==='right' ? (w-pad-badgesWidth) : (w/2-badgesWidth/2);
-    const bioTextTopOffset = s.bioFontSize * 0.325; // proportion constatée sur l'ancien texte fixe à 8pt (offset 2,6mm)
-    if(isBio){
-      if(s.bioAsText){
-        const dot = document.createElement('div');
-        dot.style.left = (bx*scale)+'px';
-        dot.style.top = ((badgeY-bioDotD/2-0.3)*scale)+'px';
-        dot.style.width = (bioDotD*scale)+'px';
-        dot.style.height = (bioDotD*scale)+'px';
-        dot.style.borderRadius = '50%';
-        dot.style.background = s.bioColor;
-        label.appendChild(dot);
-        const el = document.createElement('div');
-        el.textContent = 'BIO';
-        el.style.left = ((bx+bioDotD+bioDotGap)*scale)+'px';
-        el.style.top = ((badgeY-bioTextTopOffset)*scale)+'px';
-        el.style.fontWeight = '700';
-        el.style.fontSize = (s.bioFontSize*0.3528*scale)+'px';
-        el.style.color = s.bioColor;
-        label.appendChild(el);
-      } else {
-        const abH = abW/LOGO_AB_RATIO;
-        const el = document.createElement('img');
-        el.src = LOGO_AB_URI;
-        el.style.left = (bx*scale)+'px';
-        el.style.top = ((badgeY-abH/2)*scale)+'px';
-        el.style.width = (abW*scale)+'px';
-        label.appendChild(el);
-      }
-      bx += abW + 2.5;
-    }
-    if(pinTextShown){
-      const pinPx = pinIconW*scale;
-      const svg = lsBuildPinSvg(s.localColor, pinPx);
-      svg.style.left = (bx*scale)+'px';
-      svg.style.top = (badgeY*scale - pinPx*0.5)+'px';
-      label.appendChild(svg);
-      const txt = document.createElement('div');
-      txt.textContent = pinTextShown;
-      txt.style.left = ((bx+pinIconW)*scale)+'px';
-      txt.style.top = ((badgeY-bioTextTopOffset)*scale)+'px';
-      txt.style.fontWeight = '700';
-      txt.style.fontSize = (s.bioFontSize*0.3528*scale)+'px';
-      txt.style.color = s.localColor;
-      label.appendChild(txt);
-    }
-
     // Bloc prix : ancré depuis le bas (marge >= 4mm, revue-graphiste #5), empilé du bas
     // vers le haut, avec une unité dérivée de la police du prix mais toujours nettement
     // plus petite (revue-graphiste #4) — reflète drawLabelDetail (revue-graphiste #2).
@@ -5092,11 +5175,11 @@
       el.className = 'ls-wrap';
       el.textContent = `soit ${pu.priceKgStr}/kg`;
       el.style.bottom = (fromBottomD*scale)+'px';
-      el.style.fontSize = (7*0.3528*scale)+'px';
+      el.style.fontSize = (s.detailKgFont*0.3528*scale)+'px';
       el.style.color = '#969696';
       lsApplyAlignX(el, align, w, pad, scale);
       label.appendChild(el);
-      fromBottomD += 7*0.42 + 1.8;
+      fromBottomD += s.detailKgFont*0.42 + 1.8;
     }
     if(pu.unitLabel){
       const el = document.createElement('div');
@@ -5129,7 +5212,7 @@
         el.textContent = `Allerg. ${codes.join(',')}`;
         el.style.right = (pad*scale)+'px';
         el.style.bottom = (4*scale)+'px';
-        el.style.fontSize = (6*0.3528*scale)+'px';
+        el.style.fontSize = (s.allergenFontSize*0.3528*scale)+'px';
         el.style.color = '#787066';
         label.appendChild(el);
       }
@@ -5160,58 +5243,68 @@
     pluEl.style.color = '#2A2420';
     label.appendChild(pluEl);
 
-    // Repère bio/local, à côté du PLU — reflète drawLabelCompact (revue-graphiste #1) : point
-    // + "BIO", épingle + "Local"/pays, taille de police réduite dérivée de s.bioFontSize.
+    // Repère bio/local, à côté du PLU — reflète drawLabelCompact (revue-graphiste #1 puis
+    // évolution "badges empilés") : point + "BIO", épingle + "Local"/pays. L'espace de cette
+    // trame est trop contraint pour empiler les badges autour du logo comme en trame
+    // détaillée ; ils restent en ligne, mais leurs tailles dérivent désormais des réglages
+    // dédiés (bioDotSize/localIconSize/bioFontSize/localFontSize), proportionnellement
+    // réduites, au lieu de constantes fixes.
     const nomLowerC = (r[1]||'').toLowerCase();
     const isBioC = (r[BIZCOL.BIO]||'').trim()!=='' ? (r[BIZCOL.BIO]||'').trim()==='1' : nomLowerC.includes('bio');
     const isLocalC = (r[BIZCOL.LOCAL]||'').trim()!=='' ? (r[BIZCOL.LOCAL]||'').trim()==='1' : nomLowerC.includes('local');
     const paysC = (r[BIZCOL.PAYS]||'').trim();
     const pinTextC = isLocalC ? 'Local' : paysC;
     if(isBioC || pinTextC){
-      const badgeFontC = Math.max(4, Math.min(6, s.bioFontSize*0.65));
+      const bioDotDC = 2*Math.max(0.6, Math.min(1.6, s.bioDotSize*0.25));
+      const pinDC = 2*Math.max(0.6, Math.min(1.6, s.localIconSize*0.25));
+      const bioBadgeFontC = Math.max(4, Math.min(6, s.bioFontSize*0.65));
+      const localBadgeFontC = Math.max(4, Math.min(6, s.localFontSize*0.65));
       // largeur réelle du PLU mesurée à sa police (6,5pt normal), comme côté jsPDF
       const badgeLeftMm = pad + lsMeasureTextWidthMm(pluStr, 6.5, false) + 1.5;
       let bx = badgeLeftMm;
       const maxBadgeRightMm = w - pad;
-      const badgeTextTopOffset = badgeFontC * 0.325;
       if(isBioC){
+        // centre du point à 3,5 mm du haut de l'étiquette, quelle que soit sa taille (comme
+        // l'ancien point fixe de 2,2 mm dont il reprend le centre)
         const dot = document.createElement('div');
         dot.style.left = (bx*scale)+'px';
-        dot.style.top = ((1+1.4)*scale)+'px';
-        dot.style.width = (2.2*scale)+'px';
-        dot.style.height = (2.2*scale)+'px';
+        dot.style.top = ((3.5-bioDotDC/2)*scale)+'px';
+        dot.style.width = (bioDotDC*scale)+'px';
+        dot.style.height = (bioDotDC*scale)+'px';
         dot.style.borderRadius = '50%';
         dot.style.background = s.bioColor || '#3C823C';
         label.appendChild(dot);
-        bx += 2.6;
+        bx += bioDotDC+0.4;
         const txt = document.createElement('div');
         txt.textContent = 'BIO';
         txt.style.left = (bx*scale)+'px';
-        txt.style.top = ((1+2.4-badgeTextTopOffset)*scale)+'px';
+        txt.style.top = ((1+2.4-bioBadgeFontC*0.325)*scale)+'px';
         txt.style.fontWeight = '700';
-        txt.style.fontSize = (badgeFontC*0.3528*scale)+'px';
+        txt.style.fontSize = (bioBadgeFontC*0.3528*scale)+'px';
         txt.style.color = s.bioColor || '#3C823C';
         label.appendChild(txt);
-        bx += lsMeasureTextWidthMm('BIO', badgeFontC, true) + 2;
+        bx += lsMeasureTextWidthMm('BIO', bioBadgeFontC, true) + 2;
       }
       if(pinTextC){
+        // centre de l'épingle à 3,1 mm du haut de l'étiquette, quelle que soit sa taille
+        // (comme l'ancienne épingle fixe de 2,2 mm dont elle reprend le centre)
         const pin = document.createElement('div');
         pin.style.left = (bx*scale)+'px';
-        pin.style.top = ((1+1)*scale)+'px';
-        pin.style.width = (2.2*scale)+'px';
-        pin.style.height = (2.2*scale)+'px';
+        pin.style.top = ((3.1-pinDC/2)*scale)+'px';
+        pin.style.width = (pinDC*scale)+'px';
+        pin.style.height = (pinDC*scale)+'px';
         pin.style.borderRadius = '50% 50% 50% 0';
         pin.style.transform = 'rotate(-45deg)';
         pin.style.background = s.localColor || '#DB4437';
         label.appendChild(pin);
-        bx += 2.6;
-        const shown = lsTruncateToWidth(pinTextC, badgeFontC, true, maxBadgeRightMm-bx);
+        bx += pinDC+0.4;
+        const shown = lsTruncateToWidth(pinTextC, localBadgeFontC, true, maxBadgeRightMm-bx);
         const txt = document.createElement('div');
         txt.textContent = shown;
         txt.style.left = (bx*scale)+'px';
-        txt.style.top = ((1+2-badgeTextTopOffset)*scale)+'px';
+        txt.style.top = ((1+2-localBadgeFontC*0.325)*scale)+'px';
         txt.style.fontWeight = '700';
-        txt.style.fontSize = (badgeFontC*0.3528*scale)+'px';
+        txt.style.fontSize = (localBadgeFontC*0.3528*scale)+'px';
         txt.style.color = s.localColor || '#DB4437';
         label.appendChild(txt);
       }
@@ -5250,10 +5343,10 @@
       el.textContent = `soit ${pu.priceKgStr}/kg`;
       el.style.right = (pad*scale)+'px';
       el.style.bottom = (fromBottomMm*scale)+'px';
-      el.style.fontSize = (6*0.3528*scale)+'px';
+      el.style.fontSize = (s.compactKgFont*0.3528*scale)+'px';
       el.style.color = '#827c6f';
       label.appendChild(el);
-      fromBottomMm += 6*0.42 + 1.4;
+      fromBottomMm += s.compactKgFont*0.42 + 1.4;
     }
     if(pu.unitLabel){
       const el = document.createElement('div');
