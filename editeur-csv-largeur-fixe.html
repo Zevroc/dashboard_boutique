@@ -574,6 +574,19 @@
     max-height:60vh;
     overflow:auto;
   }
+  .field-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px 16px;
+  }
+  .field-grid input[type=number]{
+    width:100%;
+    padding:7px 9px;
+    border:1px solid var(--paper-line);
+    border-radius:6px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:13px;
+  }
   .field{
     margin-bottom:16px;
   }
@@ -1002,6 +1015,7 @@
       <button class="menu-item" id="btnImportSystem">⇪ Importer les fichiers système</button>
       <input type="file" id="systemFileInput" accept=".csv,.CSV,text/csv" multiple>
       <button class="menu-item" id="btnEditSystem">✎ Catégories, identité boutique, messages…</button>
+      <button class="menu-item" id="btnLabelSettings">✎ Personnaliser les trames d'étiquettes</button>
       <button class="menu-item" id="btnExportSystemZip">⇩ Exporter l'export complet (ZIP)</button>
     </div>
   </details>
@@ -1482,6 +1496,56 @@
   </div>
 </div>
 
+<div class="sheet-overlay" id="labelSettingsOverlay">
+  <div class="sheet-modal renum-modal" style="max-width:560px;">
+    <div class="sheet-head">
+      <div class="titles">
+        <p class="eyebrow2">Étiquettes</p>
+        <h2>Personnaliser les trames</h2>
+      </div>
+      <button class="sheet-close" id="labelSettingsClose">✕</button>
+    </div>
+    <div class="sheet-body renum-body">
+      <p class="renum-intro">Ajuste dimensions et tailles de police — s'applique immédiatement à la prochaine génération de PDF.</p>
+
+      <p class="biz-title">Trame détaillée</p>
+      <div class="field-grid">
+        <div class="field"><div class="field-label"><span class="name">Largeur (mm)</span></div>
+          <input type="number" id="lsDetailW" min="20" max="120" step="1"></div>
+        <div class="field"><div class="field-label"><span class="name">Hauteur (mm)</span></div>
+          <input type="number" id="lsDetailH" min="20" max="180" step="1"></div>
+        <div class="field"><div class="field-label"><span class="name">Police nom produit (pt)</span></div>
+          <input type="number" id="lsDetailNameFont" min="8" max="28" step="0.5"></div>
+        <div class="field"><div class="field-label"><span class="name">Police prix (pt)</span></div>
+          <input type="number" id="lsDetailPriceFont" min="8" max="36" step="0.5"></div>
+      </div>
+
+      <p class="biz-title" style="margin-top:18px;">Trame compacte</p>
+      <div class="field-grid">
+        <div class="field"><div class="field-label"><span class="name">Colonnes par page</span></div>
+          <input type="number" id="lsCompactCols" min="1" max="10" step="1"></div>
+        <div class="field"><div class="field-label"><span class="name">Lignes par page</span></div>
+          <input type="number" id="lsCompactRows" min="1" max="14" step="1"></div>
+        <div class="field"><div class="field-label"><span class="name">Police nom produit (pt)</span></div>
+          <input type="number" id="lsCompactNameFont" min="5" max="18" step="0.5"></div>
+        <div class="field"><div class="field-label"><span class="name">Police prix (pt)</span></div>
+          <input type="number" id="lsCompactPriceFont" min="6" max="24" step="0.5"></div>
+      </div>
+
+      <p class="biz-title" style="margin-top:18px;">Badge Bio (trame détaillée)</p>
+      <label class="toggleLabel" style="margin:8px 0;">
+        <input type="checkbox" id="lsBioAsText">
+        <span class="toggleSwitch"></span>
+        Afficher "BIO" en texte vert plutôt que le logo AB
+      </label>
+    </div>
+    <div class="sheet-foot" style="justify-content:space-between;">
+      <button class="btn ghost" id="lsResetDefaults">Réinitialiser aux valeurs par défaut</button>
+      <button class="btn primary" id="lsSave">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
 <div class="sheet-overlay" id="systemOverlay">
   <div class="sheet-modal renum-modal">
     <div class="sheet-head">
@@ -1558,7 +1622,14 @@
     sysRaw: { gru:null, isc:null, bco:null, tar:null, tra:null, ing:null, iop:null, ipr:null }, // fichiers systèmes bruts (passthrough ou édition avec padding conservé)
     salesHistory: {}, // { 'JJ.MM.AAAA': { [plu]: { nom, count, amount(centimes) } } }
     ticketCounts: {}, // { 'JJ.MM.AAAA': nombre de tickets, depuis les fichiers .PAY }
-    colWidths: {} // { [indexColonne]: largeurPx } — auto-calculé au premier affichage, ajustable ensuite à la main
+    colWidths: {}, // { [indexColonne]: largeurPx } — auto-calculé au premier affichage, ajustable ensuite à la main
+    labelSettings: {
+      detailW: 44, detailH: 88,
+      compactCols: 4, compactRows: 8,
+      detailNameFont: 14, detailPriceFont: 13,
+      compactNameFont: 8.5, compactPriceFont: 13,
+      bioAsText: true // remplace le logo AB par un texte "BIO" en vert
+    }
   };
   // colonnes affichées par défaut en vue compacte (0-indexées) : PLU, Nom, Prix, Catégorie
   const COMPACT_COLS = [0,1,4,5];
@@ -4005,10 +4076,14 @@
 
   // ---------- Étiquettes à imprimer et découper ----------
   const LABEL_MARGIN = 8, LABEL_GAP = 2;
-  const LABEL_TEMPLATES = {
-    compact: { name:'Compacte (prix)', cols:4, rows:8 },
-    detail:  { name:'Détaillée (infos)', w:44, h:88 } // taille fixe demandée : 44mm large x 88mm haut
-  };
+  function getLabelTemplates(){
+    const s = state.labelSettings;
+    return {
+      compact: { name:'Compacte (prix)', cols:s.compactCols, rows:s.compactRows },
+      detail:  { name:'Détaillée (infos)', w:s.detailW, h:s.detailH }
+    };
+  }
+  const LABEL_TEMPLATES = getLabelTemplates(); // conservé pour l'UI (menu, libellés) — la génération relit getLabelTemplates() à chaque fois pour suivre les réglages courants
   // Retourne {w,h,cols} : soit dérivés d'une grille cols x rows (remplit toute la page),
   // soit d'une taille fixe en mm (le nombre de colonnes qui tient est alors calculé).
   function labelCellSize(tpl){
@@ -4126,6 +4201,55 @@
     render();
   });
 
+  // ---------- Réglages des trames d'étiquettes ----------
+  const labelSettingsOverlay = $('labelSettingsOverlay');
+  const LABEL_SETTINGS_DEFAULTS = {
+    detailW: 44, detailH: 88,
+    compactCols: 4, compactRows: 8,
+    detailNameFont: 14, detailPriceFont: 13,
+    compactNameFont: 8.5, compactPriceFont: 13,
+    bioAsText: true
+  };
+  function fillLabelSettingsForm(){
+    const s = state.labelSettings;
+    $('lsDetailW').value = s.detailW;
+    $('lsDetailH').value = s.detailH;
+    $('lsDetailNameFont').value = s.detailNameFont;
+    $('lsDetailPriceFont').value = s.detailPriceFont;
+    $('lsCompactCols').value = s.compactCols;
+    $('lsCompactRows').value = s.compactRows;
+    $('lsCompactNameFont').value = s.compactNameFont;
+    $('lsCompactPriceFont').value = s.compactPriceFont;
+    $('lsBioAsText').checked = !!s.bioAsText;
+  }
+  $('btnLabelSettings').addEventListener('click', ()=>{
+    fillLabelSettingsForm();
+    labelSettingsOverlay.classList.add('show');
+  });
+  function closeLabelSettings(){ labelSettingsOverlay.classList.remove('show'); }
+  $('labelSettingsClose').addEventListener('click', closeLabelSettings);
+  labelSettingsOverlay.addEventListener('click', (e)=>{ if(e.target===labelSettingsOverlay) closeLabelSettings(); });
+  $('lsResetDefaults').addEventListener('click', ()=>{
+    state.labelSettings = { ...LABEL_SETTINGS_DEFAULTS };
+    fillLabelSettingsForm();
+  });
+  $('lsSave').addEventListener('click', ()=>{
+    const num = (id, fallback)=>{ const v = parseFloat($(id).value); return isNaN(v) ? fallback : v; };
+    state.labelSettings = {
+      detailW: num('lsDetailW', LABEL_SETTINGS_DEFAULTS.detailW),
+      detailH: num('lsDetailH', LABEL_SETTINGS_DEFAULTS.detailH),
+      compactCols: Math.max(1, Math.round(num('lsCompactCols', LABEL_SETTINGS_DEFAULTS.compactCols))),
+      compactRows: Math.max(1, Math.round(num('lsCompactRows', LABEL_SETTINGS_DEFAULTS.compactRows))),
+      detailNameFont: num('lsDetailNameFont', LABEL_SETTINGS_DEFAULTS.detailNameFont),
+      detailPriceFont: num('lsDetailPriceFont', LABEL_SETTINGS_DEFAULTS.detailPriceFont),
+      compactNameFont: num('lsCompactNameFont', LABEL_SETTINGS_DEFAULTS.compactNameFont),
+      compactPriceFont: num('lsCompactPriceFont', LABEL_SETTINGS_DEFAULTS.compactPriceFont),
+      bioAsText: $('lsBioAsText').checked
+    };
+    persistSession();
+    closeLabelSettings();
+  });
+
   function drawCutGuide(doc, x, y, w, h){
     doc.setDrawColor(180,170,150);
     doc.setLineWidth(0.15);
@@ -4136,6 +4260,7 @@
 
   function drawLabelCompact(doc, x, y, w, h, r){
     drawCutGuide(doc, x, y, w, h);
+    const s = state.labelSettings;
     const pad = 2.5;
     doc.setTextColor(42,36,32);
     doc.setFont('helvetica','normal');
@@ -4143,7 +4268,7 @@
     doc.text((r[0]||'').trim(), x+pad, y+5);
 
     doc.setFont('helvetica','bold');
-    doc.setFontSize(8.5);
+    doc.setFontSize(s.compactNameFont);
     const nomLines = doc.splitTextToSize((r[1]||'').trim(), w-2*pad);
     doc.text(nomLines.slice(0,1), x+pad, y+10);
 
@@ -4153,7 +4278,7 @@
 
     const pu = priceAndUnitFor(r);
     doc.setFont('helvetica','bold');
-    doc.setFontSize(13);
+    doc.setFontSize(s.compactPriceFont);
     doc.setTextColor(...BRAND_COLOR);
     doc.text(pu.priceStr, x+w-pad, y+h-8.5, { align:'right' });
     if(pu.unitLabel){
@@ -4169,6 +4294,7 @@
 
   function drawLabelDetail(doc, x, y, w, h, r){
     drawCutGuide(doc, x, y, w, h);
+    const s = state.labelSettings;
     const pad = 4;
     doc.setTextColor(42,36,32);
     doc.setFont('helvetica','normal');
@@ -4176,7 +4302,7 @@
     doc.text((r[0]||'').trim(), x+pad, y+7);
 
     doc.setFont('helvetica','bold');
-    doc.setFontSize(14);
+    doc.setFontSize(s.detailNameFont);
     const nomLines = doc.splitTextToSize((r[1]||'').trim(), w-2*pad);
     doc.text(nomLines.slice(0,3), x+w/2, y+16, { align:'center' });
 
@@ -4192,21 +4318,28 @@
     const isBio = bioStored!=='' ? bioStored==='1' : nomLower.includes('bio');
     const isLocal = localStored!=='' ? localStored==='1' : nomLower.includes('local');
     const badgeY = iconCy + iconH/2 + 9;
-    const abW = 5.5, abH = abW/LOGO_AB_RATIO, pinW = 5.5;
+    const abW = s.bioAsText ? 9 : 5.5, abH = abW/LOGO_AB_RATIO, pinW = 5.5;
     let badgesWidth = 0;
     if(isBio) badgesWidth += abW;
     if(isLocal) badgesWidth += pinW;
     if(isBio && isLocal) badgesWidth += 2.5;
     let bx = x+w/2 - badgesWidth/2;
     if(isBio){
-      doc.addImage(LOGO_AB_URI, 'PNG', bx, badgeY-abH/2, abW, abH);
+      if(s.bioAsText){
+        doc.setFont('helvetica','bold');
+        doc.setFontSize(8);
+        doc.setTextColor(60,130,60);
+        doc.text('BIO', bx, badgeY+1.4);
+      } else {
+        doc.addImage(LOGO_AB_URI, 'PNG', bx, badgeY-abH/2, abW, abH);
+      }
       bx += abW+2.5;
     }
     if(isLocal){ drawMapPin(doc, bx+1.8, badgeY, 2.2); bx += pinW; }
 
     const pu = priceAndUnitFor(r);
     doc.setFont('helvetica','bold');
-    doc.setFontSize(13);
+    doc.setFontSize(s.detailPriceFont);
     doc.setTextColor(...BRAND_COLOR);
     doc.text(pu.priceStr, x+w/2, y+h-18, { align:'center' });
     if(pu.unitLabel){
@@ -4260,7 +4393,7 @@
     }
 
     Object.entries(byTemplate).forEach(([tplKey, articles])=>{
-      const tpl = LABEL_TEMPLATES[tplKey];
+      const tpl = getLabelTemplates()[tplKey];
       const { w, h, cols } = labelCellSize(tpl);
       const drawFn = tplKey==='detail' ? drawLabelDetail : drawLabelCompact;
 
