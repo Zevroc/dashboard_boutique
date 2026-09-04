@@ -3764,7 +3764,7 @@
   // "Synchro directe via API Dolibarr"). productRows/categoryListRows/categoryRows suivent
   // exactement le format des fichiers d'export Dolibarr (mêmes noms de colonnes), que la
   // source soit un fichier uploadé ou reconstruite depuis les réponses JSON de l'API.
-  function applyDolibarrImportData(productRows, categoryListRows, categoryRows, sourceLabel){
+  function applyDolibarrImportData(productRows, categoryListRows, categoryRows, sourceLabel, extraWarnings){
     // ---- Liste des catégories : classe chaque ID (vraie catégorie / Bio / Local / allergène) ----
     function findCategoryCodeByLabel(dolibarrLabel){
       const target = (dolibarrLabel||'').trim().toLowerCase();
@@ -4025,6 +4025,9 @@
     if(sourceLabel==='api'){
       msg += `\n\nRappel : en synchro API, "Fournisseur" et "Prix d'achat" ne sont pas encore récupérés (limitation connue de la V1) — les valeurs déjà présentes dans la base sont conservées.`;
     }
+    if(extraWarnings && extraWarnings.length){
+      extraWarnings.forEach(w=>{ msg += `\n\n⚠ ${w}`; });
+    }
     alert(msg);
   }
 
@@ -4188,9 +4191,14 @@
 
       const productRows = [];
       const categoryRows = [];
+      // Produits Dolibarr sans référence (ref) : ignorés (impossible à rapprocher/afficher sans
+      // PLU), mais désormais comptabilisés et signalés dans le message final — piste probable en
+      // cas d'écart de nombre de produits entre la synchro API et un export fichier Dolibarr, qui
+      // lui n'applique pas ce filtre.
+      const skippedNoRef = [];
       products.forEach(p=>{
         const ref = String(p.ref||'').trim();
-        if(!ref) return;
+        if(!ref){ skippedNoRef.push(p.label || `#${p.id}`); return; }
         const opts = p.array_options || {};
         productRows.push({
           'Réf.': ref,
@@ -4216,7 +4224,11 @@
         });
       });
 
-      applyDolibarrImportData(productRows, categoryListRows, categoryRows, 'api');
+      const extraWarnings = [];
+      if(skippedNoRef.length){
+        extraWarnings.push(`${skippedNoRef.length} produit(s) Dolibarr sans référence (ref) ignoré(s) par la synchro API (absents de la base) : ${skippedNoRef.slice(0,15).join(', ')}${skippedNoRef.length>15?'…':''}.`);
+      }
+      applyDolibarrImportData(productRows, categoryListRows, categoryRows, 'api', extraWarnings);
     } catch(err){
       alert("Échec de la synchronisation avec Dolibarr : " + err.message);
     } finally {
