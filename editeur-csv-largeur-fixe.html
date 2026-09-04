@@ -1117,6 +1117,12 @@
       <option value="ALL">Toutes</option>
     </select>
   </label>
+  <label class="filterLabel" id="positionCamionFilterLabel" style="display:none;">
+    Position camion
+    <select id="positionCamionFilter">
+      <option value="ALL">Toutes</option>
+    </select>
+  </label>
   <label class="filterLabel" id="searchLabel" style="display:none;">
     Recherche
     <input type="text" id="searchInput" placeholder="nom ou PLU…">
@@ -1555,6 +1561,7 @@
           <select id="labelsSortBy">
             <option value="nom">Nom du produit</option>
             <option value="emplacement">Emplacement</option>
+            <option value="position_camion">Position dans le camion</option>
             <option value="plu">PLU</option>
           </select>
         </label>
@@ -1565,6 +1572,7 @@
             <th>PLU</th>
             <th>Nom du produit</th>
             <th>Emplacement</th>
+            <th>Position camion</th>
             <th>Trame</th>
           </tr>
         </thead>
@@ -1776,6 +1784,7 @@
     fileName: 'export.CSV',
     categoryFilter: 'ALL',
     subCategoryFilter: 'ALL',
+    positionCamionFilter: 'ALL',
     searchText: '',
     showAllCols: false,
     allergens: {}, // PLU (string) -> array de codes allergènes [1..14]
@@ -1851,6 +1860,8 @@
   const categoryFilter = $('categoryFilter');
   const subCategoryFilterLabel = $('subCategoryFilterLabel');
   const subCategoryFilter = $('subCategoryFilter');
+  const positionCamionFilterLabel = $('positionCamionFilterLabel');
+  const positionCamionFilter = $('positionCamionFilter');
   const searchLabel = $('searchLabel');
   const searchInput = $('searchInput');
   const searchClear = $('searchClear');
@@ -1910,7 +1921,7 @@
     'PLU','Nom','Champ 3','Type','Prix vente','Catégorie','Champ 7','Champ 8','Champ 9',
     'Champ 10','Champ 11','Champ 12','Code','Statut','Département','Code long','Champ 17','Champ 18','Champ 19'
   ];
-  const SHORT_BIZ_LABELS = ['Fournisseur','Prix achat','TVA','Stock','Stock mini','Stock maxi','Bio','Local','Trame étiquette','Affichage prix','Groupe variantes','Taille lot','Période commande','Description longue','Sous-catégorie','Emplacement','Pays'];
+  const SHORT_BIZ_LABELS = ['Fournisseur','Prix achat','TVA','Stock','Stock mini','Stock maxi','Bio','Local','Trame étiquette','Affichage prix','Groupe variantes','Taille lot','Période commande','Description longue','Sous-catégorie','Emplacement','Pays','Position camion'];
   function shortColLabel(c){
     if(c < SHORT_COL_LABELS.length) return SHORT_COL_LABELS[c];
     const bi = c - 19;
@@ -1921,9 +1932,9 @@
   // ---------- Base articles : champs métier ajoutés après les 19 colonnes balance ----------
   // Index 19 à 25. Ces colonnes ne sont JAMAIS envoyées dans le CSV balance (voir buildCsvText) —
   // elles ne vivent que dans la base articles complète.
-  const BIZCOL = { FOURNISSEUR:19, ACHAT_HT:20, TVA:21, STOCK:22, STOCK_MINI:23, STOCK_MAXI:24, BIO:25, LOCAL:26, TEMPLATE:27, UNIT_DISPLAY:28, GROUP:29, PACK_SIZE:30, ORDER_PERIOD:31, DESC_LONGUE:32, SUB_CATEGORY:33, EMPLACEMENT:34, PAYS:35 };
-  const BIZ_COL_COUNT = 17;
-  const BIZ_HEADERS = ['Fournisseur','Prix achat HT (centimes)','Taux TVA (%)','Stock actuel','Stock mini','Stock maxi','Bio (1/0)','Local (1/0)','Trame étiquette','Affichage prix (kg/100g)','Groupe de variantes','Taille du lot (unités)','Période de commande','Description longue','Sous-catégorie (Dolibarr, hors export balance)','Emplacement (Dolibarr, tri des étiquettes)','Pays d\'origine (étiquette, si produit non local)'];
+  const BIZCOL = { FOURNISSEUR:19, ACHAT_HT:20, TVA:21, STOCK:22, STOCK_MINI:23, STOCK_MAXI:24, BIO:25, LOCAL:26, TEMPLATE:27, UNIT_DISPLAY:28, GROUP:29, PACK_SIZE:30, ORDER_PERIOD:31, DESC_LONGUE:32, SUB_CATEGORY:33, EMPLACEMENT:34, PAYS:35, POSITION_CAMION:36 };
+  const BIZ_COL_COUNT = 18;
+  const BIZ_HEADERS = ['Fournisseur','Prix achat HT (centimes)','Taux TVA (%)','Stock actuel','Stock mini','Stock maxi','Bio (1/0)','Local (1/0)','Trame étiquette','Affichage prix (kg/100g)','Groupe de variantes','Taille du lot (unités)','Période de commande','Description longue','Sous-catégorie (Dolibarr, hors export balance)','Emplacement (Dolibarr, tri des étiquettes)','Pays d\'origine (étiquette, si produit non local)','Position dans le camion (Dolibarr, tri/filtre)'];
   const ORDER_PERIODS = {
     hebdo:      { label:'Hebdomadaire (7 jours)', days:7 },
     quinzaine:  { label:'Toutes les 2 semaines (15 jours)', days:15 },
@@ -2234,6 +2245,35 @@
     return raw.split(',').map(s=>s.trim()).includes(state.subCategoryFilter);
   }
 
+  function updatePositionCamionOptions(){
+    const POSCOL = BIZCOL.POSITION_CAMION;
+    const hasAny = state.rows.some(r=> (r[POSCOL]||'').trim());
+    if(state.rows.length===0 || !hasAny){
+      positionCamionFilterLabel.style.display = 'none';
+      return;
+    }
+    positionCamionFilterLabel.style.display = 'flex';
+    const counts = {};
+    state.rows.forEach(r=>{
+      const raw = (r[POSCOL]||'').trim();
+      if(!raw) return;
+      counts[raw] = (counts[raw]||0)+1;
+    });
+    const values = Object.keys(counts).sort((a,b)=> a.localeCompare(b,'fr'));
+    const prev = state.positionCamionFilter;
+    positionCamionFilter.innerHTML = '<option value="ALL">Toutes</option>' +
+      values.map(v=> `<option value="${escapeHtml(v)}">${escapeHtml(v)} (${counts[v]})</option>`).join('');
+    if(prev!=='ALL' && !values.includes(prev)) state.positionCamionFilter = 'ALL';
+    positionCamionFilter.value = state.positionCamionFilter;
+  }
+
+  function matchesPositionCamionFilter(row){
+    if(state.positionCamionFilter==='ALL') return true;
+    const raw = (row[BIZCOL.POSITION_CAMION]||'').trim();
+    if(!raw) return false;
+    return raw === state.positionCamionFilter;
+  }
+
   function render(){
     dropzone.style.display = 'none';
     sheetWrap.classList.add('show');
@@ -2254,6 +2294,7 @@
     btnExportExcel.disabled = false;
     updateCategoryOptions();
     updateSubCategoryOptions();
+    updatePositionCamionOptions();
     searchLabel.style.display = 'flex';
     allColsLabel.style.display = 'flex';
 
@@ -2359,6 +2400,7 @@
       .map((row, ri)=>({row, ri}))
       .filter(x => state.categoryFilter==='ALL' || (x.row[CATCOL]||'').trim() === state.categoryFilter)
       .filter(x => matchesSubCategoryFilter(x.row))
+      .filter(x => matchesPositionCamionFilter(x.row))
       .filter(x => !q || (x.row[0]||'').toLowerCase().includes(q) || (x.row[1]||'').toLowerCase().includes(q));
 
     const visiblePlus = visibleRows.map(x=> (x.row[0]||'').trim());
@@ -2577,9 +2619,10 @@
     const visibleCount = state.rows
       .filter(r => state.categoryFilter==='ALL' || (r[CATCOL]||'').trim() === state.categoryFilter)
       .filter(r => matchesSubCategoryFilter(r))
+      .filter(r => matchesPositionCamionFilter(r))
       .filter(r => !q || (r[0]||'').toLowerCase().includes(q) || (r[1]||'').toLowerCase().includes(q))
       .length;
-    const filtered = state.categoryFilter!=='ALL' || state.subCategoryFilter!=='ALL' || !!q;
+    const filtered = state.categoryFilter!=='ALL' || state.subCategoryFilter!=='ALL' || state.positionCamionFilter!=='ALL' || !!q;
     const rowsPill = filtered
       ? `${visibleCount} / ${state.rows.length} lignes affichées`
       : `${state.rows.length} lignes`;
@@ -3208,6 +3251,11 @@
     state.selectedRow = -1;
     render();
   });
+  positionCamionFilter.addEventListener('change', ()=>{
+    state.positionCamionFilter = positionCamionFilter.value;
+    state.selectedRow = -1;
+    render();
+  });
   searchInput.addEventListener('input', ()=>{
     state.searchText = searchInput.value;
     searchClear.style.display = state.searchText ? 'inline-flex' : 'none';
@@ -3713,6 +3761,7 @@
     const allergenIdToCode = {};     // id Dolibarr -> code allergene 1-14
     const bioIds = new Set(), localIds = new Set();
     const emplacementIds = new Set(); // id -> reconnu via catMeta[id].label directement
+    const positionCamionIds = new Set(); // id -> toute catégorie dont le parent est "Position dans Camion"
     Object.entries(catMeta).forEach(([id,m])=>{
       if(m.parentLabel==='Produits'){
         const code = findCategoryCodeByLabel(m.label);
@@ -3728,6 +3777,8 @@
         if(match) allergenIdToCode[id] = parseInt(match[1],10);
       } else if(m.parentLabel==='Emplacement'){
         emplacementIds.add(id);
+      } else if(m.parentLabel==='Position dans Camion'){
+        positionCamionIds.add(id);
       }
     });
     // Sous-catégorie : toute catégorie qui n'est ni Bio/Local/Allergène ni une des 5
@@ -3745,7 +3796,7 @@
     const subCategoryIds = new Set();
     Object.entries(catMeta).forEach(([id,m])=>{
       if(realCategoryIdToCode[id]) return; // deja classee comme categorie principale
-      if(bioIds.has(id) || localIds.has(id) || allergenIdToCode[id]!==undefined || emplacementIds.has(id)) return;
+      if(bioIds.has(id) || localIds.has(id) || allergenIdToCode[id]!==undefined || emplacementIds.has(id) || positionCamionIds.has(id)) return;
       if(m.parentLabel==='Produits') return; // deja geree ci-dessus (cas non reconnu -> ignoree, pas une sous-cat)
       if(isUnderProduits(id, 0)) subCategoryIds.add(id);
     });
@@ -3756,6 +3807,7 @@
     const allergensByPlu = {};
     const subCategoriesByPlu = {};
     const emplacementByPlu = {};
+    const positionCamionByPlu = {};
     categoryRows.forEach(r=>{
       const plu = String(r['Réf.']||'').replace(/^ref:/i,'').trim();
       const id = String(r['ID du(de la) tag/catégorie']||'').trim();
@@ -3769,6 +3821,9 @@
       }
       else if(emplacementIds.has(id)){
         emplacementByPlu[plu] = catMeta[id] ? catMeta[id].label : '';
+      }
+      else if(positionCamionIds.has(id)){
+        positionCamionByPlu[plu] = catMeta[id] ? catMeta[id].label : '';
       }
       else if(subCategoryIds.has(id)){
         if(!subCategoriesByPlu[plu]) subCategoriesByPlu[plu] = [];
@@ -3890,6 +3945,11 @@
       row[BIZCOL.EMPLACEMENT] = emplacementByPlu[pluStr] !== undefined
         ? emplacementByPlu[pluStr]
         : (existing ? existing[BIZCOL.EMPLACEMENT] : '');
+      // Position dans le camion (ex. "Panneau Arrière") — sert uniquement à trier/filtrer
+      // dans l'outil, jamais utilisée pour l'export balance.
+      row[BIZCOL.POSITION_CAMION] = positionCamionByPlu[pluStr] !== undefined
+        ? positionCamionByPlu[pluStr]
+        : (existing ? existing[BIZCOL.POSITION_CAMION] : '');
 
       // Allergènes : priorité aux catégories, repli sur l'extrafield texte "Allergènes"
       if(allergensByPlu[pluStr] && allergensByPlu[pluStr].length){
@@ -4463,6 +4523,13 @@
         return collator(ea,eb) || collator((a.row[1]||''),(b.row[1]||''));
       });
     }
+    if(sortBy==='position_camion'){
+      return rows.slice().sort((a,b)=>{
+        const pa = (a.row[BIZCOL.POSITION_CAMION]||'').trim() || 'zzz-sans-position';
+        const pb = (b.row[BIZCOL.POSITION_CAMION]||'').trim() || 'zzz-sans-position';
+        return collator(pa,pb) || collator((a.row[1]||''),(b.row[1]||''));
+      });
+    }
     if(sortBy==='plu'){
       return rows.slice().sort((a,b)=> collator((a.row[0]||''),(b.row[0]||'')));
     }
@@ -4496,6 +4563,11 @@
       tdEmpl.textContent = (row[BIZCOL.EMPLACEMENT]||'').trim() || '—';
       tdEmpl.style.color = 'var(--ink-soft)';
       tr.appendChild(tdEmpl);
+
+      const tdPosCamion = document.createElement('td');
+      tdPosCamion.textContent = (row[BIZCOL.POSITION_CAMION]||'').trim() || '—';
+      tdPosCamion.style.color = 'var(--ink-soft)';
+      tr.appendChild(tdPosCamion);
 
       const tdTrame = document.createElement('td');
       const sel = document.createElement('select');
@@ -7660,6 +7732,7 @@
       .filter(r => (r[1]||'').trim() && (r[1]||'').trim()!=='NON UTILISE')
       .filter(r => state.categoryFilter==='ALL' || (r[CATCOL]||'').trim() === state.categoryFilter)
       .filter(r => matchesSubCategoryFilter(r))
+      .filter(r => matchesPositionCamionFilter(r))
       .filter(r => !q || (r[0]||'').toLowerCase().includes(q) || (r[1]||'').toLowerCase().includes(q));
 
     if(filtered.length === 0){
