@@ -5186,25 +5186,27 @@
     const pu = priceAndUnitFor(r);
     const marginBottom = 3;
     const unitFont = Math.max(6, Math.min(9, s.compactPriceFont*0.6));
-    let cursorY = y+h-marginBottom;
+    // Emplacements fixes, comme en trame détaillée : le prix ne dépend plus de la présence de
+    // la ligne "soit X €/kg" ou de l'unité.
+    const kgLineYC = y+h-marginBottom;
+    const unitLineYC = kgLineYC - (s.compactKgFont*0.42 + 1.4);
+    const priceYC = unitLineYC - (unitFont*0.42 + 1.4);
     if(pu.showKgSecondary){
       doc.setFont('helvetica','normal');
       doc.setFontSize(s.compactKgFont);
       doc.setTextColor(130,124,114);
-      doc.text(`soit ${pu.priceKgStr}/kg`, x+w-pad, cursorY, { align:'right' });
-      cursorY -= s.compactKgFont*0.42 + 1.4;
+      doc.text(`soit ${pu.priceKgStr}/kg`, x+w-pad, kgLineYC, { align:'right' });
     }
     if(pu.unitLabel){
       doc.setFont('helvetica','normal');
       doc.setFontSize(unitFont);
       doc.setTextColor(96,88,78);
-      doc.text(pu.unitLabel, x+w-pad, cursorY, { align:'right' });
-      cursorY -= unitFont*0.42 + 1.4;
+      doc.text(pu.unitLabel, x+w-pad, unitLineYC, { align:'right' });
     }
     doc.setFont('helvetica','bold');
     doc.setFontSize(s.compactPriceFont);
     doc.setTextColor(...BRAND_COLOR);
-    doc.text(pu.priceStr, x+w-pad, cursorY, { align:'right' });
+    doc.text(pu.priceStr, x+w-pad, priceYC, { align:'right' });
   }
 
   // Bandeau logo (style 'band', trame détaillée uniquement) : dimensionne le logo de marque
@@ -5288,18 +5290,27 @@
     let belowY; // curseur vertical (mm) — position juste sous le dernier badge, point de départ du fournisseur/de la description
 
     if(useBand){
-      // Style bandeau : plus d'icône centrale à encadrer, le contenu s'enchaîne simplement du
-      // haut vers le bas sous le bandeau (nom déjà posé ci-dessus, puis badge Bio, puis badge
-      // Local, puis fournisseur/description) — les dessins des badges eux-mêmes (point+texte
-      // Bio, épingle+texte Local) sont repris tels quels du style 'icon', seule leur position
-      // verticale change (plus de centre à encadrer autour d'une icône qui n'existe plus ici).
+      // Style bandeau : le contenu s'enchaîne du haut vers le bas sous le bandeau (nom déjà posé
+      // ci-dessus, puis badge Bio, puis badge Local, puis fournisseur/description). Chaque
+      // emplacement (nom, Bio, Local) réserve toujours la même hauteur, qu'il soit rempli ou non
+      // — nom plafonné à 3 lignes (comme ellipsizeLines ci-dessus), badges Bio/Local à leur
+      // hauteur maximale — afin que la position de chaque repère reste identique d'une étiquette
+      // à l'autre, quels que soient les autres éléments présents (demande client : Bio/Local
+      // toujours au même endroit sur toutes les étiquettes d'une planche, qu'il y ait l'autre
+      // badge, un prix au kg ou des allergènes ou non).
+      const NAME_MAX_LINES = 3; // plafond d'ellipsizeLines(nomLines, 3) ci-dessus
       const nameLineH = s.detailNameFont*0.42; // hauteur de ligne approx (mm), même facteur que le bloc prix plus bas
-      let flowY = nomY + nomLinesShown.length*nameLineH + 2 + spacing;
+      const bioDotD = s.bioDotSize, bioDotGap = 0.8;
+      const bioTxtH = s.bioFontSize * 0.42;
+      const abImgW = 5.5, abImgH = abImgW/LOGO_AB_RATIO;
+      const bioSlotH = s.bioAsText ? (bioDotD+bioDotGap+bioTxtH) : abImgH; // hauteur réservée, badge affiché ou non
+      const headR = s.localIconSize/2;
+      const localTxtH = s.localFontSize * 0.42;
+      const localSlotH = headR*2.9 + 0.8 + localTxtH; // hauteur réservée (pointe de l'épingle + gap + texte), badge affiché ou non
+
+      let flowY = nomY + NAME_MAX_LINES*nameLineH + 2 + spacing; // emplacement Bio, fixe
 
       if(isBio){
-        const bioDotD = s.bioDotSize, bioDotGap = 0.8;
-        const bioTxtH = s.bioFontSize * 0.42;
-        const abImgW = 5.5, abImgH = abImgW/LOGO_AB_RATIO;
         if(s.bioAsText){
           const dotCy = flowY + bioDotD/2;
           doc.setFillColor(...hexToRgbArray(s.bioColor, [60,130,60]));
@@ -5309,54 +5320,49 @@
           doc.setFontSize(s.bioFontSize);
           doc.setTextColor(...hexToRgbArray(s.bioColor, [60,130,60]));
           doc.text('BIO', cx, textBaseline, { align:'center' });
-          flowY = textBaseline + 2.5;
         } else {
           doc.addImage(LOGO_AB_URI, 'PNG', cx-abImgW/2, flowY, abImgW, abImgH);
-          flowY += abImgH + 2.5;
         }
         doc.setTextColor(42,36,32);
       }
+      flowY += bioSlotH + 2.5; // emplacement Local, fixe (réserve toujours la place du badge Bio)
 
       if(pinTextShown){
-        const headR = s.localIconSize/2;
         const pinTopY = flowY; // haut de la tête de l'épingle, cf. drawMapPin (top = cy - headR*1.4)
         const pinCenterParam = pinTopY + headR*1.4;
         const pinTipY = pinTopY + headR*2.9; // pointe de l'épingle, cf. drawMapPin (tip = cy + headR*1.5)
         drawMapPin(doc, cx, pinCenterParam, headR, hexToRgbArray(s.localColor, PIN_RED));
-        const localTxtH = s.localFontSize * 0.42;
         const textBaseline = pinTipY + 0.8 + localTxtH*0.8;
         doc.setFont('helvetica','bold');
         doc.setFontSize(s.localFontSize);
         doc.setTextColor(...hexToRgbArray(s.localColor, PIN_RED));
         doc.text(pinTextShown, cx, textBaseline, { align:'center' });
         doc.setTextColor(42,36,32);
-        flowY = textBaseline + 2.5;
       }
+      flowY += localSlotH + 2.5; // emplacement fournisseur/description, fixe (réserve toujours la place du badge Local)
 
       belowY = flowY;
     } else {
-      // Style 'icon' (comportement historique, inchangé) : logo au centre de l'étiquette
-      // (réduit de 10%), toujours centré horizontalement, sert de repère visuel constant quand
-      // il est affiché. Verticalement, il descend d'une demi-hauteur de badge quand le badge
-      // Bio est actif au-dessus de lui (revue-graphiste badges #1) ; sans badge Bio, il remonte
-      // naturellement au centre exact de l'étiquette, sans laisser d'espace vide. Sans logo
-      // (showLogo=false), sa largeur/hauteur tombe à 0 — les badges empilés, qui se positionnent
-      // par rapport au logo (iconCy/iconH), se resserrent alors naturellement autour du centre.
+      // Style 'icon' : logo toujours centré exactement au milieu de l'étiquette (repère visuel
+      // constant), badges Bio et Local à des emplacements fixes au-dessus/en dessous — chacun
+      // réserve toujours sa hauteur maximale, qu'il soit affiché ou non, afin que la position de
+      // l'un ne dépende plus de la présence de l'autre (demande client : Bio/Local toujours au
+      // même endroit, quels que soient les autres éléments présents). Sans logo
+      // (showLogo=false), sa largeur/hauteur tombe à 0 mais iconCy reste le même point fixe.
       const iconW = showLogo ? Math.min(w,h)*0.32*0.9 : 0, iconH = showLogo ? iconW/LOGO_ICON_RATIO : 0;
       const badgeLogoGap = (showLogo ? 2 : 1) + spacing; // mm, entre un badge (bio ou local) et le logo (ou le centre, si logo masqué)
       const bioDotD = s.bioDotSize, bioDotGap = 0.8; // gap entre le point et le texte "BIO"
       const bioTxtH = s.bioFontSize * 0.42;
       const abImgW = 5.5, abImgH = abImgW/LOGO_AB_RATIO; // logo AB image, utilisé si bioAsText est désactivé
-      const bioBadgeH = isBio ? (s.bioAsText ? (bioDotD+bioDotGap+bioTxtH) : abImgH) : 0;
-      const iconCy = y+h/2 + (isBio ? (bioBadgeH+badgeLogoGap)/2 : 0);
+      const iconCy = y+h/2; // toujours le centre exact de l'étiquette, quel que soit le contenu
       if(showLogo){
         doc.addImage(LOGO_ICON_URI, 'PNG', cx-iconW/2, iconCy-iconH/2, iconW, iconH);
       }
 
-      // Badge Bio, empilé au-dessus du logo : point plein puis "BIO" en dessous (ou logo AB seul).
+      // Badge Bio, emplacement fixe au-dessus du logo : point plein puis "BIO" en dessous (ou logo AB seul).
+      const iconTop = iconCy - iconH/2;
+      const badgeBottom = iconTop - badgeLogoGap; // bas du badge, toujours au même endroit
       if(isBio){
-        const iconTop = iconCy - iconH/2;
-        const badgeBottom = iconTop - badgeLogoGap; // bas du badge, juste au-dessus du logo
         if(s.bioAsText){
           const textBaseline = badgeBottom;
           const dotCy = textBaseline - bioTxtH - bioDotGap - bioDotD/2;
@@ -5372,15 +5378,15 @@
         doc.setTextColor(42,36,32);
       }
 
-      // Badge Local, empilé sous le logo : épingle puis "Local"/pays en dessous.
+      // Badge Local, emplacement fixe sous le logo : épingle puis "Local"/pays en dessous.
       const localGap = 0.8; // gap entre la pointe de l'épingle et le texte
       const localTxtH = s.localFontSize * 0.42;
-      belowY = iconCy + iconH/2 + badgeLogoGap;
+      const headR = s.localIconSize/2;
+      const localSlotH = headR*2.9 + localGap + localTxtH; // hauteur réservée, badge affiché ou non
+      const localSlotTop = iconCy + iconH/2 + badgeLogoGap; // toujours le même point, que le badge Bio soit affiché ou non
       if(pinTextShown){
-        const headR = s.localIconSize/2;
-        const pinTopY = belowY; // haut de la tête de l'épingle, cf. drawMapPin (top = cy - headR*1.4)
-        const pinCenterParam = pinTopY + headR*1.4;
-        const pinTipY = pinTopY + headR*2.9; // pointe de l'épingle, cf. drawMapPin (tip = cy + headR*1.5)
+        const pinCenterParam = localSlotTop + headR*1.4;
+        const pinTipY = localSlotTop + headR*2.9; // pointe de l'épingle, cf. drawMapPin (tip = cy + headR*1.5)
         drawMapPin(doc, cx, pinCenterParam, headR, hexToRgbArray(s.localColor, PIN_RED));
         const textBaseline = pinTipY + localGap + localTxtH*0.8;
         doc.setFont('helvetica','bold');
@@ -5388,8 +5394,8 @@
         doc.setTextColor(...hexToRgbArray(s.localColor, PIN_RED));
         doc.text(pinTextShown, cx, textBaseline, { align:'center' });
         doc.setTextColor(42,36,32);
-        belowY = textBaseline + 2.5;
       }
+      belowY = localSlotTop + localSlotH + 2.5; // toujours fixe, badge Local affiché ou non
     }
 
     // fournisseur / description (optionnels), juste après les badges (avant le bloc prix)
@@ -5419,25 +5425,30 @@
     const pu = priceAndUnitFor(r);
     const marginBottomD = 4;
     const detailUnitFont = Math.max(7, Math.min(11, s.detailPriceFont*0.5));
-    let cursorYD = y+h-marginBottomD;
+    // Emplacements fixes, réservés qu'ils soient utilisés ou non : le prix (ligne principale)
+    // reste toujours à la même hauteur, que l'article ait ou non une ligne "soit X €/kg" ou une
+    // unité affichée — ces lignes optionnelles poussaient auparavant le prix vers le haut selon
+    // les cas (demande client : prix toujours au même endroit sur toutes les étiquettes d'une
+    // planche, avec ou sans prix au kg / allergènes).
+    const kgLineY = y+h-marginBottomD;
+    const unitLineY = kgLineY - (s.detailKgFont*0.42 + 1.8);
+    const priceY = unitLineY - (detailUnitFont*0.42 + 1.8);
     if(pu.showKgSecondary){
       doc.setFont('helvetica','normal');
       doc.setFontSize(s.detailKgFont);
       doc.setTextColor(150,150,150);
-      doc.text(`soit ${pu.priceKgStr}/kg`, tx, cursorYD, opt);
-      cursorYD -= s.detailKgFont*0.42 + 1.8;
+      doc.text(`soit ${pu.priceKgStr}/kg`, tx, kgLineY, opt);
     }
     if(pu.unitLabel){
       doc.setFont('helvetica','normal');
       doc.setFontSize(detailUnitFont);
       doc.setTextColor(110,102,92);
-      doc.text(pu.unitLabel, tx, cursorYD, opt);
-      cursorYD -= detailUnitFont*0.42 + 1.8;
+      doc.text(pu.unitLabel, tx, unitLineY, opt);
     }
     doc.setFont('helvetica','bold');
     doc.setFontSize(s.detailPriceFont);
     doc.setTextColor(...BRAND_COLOR);
-    doc.text(pu.priceStr, tx, cursorYD, opt);
+    doc.text(pu.priceStr, tx, priceY, opt);
 
     const realCat = (r[5]||'').trim();
     if(realCat === '1'){
@@ -5645,18 +5656,24 @@
     let belowIconY; // curseur vertical (mm) — position juste sous le dernier badge, point de départ du fournisseur/de la description
 
     if(useBand){
-      // Style bandeau : plus d'icône centrale, le contenu s'enchaîne du haut vers le bas sous
-      // le bandeau (nom déjà posé ci-dessus, puis badge Bio, puis badge Local, puis
-      // fournisseur/description) — mêmes dessins de badges que le style 'icon' (point+texte
-      // Bio, épingle+texte Local), seule leur position verticale change (miroir de drawLabelDetail).
+      // Style bandeau : le contenu s'enchaîne du haut vers le bas sous le bandeau. Chaque
+      // emplacement (nom, Bio, Local) réserve toujours la même hauteur, qu'il soit rempli ou non
+      // — nom plafonné à 3 lignes, badges Bio/Local à leur hauteur maximale — pour que la
+      // position de chaque repère reste identique quels que soient les autres éléments présents
+      // (miroir de drawLabelDetail).
+      const NAME_MAX_LINES = 3;
       const nameLineH = s.detailNameFont*0.42;
-      const nameLinesCount = lsWrapLineCount(nom, s.detailNameFont, true, w-2*pad, 3);
-      let flowY = nomTopMm + nameLinesCount*nameLineH + 2 + spacing;
+      const bioDotD = s.bioDotSize, bioDotGap = 0.8;
+      const bioTxtH = s.bioFontSize * 0.42;
+      const abImgW = 5.5, abImgH = abImgW/LOGO_AB_RATIO;
+      const bioSlotH = s.bioAsText ? (bioDotD+bioDotGap+bioTxtH) : abImgH;
+      const pinD = s.localIconSize;
+      const localTxtH = s.localFontSize * 0.42;
+      const localSlotH = pinD*1.2 + 0.8 + localTxtH;
+
+      let flowY = nomTopMm + NAME_MAX_LINES*nameLineH + 2 + spacing; // emplacement Bio, fixe
 
       if(isBio){
-        const bioDotD = s.bioDotSize, bioDotGap = 0.8;
-        const bioTxtH = s.bioFontSize * 0.42;
-        const abImgW = 5.5, abImgH = abImgW/LOGO_AB_RATIO;
         if(s.bioAsText){
           const dotCy = flowY + bioDotD/2;
           const dot = document.createElement('div');
@@ -5677,7 +5694,6 @@
           el.style.fontSize = (s.bioFontSize*0.3528*scale)+'px';
           el.style.color = s.bioColor;
           label.appendChild(el);
-          flowY = textBaseline + 2.5;
         } else {
           const el = document.createElement('img');
           el.src = LOGO_AB_URI;
@@ -5685,12 +5701,11 @@
           el.style.top = (flowY*scale)+'px';
           el.style.width = (abImgW*scale)+'px';
           label.appendChild(el);
-          flowY += abImgH + 2.5;
         }
       }
+      flowY += bioSlotH + 2.5; // emplacement Local, fixe
 
       if(pinTextShown){
-        const pinD = s.localIconSize;
         const pinPx = pinD*scale;
         const pinTopY = flowY;
         const pinTipY = pinTopY + pinD*1.2; // approximation propre au tracé de lsBuildPinSvg (viewBox 20x26, tête + pointe)
@@ -5698,7 +5713,6 @@
         svg.style.left = ((cxMm-pinD/2)*scale)+'px';
         svg.style.top = (pinTopY*scale)+'px';
         label.appendChild(svg);
-        const localTxtH = s.localFontSize * 0.42;
         const textBaseline = pinTipY + 0.8 + localTxtH*0.8;
         const txt = document.createElement('div');
         txt.textContent = pinTextShown;
@@ -5709,23 +5723,22 @@
         txt.style.fontSize = (s.localFontSize*0.3528*scale)+'px';
         txt.style.color = s.localColor;
         label.appendChild(txt);
-        flowY = textBaseline + 2.5;
       }
+      flowY += localSlotH + 2.5; // emplacement fournisseur/description, fixe
 
       belowIconY = flowY;
     } else {
-      // Style 'icon' (comportement historique, inchangé) : logo centré horizontalement, repère
-      // visuel constant quand affiché ; verticalement, descend d'une demi-hauteur de badge
-      // quand le badge Bio est actif au-dessus de lui — sans badge Bio, il remonte naturellement
-      // au centre exact, sans laisser d'espace vide. Sans logo (showLogo=false), sa
-      // largeur/hauteur tombe à 0 et les badges empilés se resserrent naturellement autour du centre.
+      // Style 'icon' : logo toujours centré exactement au milieu de l'étiquette, badges Bio et
+      // Local à des emplacements fixes au-dessus/en dessous — chacun réserve toujours sa hauteur
+      // maximale, qu'il soit affiché ou non, pour que la position de l'un ne dépende plus de la
+      // présence de l'autre (miroir de drawLabelDetail). Sans logo (showLogo=false), sa
+      // largeur/hauteur tombe à 0 mais iconCy reste le même point fixe.
       const iconW = showLogo ? Math.min(w,h)*0.32*0.9 : 0; // logo carré (LOGO_ICON_RATIO=1) : iconH === iconW
       const badgeLogoGap = (showLogo ? 2 : 1) + spacing; // mm, entre un badge (bio ou local) et le logo (ou le centre, si logo masqué)
       const bioDotD = s.bioDotSize, bioDotGap = 0.8;
       const bioTxtH = s.bioFontSize * 0.42;
       const abImgW = 5.5, abImgH = abImgW/LOGO_AB_RATIO; // logo AB image, utilisé si bioAsText est désactivé
-      const bioBadgeH = isBio ? (s.bioAsText ? (bioDotD+bioDotGap+bioTxtH) : abImgH) : 0;
-      const iconCy = h/2 + (isBio ? (bioBadgeH+badgeLogoGap)/2 : 0);
+      const iconCy = h/2; // toujours le centre exact de l'étiquette, quel que soit le contenu
       if(showLogo){
         const logoEl = document.createElement('img');
         logoEl.src = LOGO_ICON_URI;
@@ -5737,10 +5750,10 @@
         label.appendChild(logoEl);
       }
 
-      // Badge Bio, empilé au-dessus du logo : point plein puis "BIO" en dessous (ou logo AB seul).
+      // Badge Bio, emplacement fixe au-dessus du logo : point plein puis "BIO" en dessous (ou logo AB seul).
+      const iconTop = iconCy - iconW/2;
+      const badgeBottom = iconTop - badgeLogoGap;
       if(isBio){
-        const iconTop = iconCy - iconW/2;
-        const badgeBottom = iconTop - badgeLogoGap;
         if(s.bioAsText){
           const textBaseline = badgeBottom;
           const dotCy = textBaseline - bioTxtH - bioDotGap - bioDotD/2;
@@ -5771,14 +5784,15 @@
         }
       }
 
-      // Badge Local, empilé sous le logo : épingle puis "Local"/pays en dessous.
+      // Badge Local, emplacement fixe sous le logo : épingle puis "Local"/pays en dessous.
       const localGap = 0.8;
       const localTxtH = s.localFontSize * 0.42;
-      belowIconY = iconCy + iconW/2 + badgeLogoGap;
+      const pinD = s.localIconSize;
+      const localSlotH = pinD*1.2 + localGap + localTxtH;
+      const localSlotTop = iconCy + iconW/2 + badgeLogoGap; // toujours le même point, que le badge Bio soit affiché ou non
       if(pinTextShown){
-        const pinD = s.localIconSize;
         const pinPx = pinD*scale;
-        const pinTopY = belowIconY;
+        const pinTopY = localSlotTop;
         const pinTipY = pinTopY + pinD*1.2; // approximation propre au tracé de lsBuildPinSvg (viewBox 20x26, tête + pointe)
         const svg = lsBuildPinSvg(s.localColor, pinPx);
         svg.style.left = ((cxMm-pinD/2)*scale)+'px';
@@ -5794,8 +5808,8 @@
         txt.style.fontSize = (s.localFontSize*0.3528*scale)+'px';
         txt.style.color = s.localColor;
         label.appendChild(txt);
-        belowIconY = textBaseline + 2.5;
       }
+      belowIconY = localSlotTop + localSlotH + 2.5; // toujours fixe, badge Local affiché ou non
     }
 
     // Fournisseur / description (optionnels), juste après les badges (avant le bloc prix)
@@ -5824,35 +5838,36 @@
       belowIconY += 5.6;
     }
 
-    // Bloc prix : ancré depuis le bas (marge >= 4mm, revue-graphiste #5), empilé du bas
-    // vers le haut, avec une unité dérivée de la police du prix mais toujours nettement
-    // plus petite (revue-graphiste #4) — reflète drawLabelDetail (revue-graphiste #2).
+    // Bloc prix : emplacements fixes, réservés qu'ils soient utilisés ou non — le prix reste
+    // toujours à la même hauteur, avec ou sans ligne "soit X €/kg" ou unité (miroir de
+    // drawLabelDetail).
     const pu = priceAndUnitFor(r);
     const marginBottomD = 4;
     const detailUnitFont = Math.max(7, Math.min(11, s.detailPriceFont*0.5));
-    let fromBottomD = marginBottomD;
+    const fromBottomKgD = marginBottomD;
+    const fromBottomUnitD = fromBottomKgD + (s.detailKgFont*0.42 + 1.8);
+    const fromBottomPriceD = fromBottomUnitD + (detailUnitFont*0.42 + 1.8);
     if(pu.showKgSecondary){
       const el = document.createElement('div');
       el.className = 'ls-wrap';
       el.textContent = `soit ${pu.priceKgStr}/kg`;
-      el.style.bottom = (fromBottomD*scale)+'px';
+      el.style.bottom = (fromBottomKgD*scale)+'px';
       el.style.fontSize = (s.detailKgFont*0.3528*scale)+'px';
       el.style.color = '#969696';
       lsApplyAlignX(el, align, w, pad, scale);
       label.appendChild(el);
-      fromBottomD += s.detailKgFont*0.42 + 1.8;
     }
     if(pu.unitLabel){
       const el = document.createElement('div');
       el.className = 'ls-wrap';
       el.textContent = pu.unitLabel;
-      el.style.bottom = (fromBottomD*scale)+'px';
+      el.style.bottom = (fromBottomUnitD*scale)+'px';
       el.style.fontSize = (detailUnitFont*0.3528*scale)+'px';
       el.style.color = '#6E6258';
       lsApplyAlignX(el, align, w, pad, scale);
       label.appendChild(el);
-      fromBottomD += detailUnitFont*0.42 + 1.8;
     }
+    const fromBottomD = fromBottomPriceD;
     const priceEl = document.createElement('div');
     priceEl.className = 'ls-wrap';
     priceEl.textContent = pu.priceStr;
@@ -5997,32 +6012,31 @@
       label.appendChild(logoEl);
     }
 
-    // Bloc prix : ancré depuis le bas (marge >= 3mm, revue-graphiste #5), empilé du bas
-    // vers le haut, avec une unité nettement plus petite que le prix (revue-graphiste #4)
-    // — reflète les positions proportionnelles de drawLabelCompact (revue-graphiste #2).
+    // Bloc prix : emplacements fixes, réservés qu'ils soient utilisés ou non (miroir de
+    // drawLabelCompact).
     const pu = priceAndUnitFor(r);
     const marginBottom = 3;
     const unitFont = Math.max(6, Math.min(9, s.compactPriceFont*0.6));
-    let fromBottomMm = marginBottom;
+    const fromBottomKg = marginBottom;
+    const fromBottomUnit = fromBottomKg + (s.compactKgFont*0.42 + 1.4);
+    const fromBottomMm = fromBottomUnit + (unitFont*0.42 + 1.4);
     if(pu.showKgSecondary){
       const el = document.createElement('div');
       el.textContent = `soit ${pu.priceKgStr}/kg`;
       el.style.right = (pad*scale)+'px';
-      el.style.bottom = (fromBottomMm*scale)+'px';
+      el.style.bottom = (fromBottomKg*scale)+'px';
       el.style.fontSize = (s.compactKgFont*0.3528*scale)+'px';
       el.style.color = '#827c6f';
       label.appendChild(el);
-      fromBottomMm += s.compactKgFont*0.42 + 1.4;
     }
     if(pu.unitLabel){
       const el = document.createElement('div');
       el.textContent = pu.unitLabel;
       el.style.right = (pad*scale)+'px';
-      el.style.bottom = (fromBottomMm*scale)+'px';
+      el.style.bottom = (fromBottomUnit*scale)+'px';
       el.style.fontSize = (unitFont*0.3528*scale)+'px';
       el.style.color = '#60584e';
       label.appendChild(el);
-      fromBottomMm += unitFont*0.42 + 1.4;
     }
     const priceEl = document.createElement('div');
     priceEl.textContent = pu.priceStr;
