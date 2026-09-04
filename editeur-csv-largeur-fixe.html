@@ -4090,16 +4090,45 @@
     return res.json();
   }
 
-  async function fetchAllDolibarrProducts(onProgress){
+  // Récupère le nombre total de produits déclaré par Dolibarr (paramètre pagination_data de
+  // l'endpoint /products) avant de lancer la pagination complète — permet d'afficher le total
+  // à l'utilisateur et sert de garde-fou contre une boucle de pagination anormale (offset qui
+  // dépasse le total réel sans que l'API ne renvoie de page vide, cf. incident du 04/09).
+  async function getDolibarrProductTotal(){
+    try{
+      const res = await dolibarrApiGet(`/products?limit=1&page=0&pagination_data=true`);
+      const total = res && res.pagination && typeof res.pagination.total === 'number' ? res.pagination.total : null;
+      return (total!=null && total>=0) ? total : null;
+    } catch(err){
+      return null; // total non disponible sur cette instance/version : on continue sans garde-fou basé sur le total
+    }
+  }
+
+  async function fetchAllDolibarrProducts(onProgress, expectedTotal){
     const limit = 500;
     let offset = 0;
     const all = [];
+    let lastFirstId = null;
+    // Plafond de sécurité : le total attendu (+une marge d'une page) si connu, sinon une limite
+    // large mais finie — évite qu'une pagination qui boucle indéfiniment côté serveur (offset
+    // au-delà du total sans page vide en retour) ne tourne à l'infini.
+    const hardCap = (typeof expectedTotal === 'number' && expectedTotal >= 0) ? expectedTotal + limit : 20000;
     while(true){
       const page = await dolibarrApiGet(`/products?limit=${limit}&offset=${offset}&sortfield=t.rowid&sortorder=ASC`);
       if(!Array.isArray(page) || page.length===0) break;
+      // Garde-fou anti-boucle : si Dolibarr renvoie la même page qu'à l'itération précédente
+      // (offset allé au-delà du total réel sur une instance qui ne renvoie pas de page vide),
+      // on arrête plutôt que de dupliquer indéfiniment.
+      const firstId = page[0] && page[0].id;
+      if(firstId!=null && firstId === lastFirstId) break;
+      lastFirstId = firstId;
       all.push(...page);
-      if(onProgress) onProgress(all.length);
+      if(onProgress) onProgress(all.length, expectedTotal);
       if(page.length < limit) break;
+      if(all.length >= hardCap){
+        console.warn(`Synchronisation Dolibarr : plafond de sécurité (${hardCap}) atteint, arrêt de la pagination des produits.`);
+        break;
+      }
       offset += limit;
     }
     return all;
@@ -4163,8 +4192,14 @@
     const originalLabel = btnSyncDolibarrApi.textContent;
     btnSyncDolibarrApi.disabled = true;
     try{
-      btnSyncDolibarrApi.textContent = '⏳ Récupération des produits…';
-      const products = await fetchAllDolibarrProducts(n=>{ btnSyncDolibarrApi.textContent = `⏳ Produits… (${n})`; });
+      btnSyncDolibarrApi.textContent = '⏳ Vérification du nombre de produits…';
+      const expectedTotal = await getDolibarrProductTotal();
+      const totalLabel = expectedTotal!=null ? `/${expectedTotal}` : '';
+      btnSyncDolibarrApi.textContent = expectedTotal!=null ? `⏳ Produits… (0${totalLabel})` : '⏳ Récupération des produits…';
+      const products = await fetchAllDolibarrProducts((n)=>{ btnSyncDolibarrApi.textContent = `⏳ Produits… (${n}${totalLabel})`; }, expectedTotal);
+      if(expectedTotal!=null && products.length !== expectedTotal){
+        console.warn(`Synchronisation Dolibarr : ${products.length} produit(s) récupéré(s) pour un total annoncé de ${expectedTotal}.`);
+      }
       btnSyncDolibarrApi.textContent = '⏳ Récupération des catégories…';
       const categories = await fetchAllDolibarrCategories();
       const categoriesById = {};
@@ -5425,12 +5460,19 @@
     const pu = priceAndUnitFor(r);
     const marginBottomD = 4;
     const detailUnitFont = Math.max(7, Math.min(11, s.detailPriceFont*0.5));
+    // Ligne allergènes : emplacement toujours réservé en bas de l'étiquette (qu'il y ait ou non
+    // des allergènes pour cet article), pour que le bloc prix ne varie jamais de hauteur d'une
+    // étiquette à l'autre — et surtout pour ne plus jamais partager sa ligne avec "soit X €/kg"
+    // (les deux étaient auparavant à la même hauteur y+h-4 et se chevauchaient dès que l'article
+    // avait à la fois un prix au kg et des allergènes, notamment en alignement prix à droite).
+    const allergenLineH = s.allergenFontSize*0.42 + 1.6;
+    const allergenLineY = y+h-4;
     // Emplacements fixes, réservés qu'ils soient utilisés ou non : le prix (ligne principale)
     // reste toujours à la même hauteur, que l'article ait ou non une ligne "soit X €/kg" ou une
     // unité affichée — ces lignes optionnelles poussaient auparavant le prix vers le haut selon
     // les cas (demande client : prix toujours au même endroit sur toutes les étiquettes d'une
     // planche, avec ou sans prix au kg / allergènes).
-    const kgLineY = y+h-marginBottomD;
+    const kgLineY = y+h-marginBottomD-allergenLineH;
     const unitLineY = kgLineY - (s.detailKgFont*0.42 + 1.8);
     const priceY = unitLineY - (detailUnitFont*0.42 + 1.8);
     if(pu.showKgSecondary){
@@ -5458,7 +5500,7 @@
         doc.setFont('helvetica','normal');
         doc.setFontSize(s.allergenFontSize);
         doc.setTextColor(120,120,120);
-        doc.text('Allerg. '+codes.join(','), x+w-pad, y+h-4, { align:'right' }); // >= 3-4 mm avant le repère de découpe (revue-graphiste #5)
+        doc.text('Allerg. '+codes.join(','), x+w-pad, allergenLineY, { align:'right' }); // >= 3-4 mm avant le repère de découpe (revue-graphiste #5), sur sa propre ligne réservée (ne chevauche plus le prix au kg)
       }
     }
   }
