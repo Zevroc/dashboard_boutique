@@ -1047,7 +1047,10 @@
     <div class="menu-panel">
       <button class="menu-item" id="btnImportBalance">⇪ Importer/fusionner un CSV balance</button>
       <input type="file" id="balanceFileInput" accept=".csv,.CSV,text/csv">
-      <div class="menu-item" style="cursor:default; font-size:11px; color:#B9B2A2; padding-bottom:0;">Import Dolibarr (produits + catégories + tags bio/local/allergènes)</div>
+      <div class="menu-item" style="cursor:default; font-size:11px; color:#B9B2A2; padding-bottom:0;">Synchronisation directe (API Dolibarr)</div>
+      <button class="menu-item" id="btnSyncDolibarrApi">🔄 Synchroniser depuis Dolibarr (API)</button>
+      <button class="menu-item" id="btnConfigDolibarrApi">⚙ Configurer l'API Dolibarr…</button>
+      <div class="menu-item" style="cursor:default; font-size:11px; color:#B9B2A2; padding-bottom:0;">Import Dolibarr par fichiers (repli si l'API n'est pas joignable)</div>
       <button class="menu-item" id="btnPickDolibarrProduct">1. Choisir le fichier Produits</button>
       <input type="file" id="dolibarrProductInput" accept=".xlsx,.xls,.csv,.CSV">
       <button class="menu-item" id="btnPickDolibarrCategoryList">2. Choisir le fichier Liste des catégories</button>
@@ -1768,6 +1771,43 @@
     <div class="sheet-foot">
       <button class="btn" id="systemCancel">Annuler</button>
       <button class="btn primary" id="systemSave">Valider</button>
+    </div>
+  </div>
+</div>
+
+<div class="sheet-overlay" id="dolibarrApiConfigOverlay">
+  <div class="sheet-modal">
+    <div class="sheet-head">
+      <div class="titles">
+        <p class="eyebrow2">Dolibarr</p>
+        <h2>Configurer l'API</h2>
+      </div>
+      <button class="sheet-close" id="dolibarrApiConfigClose">✕</button>
+    </div>
+    <div class="sheet-body">
+      <p class="renum-intro">
+        L'URL et la clé sont stockées uniquement dans ce navigateur (localStorage), jamais envoyées ailleurs
+        qu'à ton serveur Dolibarr, et jamais enregistrées dans le fichier de l'outil.
+        Clé API : Dolibarr → Accueil → ton utilisateur (icône en haut à droite) → onglet <strong>« Clé API »</strong>.
+      </p>
+      <div class="field-grid" style="grid-template-columns:1fr;">
+        <div class="field">
+          <div class="field-label"><span class="name">URL de l'API (jusqu'à /api/index.php inclus)</span></div>
+          <input type="text" id="dolibarrApiUrlInput" placeholder="https://tondomaine.fr/dolibarr/api/index.php" autocomplete="off">
+        </div>
+        <div class="field">
+          <div class="field-label"><span class="name">Clé API (DOLAPIKEY)</span></div>
+          <input type="password" id="dolibarrApiKeyInput" placeholder="Clé API Dolibarr" autocomplete="off">
+        </div>
+      </div>
+      <p class="allergen-note" id="dolibarrApiTestResult"></p>
+    </div>
+    <div class="sheet-foot" style="justify-content:space-between;">
+      <button class="btn ghost" id="dolibarrApiTestBtn">Tester la connexion</button>
+      <div style="display:flex; gap:10px;">
+        <button class="btn" id="dolibarrApiConfigCancel">Annuler</button>
+        <button class="btn primary" id="dolibarrApiConfigSave">Enregistrer</button>
+      </div>
     </div>
   </div>
 </div>
@@ -3719,24 +3759,12 @@
     updateDolibarrImportReadiness();
   });
 
-  btnRunDolibarrImport.addEventListener('click', async ()=>{
-    const productFile = dolibarrProductFile;
-    const categoryListFile = dolibarrCategoryListFile;
-    const categoryFile = dolibarrCategoryFile;
-    if(!productFile || !categoryListFile || !categoryFile) return;
-
-    let productRows, categoryListRows, categoryRows;
-    try{
-      [productRows, categoryListRows, categoryRows] = await Promise.all([
-        readSpreadsheetFile(productFile),
-        readSpreadsheetFile(categoryListFile),
-        readSpreadsheetFile(categoryFile)
-      ]);
-    } catch(err){
-      alert("Erreur de lecture des fichiers : " + err.message);
-      return;
-    }
-
+  // Cœur commun de la fusion Dolibarr -> base articles, utilisé aussi bien par l'import
+  // 3-fichiers ci-dessous que par la synchronisation directe API (voir plus bas
+  // "Synchro directe via API Dolibarr"). productRows/categoryListRows/categoryRows suivent
+  // exactement le format des fichiers d'export Dolibarr (mêmes noms de colonnes), que la
+  // source soit un fichier uploadé ou reconstruite depuis les réponses JSON de l'API.
+  function applyDolibarrImportData(productRows, categoryListRows, categoryRows, sourceLabel){
     // ---- Liste des catégories : classe chaque ID (vraie catégorie / Bio / Local / allergène) ----
     function findCategoryCodeByLabel(dolibarrLabel){
       const target = (dolibarrLabel||'').trim().toLowerCase();
@@ -3982,7 +4010,8 @@
     const nLocal = newRows.filter(r=>r[BIZCOL.LOCAL]==='1').length;
     const nAllerg = Object.keys(state.allergens).length;
 
-    let msg = `Import Dolibarr terminé : ${newRows.length} produit(s) chargé(s) (${fromExisting} rapprochés avec la base précédente, ${brandNew} nouveaux sans historique technique balance).\n` +
+    const originLabel = sourceLabel==='api' ? 'Synchronisation Dolibarr (API) terminée' : 'Import Dolibarr terminé';
+    let msg = `${originLabel} : ${newRows.length} produit(s) chargé(s) (${fromExisting} rapprochés avec la base précédente, ${brandNew} nouveaux sans historique technique balance).\n` +
       `Bio : ${nBio} · Local : ${nLocal} · Produits avec allergène(s) renseigné(s) : ${nAllerg}.`;
     if(typeDefaulted > 0){
       msg += `\n\n⚠ ${typeDefaulted} produit(s) sans "Type Vente" NI unité reconnue (kg/g/l ou pièce/unité) dans Dolibarr, et sans base précédente pour se replier — mis par défaut sur "à la pièce" (C). Vérifie le champ "Unité" sur ces fiches produit dans Dolibarr.`;
@@ -3993,9 +4022,275 @@
     if(emptyCategoryPlu.length){
       msg += `\n\n⚠ ${emptyCategoryPlu.length} produit(s) sans catégorie reconnue (PLU : ${emptyCategoryPlu.slice(0,15).join(', ')}${emptyCategoryPlu.length>15?'…':''}).`;
     }
+    if(sourceLabel==='api'){
+      msg += `\n\nRappel : en synchro API, "Fournisseur" et "Prix d'achat" ne sont pas encore récupérés (limitation connue de la V1) — les valeurs déjà présentes dans la base sont conservées.`;
+    }
     alert(msg);
+  }
+
+  btnRunDolibarrImport.addEventListener('click', async ()=>{
+    const productFile = dolibarrProductFile;
+    const categoryListFile = dolibarrCategoryListFile;
+    const categoryFile = dolibarrCategoryFile;
+    if(!productFile || !categoryListFile || !categoryFile) return;
+
+    let productRows, categoryListRows, categoryRows;
+    try{
+      [productRows, categoryListRows, categoryRows] = await Promise.all([
+        readSpreadsheetFile(productFile),
+        readSpreadsheetFile(categoryListFile),
+        readSpreadsheetFile(categoryFile)
+      ]);
+    } catch(err){
+      alert("Erreur de lecture des fichiers : " + err.message);
+      return;
+    }
+
+    applyDolibarrImportData(productRows, categoryListRows, categoryRows, 'file');
     dolibarrProductFile = null; dolibarrCategoryListFile = null; dolibarrCategoryFile = null;
     updateDolibarrImportReadiness();
+  });
+
+  // ---------- Synchro directe via API Dolibarr ----------
+  // V1 : lecture seule. Récupère produits + catégories + rattachements catégorie par
+  // produit directement depuis l'API REST Dolibarr, reconstruit les mêmes structures
+  // que l'import 3-fichiers ci-dessus (productRows/categoryListRows/categoryRows), puis
+  // réutilise à l'identique applyDolibarrImportData pour ne pas dupliquer la logique de
+  // classification. La clé API n'est jamais écrite dans ce fichier : elle est saisie par
+  // l'utilisateur et stockée uniquement dans le localStorage de son navigateur.
+  const DOLIBARR_API_URL_KEY = 'opev_dolibarr_api_url';
+  const DOLIBARR_API_KEY_KEY = 'opev_dolibarr_api_key';
+
+  function getDolibarrApiConfig(){
+    return {
+      url: (localStorage.getItem(DOLIBARR_API_URL_KEY) || '').trim(),
+      key: (localStorage.getItem(DOLIBARR_API_KEY_KEY) || '').trim()
+    };
+  }
+
+  function saveDolibarrApiConfig(url, key){
+    localStorage.setItem(DOLIBARR_API_URL_KEY, (url||'').trim());
+    localStorage.setItem(DOLIBARR_API_KEY_KEY, (key||'').trim());
+  }
+
+  async function dolibarrApiGet(path){
+    const cfg = getDolibarrApiConfig();
+    if(!cfg.url || !cfg.key){
+      throw new Error("Configure d'abord l'URL de l'API et la clé API Dolibarr (⚙ Configurer l'API Dolibarr…).");
+    }
+    const base = cfg.url.replace(/\/+$/,'');
+    const res = await fetch(base + path, {
+      headers: { 'DOLAPIKEY': cfg.key, 'Accept': 'application/json' }
+    });
+    if(!res.ok){
+      let detail = '';
+      try{ const j = await res.json(); detail = (j && j.error && j.error.message) || ''; } catch(e){}
+      throw new Error(`Erreur API Dolibarr (${res.status}) sur ${path}${detail ? ' — ' + detail : ''}`);
+    }
+    return res.json();
+  }
+
+  async function fetchAllDolibarrProducts(onProgress){
+    const limit = 500;
+    let offset = 0;
+    const all = [];
+    while(true){
+      const page = await dolibarrApiGet(`/products?limit=${limit}&offset=${offset}&sortfield=t.rowid&sortorder=ASC`);
+      if(!Array.isArray(page) || page.length===0) break;
+      all.push(...page);
+      if(onProgress) onProgress(all.length);
+      if(page.length < limit) break;
+      offset += limit;
+    }
+    return all;
+  }
+
+  async function fetchAllDolibarrCategories(){
+    const limit = 500;
+    let offset = 0;
+    const all = [];
+    while(true){
+      const page = await dolibarrApiGet(`/categories?limit=${limit}&offset=${offset}`);
+      if(!Array.isArray(page) || page.length===0) break;
+      all.push(...page);
+      if(page.length < limit) break;
+      offset += limit;
+    }
+    return all;
+  }
+
+  // Un appel /products/{id}/categories par produit (pas d'endpoint Dolibarr en masse
+  // disponible sur cette instance) — exécuté avec une concurrence limitée pour rester
+  // raisonnable sur plusieurs centaines de produits sans saturer le serveur.
+  async function fetchCategoriesForProducts(products, onProgress){
+    const CONCURRENCY = 8;
+    const result = {}; // id produit Dolibarr -> array d'id catégorie
+    let idx = 0, done = 0;
+    async function worker(){
+      while(idx < products.length){
+        const i = idx++;
+        const p = products[i];
+        try{
+          const cats = await dolibarrApiGet(`/products/${p.id}/categories`);
+          result[p.id] = Array.isArray(cats) ? cats.map(c=>String(c.id)) : [];
+        } catch(err){
+          result[p.id] = [];
+        }
+        done++;
+        if(onProgress) onProgress(done, products.length);
+      }
+    }
+    await Promise.all(new Array(CONCURRENCY).fill(0).map(worker));
+    return result;
+  }
+
+  // L'API renvoie les prix en notation décimale point ("19.50000000") ; parseFrPrice
+  // attend le format virgule utilisé dans les exports fichiers Dolibarr ("19,50").
+  function euroApiToFrString(v){
+    const n = parseFloat(v);
+    if(v==null || v==='' || isNaN(n)) return '';
+    return n.toFixed(2).replace('.', ',');
+  }
+
+  const btnSyncDolibarrApi = $('btnSyncDolibarrApi');
+
+  async function runDolibarrApiSync(){
+    const cfg = getDolibarrApiConfig();
+    if(!cfg.url || !cfg.key){
+      openDolibarrApiConfigModal();
+      return;
+    }
+    const originalLabel = btnSyncDolibarrApi.textContent;
+    btnSyncDolibarrApi.disabled = true;
+    try{
+      btnSyncDolibarrApi.textContent = '⏳ Récupération des produits…';
+      const products = await fetchAllDolibarrProducts(n=>{ btnSyncDolibarrApi.textContent = `⏳ Produits… (${n})`; });
+      btnSyncDolibarrApi.textContent = '⏳ Récupération des catégories…';
+      const categories = await fetchAllDolibarrCategories();
+      const categoriesById = {};
+      categories.forEach(c=>{ categoriesById[String(c.id)] = c; });
+
+      btnSyncDolibarrApi.textContent = `⏳ Classement des produits… (0/${products.length})`;
+      const catsByProductId = await fetchCategoriesForProducts(products, (done,total)=>{
+        btnSyncDolibarrApi.textContent = `⏳ Classement des produits… (${done}/${total})`;
+      });
+
+      // ---- Reconstruction du format "fichiers" attendu par applyDolibarrImportData ----
+      const categoryListRows = categories.map(c=>{
+        const parent = categoriesById[String(c.fk_parent)];
+        return {
+          'ID du(de la) tag/catégorie': String(c.id),
+          'Libellé': c.label || '',
+          'ID du tag/catégorie parent': c.fk_parent!=null ? String(c.fk_parent) : '',
+          'Libellé du tag/catégorie parent': parent ? (parent.label || '') : ''
+        };
+      });
+
+      const productRows = [];
+      const categoryRows = [];
+      products.forEach(p=>{
+        const ref = String(p.ref||'').trim();
+        if(!ref) return;
+        const opts = p.array_options || {};
+        productRows.push({
+          'Réf.': ref,
+          'Libellé': p.label || '',
+          'Prix unitaire TTC': euroApiToFrString(p.price_ttc),
+          'En vente': (String(p.status)==='1') ? '1' : '0',
+          'Type Vente': '',
+          'Unité': p.fk_unit!=null ? String(p.fk_unit) : '',
+          'Fournisseur': '',
+          "Prix d'achat": '',
+          'Taux TVA': p.tva_tx!=null && p.tva_tx!=='' ? String(parseFloat(p.tva_tx)) : '',
+          'Stock': p.stock_reel!=null ? String(p.stock_reel) : '',
+          'Limite stock pour alerte': p.seuil_stock_alerte!=null ? String(p.seuil_stock_alerte) : '',
+          'Stock désiré optimal': p.desiredstock!=null ? String(p.desiredstock) : '',
+          'Produit Bio': opts.options_produit_bio==='1' ? '1' : '0',
+          'Produit Local': opts.options_produit_local==='1' ? '1' : '0',
+          'Affichage Prix': opts.options_affichage_prix || '',
+          'Allergènes': opts.options_allergenes || '',
+          'Description': p.description || ''
+        });
+        (catsByProductId[p.id]||[]).forEach(catId=>{
+          categoryRows.push({ 'Réf.': ref, 'ID du(de la) tag/catégorie': catId, 'Libellé': '' });
+        });
+      });
+
+      applyDolibarrImportData(productRows, categoryListRows, categoryRows, 'api');
+    } catch(err){
+      alert("Échec de la synchronisation avec Dolibarr : " + err.message);
+    } finally {
+      btnSyncDolibarrApi.disabled = false;
+      btnSyncDolibarrApi.textContent = originalLabel;
+    }
+  }
+
+  btnSyncDolibarrApi.addEventListener('click', runDolibarrApiSync);
+
+  // Hooks de test (sans effet en usage normal) : permettent de déclencher la synchro
+  // et d'inspecter l'état sans passer par les clics UI, utilisés par les tests automatisés.
+  window.__opevRunDolibarrApiSyncForTest = runDolibarrApiSync;
+  window.__opevDebugState = function(){
+    return {
+      rowCount: state.rows.length,
+      sampleByPlu: Object.fromEntries(state.rows.filter(r=>['0524','0523','0900'].includes(r[0])).map(r=>[r[0], r])),
+      allergens: state.allergens
+    };
+  };
+
+  // ---- Modal de configuration URL/clé API ----
+  const dolibarrApiConfigOverlay = $('dolibarrApiConfigOverlay');
+  const dolibarrApiUrlInput = $('dolibarrApiUrlInput');
+  const dolibarrApiKeyInput = $('dolibarrApiKeyInput');
+  const dolibarrApiTestResult = $('dolibarrApiTestResult');
+
+  function openDolibarrApiConfigModal(){
+    const cfg = getDolibarrApiConfig();
+    dolibarrApiUrlInput.value = cfg.url;
+    dolibarrApiKeyInput.value = cfg.key;
+    dolibarrApiTestResult.textContent = '';
+    dolibarrApiConfigOverlay.classList.add('show');
+  }
+  function closeDolibarrApiConfigModal(){ dolibarrApiConfigOverlay.classList.remove('show'); }
+
+  $('btnConfigDolibarrApi').addEventListener('click', openDolibarrApiConfigModal);
+  $('dolibarrApiConfigClose').addEventListener('click', closeDolibarrApiConfigModal);
+  $('dolibarrApiConfigCancel').addEventListener('click', closeDolibarrApiConfigModal);
+  dolibarrApiConfigOverlay.addEventListener('click', (e)=>{ if(e.target===dolibarrApiConfigOverlay) closeDolibarrApiConfigModal(); });
+
+  $('dolibarrApiConfigSave').addEventListener('click', ()=>{
+    const url = dolibarrApiUrlInput.value.trim();
+    const key = dolibarrApiKeyInput.value.trim();
+    if(!url || !key){
+      dolibarrApiTestResult.textContent = 'Renseigne l\'URL et la clé avant d\'enregistrer.';
+      return;
+    }
+    saveDolibarrApiConfig(url, key);
+    closeDolibarrApiConfigModal();
+  });
+
+  $('dolibarrApiTestBtn').addEventListener('click', async ()=>{
+    const url = dolibarrApiUrlInput.value.trim();
+    const key = dolibarrApiKeyInput.value.trim();
+    if(!url || !key){
+      dolibarrApiTestResult.textContent = 'Renseigne l\'URL et la clé avant de tester.';
+      return;
+    }
+    dolibarrApiTestResult.textContent = 'Test en cours…';
+    try{
+      const res = await fetch(url.replace(/\/+$/,'') + '/status', {
+        headers: { 'DOLAPIKEY': key, 'Accept':'application/json' }
+      });
+      if(res.ok){
+        const j = await res.json();
+        const v = j && j.success && j.success.dolibarr_version;
+        dolibarrApiTestResult.textContent = `✓ Connexion réussie (Dolibarr ${v||'?'}).`;
+      } else {
+        dolibarrApiTestResult.textContent = `✗ Échec (HTTP ${res.status}) — vérifie l'URL et la clé.`;
+      }
+    } catch(err){
+      dolibarrApiTestResult.textContent = `✗ Échec de connexion : ${err.message}`;
+    }
   });
 
   let masterDbFileHandle = null; // lien vers le fichier cible (File System Access API), si le navigateur le permet
