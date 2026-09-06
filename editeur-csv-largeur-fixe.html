@@ -4852,7 +4852,7 @@
   }
 
   // ---------- Étiquettes à imprimer et découper ----------
-  const LABEL_MARGIN = 8, LABEL_GAP = 2;
+  const LABEL_MARGIN = 8, LABEL_GAP = 0; // écart entre étiquettes supprimé (demande client) : les traits de découpe en pointillés (drawCutGuide) de deux étiquettes voisines se superposent exactement au lieu de laisser une bande blanche entre deux traits — un seul trait net à couper au lieu de deux avec du blanc entre les deux
   function getLabelTemplates(){
     const s = state.labelSettings;
     return {
