@@ -1831,7 +1831,7 @@
 (function(){
   // Version affichée en haut à droite de la page — à mettre à jour à chaque modification
   // poussée sur GitHub, pour que l'utilisateur puisse vérifier qu'il a bien la dernière version.
-  const APP_VERSION = 'v20260907_1';
+  const APP_VERSION = 'v20260907_2';
   const versionBadge = document.getElementById('appVersionBadge');
   if(versionBadge) versionBadge.textContent = `Version du ${APP_VERSION}`;
 
@@ -4143,45 +4143,28 @@
     }
   }
 
+  // Pagination par curseur (dernier rowid vu), PAS par offset : l'API Dolibarr a un bug
+  // documenté (voir Dolibarr/dolibarr#29425) où la pagination par offset "reset" et
+  // renvoie la même page en boucle au-delà d'un certain point — confirmé chez toi à
+  // l'offset 500. Le curseur par rowid contourne le problème : on redemande toujours
+  // "tout ce qui vient après le dernier ID vu", jamais une position arithmétique.
   async function fetchAllDolibarrProducts(onProgress, expectedTotal){
     const limit = 500;
-    let offset = 0;
+    let lastId = 0;
     const all = [];
-    let lastFirstId = null;
     let stopReason = 'total_atteint';
-    // Plafond de sécurité : le total attendu (+une marge de 2 pages) si connu, sinon une limite
-    // large mais finie — évite qu'une pagination qui boucle indéfiniment côté serveur (offset
-    // au-delà du total sans page vide en retour) ne tourne à l'infini.
     const hardCap = (typeof expectedTotal === 'number' && expectedTotal >= 0) ? expectedTotal + limit*2 : 20000;
     while(true){
-      const page = await dolibarrApiGet(`/products?limit=${limit}&offset=${offset}&sortfield=t.rowid&sortorder=ASC`);
+      const filter = encodeURIComponent(`(t.rowid:>:${lastId})`);
+      const page = await dolibarrApiGet(`/products?limit=${limit}&sortfield=t.rowid&sortorder=ASC&sqlfilters=${filter}`);
       if(!Array.isArray(page) || page.length===0){
-        stopReason = `page_vide_a_offset_${offset} (total attendu : ${expectedTotal})`;
+        stopReason = `page_vide_apres_id_${lastId} (total attendu : ${expectedTotal})`;
         break;
       }
-      // Garde-fou anti-boucle : si Dolibarr renvoie la même page qu'à l'itération précédente
-      // (offset allé au-delà du total réel sur une instance qui ne renvoie pas de page vide),
-      // on arrête plutôt que de dupliquer indéfiniment.
-      const firstId = page[0] && page[0].id;
-      if(firstId!=null && firstId === lastFirstId){
-        stopReason = `page_dupliquee_a_offset_${offset}`;
-        break;
-      }
-      lastFirstId = firstId;
       all.push(...page);
       if(onProgress) onProgress(all.length, expectedTotal);
-      offset += limit;
-      // Sur une instance multi-société (conf->entity), une page intermédiaire peut être filtrée
-      // en dessous de la limite demandée côté serveur sans que ce soit réellement la fin de la
-      // liste — on ne peut donc plus se fier uniquement à "page.length < limit" pour détecter la
-      // fin. Quand le total réel est connu (pagination_data), on continue jusqu'à l'avoir
-      // atteint ; sinon on retombe sur l'ancienne heuristique (taille de page).
-      if(expectedTotal!=null){
-        if(all.length >= expectedTotal){ stopReason = 'total_atteint'; break; }
-      } else if(page.length < limit){
-        stopReason = `page_incomplete_sans_total_connu (page.length=${page.length} < limit=${limit})`;
-        break;
-      }
+      lastId = page[page.length-1].id;
+      if(page.length < limit){ stopReason = 'derniere_page_incomplete'; break; } // moins que la limite demandée = fin de liste
       if(all.length >= hardCap){
         stopReason = `plafond_securite_${hardCap}`;
         console.warn(`Synchronisation Dolibarr : plafond de sécurité (${hardCap}) atteint, arrêt de la pagination des produits.`);
@@ -4192,25 +4175,19 @@
     return all;
   }
 
+  // Même contournement que fetchAllDolibarrProducts (pagination par curseur plutôt que par offset).
   async function fetchAllDolibarrCategories(){
     const limit = 500;
-    let offset = 0;
+    let lastId = 0;
     const all = [];
-    let lastFirstId = null;
     const hardCap = 20000; // pas de total connu pour les catégories (pas de pagination_data sur cet endpoint) : plafond fixe par sécurité
     while(true){
-      const page = await dolibarrApiGet(`/categories?limit=${limit}&offset=${offset}`);
+      const filter = encodeURIComponent(`(t.rowid:>:${lastId})`);
+      const page = await dolibarrApiGet(`/categories?limit=${limit}&sortfield=t.rowid&sortorder=ASC&sqlfilters=${filter}`);
       if(!Array.isArray(page) || page.length===0) break;
-      // Garde-fou anti-boucle, identique à fetchAllDolibarrProducts.
-      const firstId = page[0] && page[0].id;
-      if(firstId!=null && firstId === lastFirstId) break;
-      lastFirstId = firstId;
       all.push(...page);
-      offset += limit;
-      // Contrairement à l'ancienne version, on ne s'arrête plus sur une page intermédiaire
-      // renvoyant moins que la limite demandée (peut arriver sur une instance multi-société où
-      // le filtrage serveur réduit une page sans que ce soit réellement la fin de la liste) — on
-      // continue jusqu'à une page réellement vide.
+      lastId = page[page.length-1].id;
+      if(page.length < limit) break; // moins que la limite demandée = fin de liste
       if(all.length >= hardCap){
         console.warn(`Synchronisation Dolibarr : plafond de sécurité (${hardCap}) atteint, arrêt de la pagination des catégories.`);
         break;
