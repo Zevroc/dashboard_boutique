@@ -1831,7 +1831,7 @@
 (function(){
   // Version affichée en haut à droite de la page — à mettre à jour à chaque modification
   // poussée sur GitHub, pour que l'utilisateur puisse vérifier qu'il a bien la dernière version.
-  const APP_VERSION = '2026-09-07 (diag pagination)';
+  const APP_VERSION = '2026-09-07 (fiabilise categories API)';
   const versionBadge = document.getElementById('appVersionBadge');
   if(versionBadge) versionBadge.textContent = `Version du ${APP_VERSION}`;
 
@@ -4222,25 +4222,45 @@
   // Un appel /products/{id}/categories par produit (pas d'endpoint Dolibarr en masse
   // disponible sur cette instance) — exécuté avec une concurrence limitée pour rester
   // raisonnable sur plusieurs centaines de produits sans saturer le serveur.
+  function sleep(ms){ return new Promise(r=> setTimeout(r, ms)); }
+
+  // Concurrence volontairement basse (hébergement mutualisé o2switch, pas un serveur
+  // dédié) : à 8 requêtes en parallèle, le serveur Dolibarr sature et renvoie des 503
+  // sur une partie des ~7000 produits — ces erreurs n'ont pas d'en-tête CORS (page
+  // d'erreur Apache brute, pas une vraie réponse Dolibarr), donc le navigateur les
+  // affiche comme des erreurs CORS, mais la vraie cause est la charge. Chaque échec
+  // est retenté 2 fois avec un court délai avant d'abandonner pour de bon.
   async function fetchCategoriesForProducts(products, onProgress){
-    const CONCURRENCY = 8;
+    const CONCURRENCY = 3;
+    const MAX_RETRIES = 2;
     const result = {}; // id produit Dolibarr -> array d'id catégorie
+    const failedProductIds = [];
     let idx = 0, done = 0;
+    async function fetchOneWithRetry(p){
+      for(let attempt=0; attempt<=MAX_RETRIES; attempt++){
+        try{
+          const cats = await dolibarrApiGet(`/products/${p.id}/categories`);
+          return Array.isArray(cats) ? cats.map(c=>String(c.id)) : [];
+        } catch(err){
+          if(attempt < MAX_RETRIES) await sleep(400 * (attempt+1)); // 400ms puis 800ms avant de retenter
+        }
+      }
+      return null; // echec definitif apres tous les essais
+    }
     async function worker(){
       while(idx < products.length){
         const i = idx++;
         const p = products[i];
-        try{
-          const cats = await dolibarrApiGet(`/products/${p.id}/categories`);
-          result[p.id] = Array.isArray(cats) ? cats.map(c=>String(c.id)) : [];
-        } catch(err){
-          result[p.id] = [];
-        }
+        const cats = await fetchOneWithRetry(p);
+        if(cats===null){ result[p.id] = []; failedProductIds.push(p.id); }
+        else result[p.id] = cats;
         done++;
         if(onProgress) onProgress(done, products.length);
       }
     }
     await Promise.all(new Array(CONCURRENCY).fill(0).map(worker));
+    result._failedCount = failedProductIds.length;
+    result._failedIds = failedProductIds;
     return result;
   }
 
@@ -4334,6 +4354,9 @@
       const extraWarnings = [];
       if(skippedNoRef.length){
         extraWarnings.push(`${skippedNoRef.length} produit(s) Dolibarr sans référence (ref) ignoré(s) par la synchro API (absents de la base) : ${skippedNoRef.slice(0,15).join(', ')}${skippedNoRef.length>15?'…':''}.`);
+      }
+      if(catsByProductId._failedCount > 0){
+        extraWarnings.push(`⚠ Catégories non récupérées pour ${catsByProductId._failedCount} produit(s) malgré 2 nouvelles tentatives (serveur Dolibarr temporairement saturé — erreurs 503) : ces produits garderont leur ancienne catégorie/tags s'ils en avaient déjà, sinon resteront sans catégorie. Relance la synchro une deuxième fois pour compléter.`);
       }
       if(productCountMismatchWarning){
         extraWarnings.push(productCountMismatchWarning);
