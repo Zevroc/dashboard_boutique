@@ -3085,7 +3085,20 @@
       return row.slice(0,19).map((val,ci)=>{ // seules les 19 colonnes balance sont exportées (jamais la base articles)
         const meta = state.colMeta[ci];
         let v = val;
-        if(meta.fixed && ci!==0){ // jamais de padding sur le PLU (colonne 1)
+        if(ci===0){
+          // PLU : jamais paddé dans le fichier balance, même si stocké paddé (ex.
+          // refs Dolibarr sur 4 chiffres "0006") — on retire les zéros de tête ici.
+          const n = parseInt((v||'').trim(),10);
+          v = isNaN(n) ? (v||'').trim() : String(n);
+        } else if(ci===1){
+          // Nom : la balance l'écrit toujours en MAJUSCULES et paddé à 26 caractères —
+          // vérifié sur de vrais exports. Les noms venant de Dolibarr arrivent propres
+          // (casse mixte, non paddés), donc on ne peut plus compter sur la détection
+          // automatique de largeur fixe (colMeta) pour cette colonne : on l'applique
+          // toujours, quoi qu'il arrive.
+          v = (v||'').toUpperCase();
+          if(v.length < 26) v = v + ' '.repeat(26 - v.length);
+        } else if(meta.fixed){
           if(v.length < meta.width) v = v + ' '.repeat(meta.width - v.length);
           // si dépassement : on exporte tel quel (pas de troncature silencieuse)
         }
@@ -3292,9 +3305,11 @@
   // techniques propres à la balance (code B000, département, code long...) que
   // Dolibarr ne connaît pas sont repris de la base déjà chargée quand le PLU existe
   // déjà, sinon complétés avec les valeurs constantes observées sur le reste du fichier.
-  const BALANCE_CONST_DEFAULTS = ['','0','0','0','0','0','1','B000','P1','D0','O000000000000000000000000000000000000','0','','D0'];
-  // index 0..13 correspond aux colonnes 2..18 les moins variables (champ3, champ7-12,
-  // code, statut, departement, codelong, champ17, champ18, champ19)
+  const BALANCE_CONST_DEFAULTS = ['                          ','0','0','0','0','0','0','0','0','1','B000','P1','D0','O000000000000000000000000000000000000','0','             ','D0'];
+  // index 0..16 correspond aux colonnes 2..18 : champ3, type(temp), prix(temp),
+  // categorie(temp), champ7, champ8, champ9, champ10, champ11, champ12, code,
+  // statut(temp), departement, codelong, champ17, champ18(13 espaces), champ19.
+  // (les "temp" sont immédiatement écrasés juste après par les vraies valeurs)
 
   function readSpreadsheetFile(file){
     return new Promise((resolve, reject)=>{
