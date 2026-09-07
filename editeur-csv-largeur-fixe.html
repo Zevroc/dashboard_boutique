@@ -1835,7 +1835,7 @@
 (function(){
   // Version affichée en haut à droite de la page — à mettre à jour à chaque modification
   // poussée sur GitHub, pour que l'utilisateur puisse vérifier qu'il a bien la dernière version.
-  const APP_VERSION = 'v20260907_7';
+  const APP_VERSION = 'v20260907_8';
   const versionBadge = document.getElementById('appVersionBadge');
   if(versionBadge) versionBadge.textContent = `Version du ${APP_VERSION}`;
 
@@ -5406,7 +5406,7 @@
     doc.setFont('helvetica','bold');
     doc.setFontSize(s.detailNameFont);
     const nomLines = doc.splitTextToSize((r[1]||'').trim(), w-2*pad);
-    const nomLinesShown = ellipsizeLines(nomLines, 3); // ellipse si le nom dépasse 3 lignes (revue-graphiste #3)
+    const nomLinesShown = ellipsizeLines(nomLines, 4); // ellipse si le nom dépasse 4 lignes
     const nomY = useBand ? pluY+6 : y+16;
     doc.text(nomLinesShown, tx, nomY, opt);
 
@@ -5442,7 +5442,7 @@
       // à l'autre, quels que soient les autres éléments présents (demande client : Bio/Local
       // toujours au même endroit sur toutes les étiquettes d'une planche, qu'il y ait l'autre
       // badge, un prix au kg ou des allergènes ou non).
-      const NAME_MAX_LINES = 3; // plafond d'ellipsizeLines(nomLines, 3) ci-dessus
+      const NAME_MAX_LINES = 4; // plafond d'ellipsizeLines(nomLines, 3) ci-dessus
       const nameLineH = s.detailNameFont*0.42; // hauteur de ligne approx (mm), même facteur que le bloc prix plus bas
       const bioDotD = s.bioDotSize, bioDotGap = 0.8;
       const bioTxtH = s.bioFontSize * 0.42;
@@ -5812,7 +5812,7 @@
       // — nom plafonné à 3 lignes, badges Bio/Local à leur hauteur maximale — pour que la
       // position de chaque repère reste identique quels que soient les autres éléments présents
       // (miroir de drawLabelDetail).
-      const NAME_MAX_LINES = 3;
+      const NAME_MAX_LINES = 4;
       const nameLineH = s.detailNameFont*0.42;
       const bioDotD = s.bioDotSize, bioDotGap = 0.8;
       const bioTxtH = s.bioFontSize * 0.42;
