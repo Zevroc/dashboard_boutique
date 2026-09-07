@@ -1831,7 +1831,7 @@
 (function(){
   // Version affichée en haut à droite de la page — à mettre à jour à chaque modification
   // poussée sur GitHub, pour que l'utilisateur puisse vérifier qu'il a bien la dernière version.
-  const APP_VERSION = 'v20260907_5';
+  const APP_VERSION = 'v20260907_6';
   const versionBadge = document.getElementById('appVersionBadge');
   if(versionBadge) versionBadge.textContent = `Version du ${APP_VERSION}`;
 
@@ -2669,7 +2669,11 @@
         if(meta.fixed && val.length > meta.width){
           problems.push(`Ligne ${ri+1}, colonne ${ci+1} : "${escapeHtml(val.trim())}" dépasse la largeur fixe (${val.length}/${meta.width} caractères)`);
         }
-        if(val.includes(',')){
+        // La virgule n'est un problème que sur les 19 colonnes réellement exportées vers
+        // la balance (voir buildCsvText, row.slice(0,19)) — au-delà, ce sont des colonnes
+        // métier (Sous-catégorie, Emplacement...) qui peuvent légitimement en contenir
+        // (ex. plusieurs sous-catégories concaténées) sans jamais être envoyées à la balance.
+        if(ci < 19 && val.includes(',')){
           problems.push(`Ligne ${ri+1}, colonne ${ci+1} : contient une virgule — l'export l'entoure automatiquement de guillemets (comme le fait la balance elle-même), à vérifier si tu réimportes ailleurs.`);
         }
       });
