@@ -1047,10 +1047,7 @@
     <div class="menu-panel">
       <button class="menu-item" id="btnImportBalance">⇪ Importer/fusionner un CSV balance</button>
       <input type="file" id="balanceFileInput" accept=".csv,.CSV,text/csv">
-      <div class="menu-item" style="cursor:default; font-size:11px; color:#B9B2A2; padding-bottom:0;">Synchronisation directe (API Dolibarr)</div>
-      <button class="menu-item" id="btnSyncDolibarrApi">🔄 Synchroniser depuis Dolibarr (API)</button>
-      <button class="menu-item" id="btnConfigDolibarrApi">⚙ Configurer l'API Dolibarr…</button>
-      <div class="menu-item" style="cursor:default; font-size:11px; color:#B9B2A2; padding-bottom:0;">Import Dolibarr par fichiers (repli si l'API n'est pas joignable)</div>
+      <div class="menu-item" style="cursor:default; font-size:11px; color:#B9B2A2; padding-bottom:0;">Import Dolibarr (produits + catégories + tags bio/local/allergènes)</div>
       <button class="menu-item" id="btnPickDolibarrProduct">1. Choisir le fichier Produits</button>
       <input type="file" id="dolibarrProductInput" accept=".xlsx,.xls,.csv,.CSV">
       <button class="menu-item" id="btnPickDolibarrCategoryList">2. Choisir le fichier Liste des catégories</button>
@@ -1117,12 +1114,6 @@
   <label class="filterLabel" id="subCategoryFilterLabel" style="display:none;">
     Sous-catégorie
     <select id="subCategoryFilter">
-      <option value="ALL">Toutes</option>
-    </select>
-  </label>
-  <label class="filterLabel" id="positionCamionFilterLabel" style="display:none;">
-    Position camion
-    <select id="positionCamionFilter">
       <option value="ALL">Toutes</option>
     </select>
   </label>
@@ -1564,7 +1555,6 @@
           <select id="labelsSortBy">
             <option value="nom">Nom du produit</option>
             <option value="emplacement">Emplacement</option>
-            <option value="position_camion">Position dans le camion</option>
             <option value="plu">PLU</option>
           </select>
         </label>
@@ -1575,7 +1565,6 @@
             <th>PLU</th>
             <th>Nom du produit</th>
             <th>Emplacement</th>
-            <th>Position camion</th>
             <th>Trame</th>
           </tr>
         </thead>
@@ -1643,52 +1632,19 @@
               <input type="number" id="lsCompactPadding" min="0.5" max="8" step="0.5"></div>
           </div>
 
-          <p class="biz-title" style="margin-top:18px;">Logo OPEV</p>
-          <label class="toggleLabel" style="margin:8px 0;">
-            <input type="checkbox" id="lsShowLogo">
-            <span class="toggleSwitch"></span>
-            Afficher le logo OPEV (trames détaillée et compacte)
-          </label>
-          <p class="renum-intro" style="margin:4px 0 10px;">Le logo occupe une place fixe au centre de l'étiquette, ce qui limite l'espace disponible pour des polices plus grandes. En le désactivant, les badges Bio/Local se resserrent automatiquement autour du centre de la trame détaillée pour combler l'espace libéré.</p>
-          <div class="field" id="lsLogoStyleWrap" style="max-width:420px;">
-            <div class="field-label"><span class="name">Style du logo</span></div>
-            <select id="lsLogoStyle">
-              <option value="icon">Icône seule, centrée</option>
-              <option value="band">Bandeau noir en haut, avec logo complet (texte inclus)</option>
-            </select>
-          </div>
-          <p class="renum-intro" id="lsLogoStyleNote" style="margin:4px 0 10px;">Style « Bandeau » : un bandeau noir pleine largeur en haut de l'étiquette, avec le logo de marque complet (pictogramme + texte), comme sur la page de garde du catalogue. Le PLU se replace juste en dessous, et le nom/les badges/le prix s'enchaînent à la suite. Uniquement disponible sur la trame détaillée — la trame compacte, trop étroite pour le texte du logo, garde toujours l'icône seule.</p>
-
           <p class="biz-title" style="margin-top:18px;">Badges Bio / Local (trames détaillée et compacte)</p>
-          <p class="renum-intro" style="margin:4px 0 10px;">Trame détaillée : le badge Bio (point + texte) se place au-dessus du logo OPEV, le badge Local (épingle + texte) en dessous — chacun empilé verticalement (ou autour du centre de l'étiquette si le logo est désactivé). Tailles du point/de l'épingle et des textes réglables indépendamment.</p>
           <label class="toggleLabel" style="margin:8px 0;">
             <input type="checkbox" id="lsBioAsText">
             <span class="toggleSwitch"></span>
             Afficher "BIO" en texte vert plutôt que le logo AB (trame détaillée)
           </label>
           <div class="field-grid" style="margin-top:10px;">
-            <div class="field"><div class="field-label"><span class="name">Taille point "Bio" (mm)</span></div>
-              <input type="number" id="lsBioDotSize" min="2" max="8" step="0.2"></div>
             <div class="field"><div class="field-label"><span class="name">Taille texte "BIO" (pt)</span></div>
               <input type="number" id="lsBioFont" min="6" max="14" step="0.5"></div>
             <div class="field"><div class="field-label"><span class="name">Couleur texte "BIO"</span></div>
               <input type="color" id="lsBioColor"></div>
-            <div class="field"><div class="field-label"><span class="name">Taille épingle "Local" (mm)</span></div>
-              <input type="number" id="lsLocalIconSize" min="2" max="8" step="0.2"></div>
-            <div class="field"><div class="field-label"><span class="name">Taille texte "Local"/pays (pt)</span></div>
-              <input type="number" id="lsLocalFont" min="6" max="14" step="0.5"></div>
             <div class="field"><div class="field-label"><span class="name">Couleur épingle "Local"</span></div>
               <input type="color" id="lsLocalColor"></div>
-          </div>
-
-          <p class="biz-title" style="margin-top:18px;">Autres tailles de police</p>
-          <div class="field-grid" style="margin-top:10px;">
-            <div class="field"><div class="field-label"><span class="name">Prix au kilo (pt, détaillée)</span></div>
-              <input type="number" id="lsDetailKgFont" min="5" max="10" step="0.5"></div>
-            <div class="field"><div class="field-label"><span class="name">Prix au kilo (pt, compacte)</span></div>
-              <input type="number" id="lsCompactKgFont" min="4" max="8" step="0.5"></div>
-            <div class="field"><div class="field-label"><span class="name">Mention allergènes (pt)</span></div>
-              <input type="number" id="lsAllergenFont" min="5" max="9" step="0.5"></div>
           </div>
 
           <p class="biz-title" style="margin-top:18px;">Champs affichés (trame détaillée)</p>
@@ -1775,43 +1731,6 @@
   </div>
 </div>
 
-<div class="sheet-overlay" id="dolibarrApiConfigOverlay">
-  <div class="sheet-modal">
-    <div class="sheet-head">
-      <div class="titles">
-        <p class="eyebrow2">Dolibarr</p>
-        <h2>Configurer l'API</h2>
-      </div>
-      <button class="sheet-close" id="dolibarrApiConfigClose">✕</button>
-    </div>
-    <div class="sheet-body">
-      <p class="renum-intro">
-        L'URL et la clé sont stockées uniquement dans ce navigateur (localStorage), jamais envoyées ailleurs
-        qu'à ton serveur Dolibarr, et jamais enregistrées dans le fichier de l'outil.
-        Clé API : Dolibarr → Accueil → ton utilisateur (icône en haut à droite) → onglet <strong>« Clé API »</strong>.
-      </p>
-      <div class="field-grid" style="grid-template-columns:1fr;">
-        <div class="field">
-          <div class="field-label"><span class="name">URL de l'API (jusqu'à /api/index.php inclus)</span></div>
-          <input type="text" id="dolibarrApiUrlInput" placeholder="https://tondomaine.fr/dolibarr/api/index.php" autocomplete="off">
-        </div>
-        <div class="field">
-          <div class="field-label"><span class="name">Clé API (DOLAPIKEY)</span></div>
-          <input type="password" id="dolibarrApiKeyInput" placeholder="Clé API Dolibarr" autocomplete="off">
-        </div>
-      </div>
-      <p class="allergen-note" id="dolibarrApiTestResult"></p>
-    </div>
-    <div class="sheet-foot" style="justify-content:space-between;">
-      <button class="btn ghost" id="dolibarrApiTestBtn">Tester la connexion</button>
-      <div style="display:flex; gap:10px;">
-        <button class="btn" id="dolibarrApiConfigCancel">Annuler</button>
-        <button class="btn primary" id="dolibarrApiConfigSave">Enregistrer</button>
-      </div>
-    </div>
-  </div>
-</div>
-
 <script>
 (function(){
   const state = {
@@ -1824,7 +1743,6 @@
     fileName: 'export.CSV',
     categoryFilter: 'ALL',
     subCategoryFilter: 'ALL',
-    positionCamionFilter: 'ALL',
     searchText: '',
     showAllCols: false,
     allergens: {}, // PLU (string) -> array de codes allergènes [1..14]
@@ -1846,21 +1764,13 @@
       compactNameFont: 8.5, compactPriceFont: 13,
       bioAsText: true, // remplace le logo AB par un texte "BIO" en vert
       bioFontSize: 8, // taille du texte "BIO" (pt, trame détaillée) — la trame compacte en dérive une taille réduite
-      localFontSize: 8, // taille du texte "Local"/pays (pt, trame détaillée) — indépendante de bioFontSize, la trame compacte en dérive une taille réduite
-      bioDotSize: 4.4, // diamètre (mm) du point vert Bio, trame détaillée — la trame compacte en dérive une taille réduite
-      localIconSize: 4.4, // diamètre (mm) de la tête de l'épingle Local, trame détaillée — la trame compacte en dérive une taille réduite
-      allergenFontSize: 6, // taille (pt) de la mention allergènes, trame détaillée
-      detailKgFont: 7, // taille (pt) de la ligne "soit X €/kg", trame détaillée
-      compactKgFont: 6, // taille (pt) de la ligne "soit X €/kg", trame compacte
       detailPadding: 4, compactPadding: 2.5, // marges internes (mm)
       detailAlign: 'center', // alignement du nom/prix/badges sur la trame détaillée : 'left' | 'center' | 'right'
       elementSpacing: 0, // espace additionnel (mm) entre le logo et les badges/champs optionnels, trame détaillée
       bioColor: '#3C823C', // couleur du texte "BIO" (utilisée seulement si bioAsText est actif) — équivalent RGB(60,130,60) déjà utilisé auparavant
       localColor: '#DB4437', // couleur de l'épingle "Local"
       showSupplier: false, // afficher le fournisseur sur la trame détaillée
-      showDescription: false, // afficher la description longue sur la trame détaillée
-      showLogo: true, // afficher le logo OPEV au centre de l'étiquette (trames détaillée et compacte) ; le désactiver libère de l'espace vertical pour des polices plus grandes
-      logoStyle: 'icon' // 'icon' (pictogramme centré, historique) | 'band' (bandeau noir en haut avec le logo de marque complet, trame détaillée uniquement — ignoré en trame compacte)
+      showDescription: false // afficher la description longue sur la trame détaillée
     }
   };
   // colonnes affichées par défaut en vue compacte (0-indexées) : PLU, Nom, Prix, Catégorie
@@ -1900,8 +1810,6 @@
   const categoryFilter = $('categoryFilter');
   const subCategoryFilterLabel = $('subCategoryFilterLabel');
   const subCategoryFilter = $('subCategoryFilter');
-  const positionCamionFilterLabel = $('positionCamionFilterLabel');
-  const positionCamionFilter = $('positionCamionFilter');
   const searchLabel = $('searchLabel');
   const searchInput = $('searchInput');
   const searchClear = $('searchClear');
@@ -1961,7 +1869,7 @@
     'PLU','Nom','Champ 3','Type','Prix vente','Catégorie','Champ 7','Champ 8','Champ 9',
     'Champ 10','Champ 11','Champ 12','Code','Statut','Département','Code long','Champ 17','Champ 18','Champ 19'
   ];
-  const SHORT_BIZ_LABELS = ['Fournisseur','Prix achat','TVA','Stock','Stock mini','Stock maxi','Bio','Local','Trame étiquette','Affichage prix','Groupe variantes','Taille lot','Période commande','Description longue','Sous-catégorie','Emplacement','Pays','Position camion'];
+  const SHORT_BIZ_LABELS = ['Fournisseur','Prix achat','TVA','Stock','Stock mini','Stock maxi','Bio','Local','Trame étiquette','Affichage prix','Groupe variantes','Taille lot','Période commande','Description longue','Sous-catégorie','Emplacement','Pays'];
   function shortColLabel(c){
     if(c < SHORT_COL_LABELS.length) return SHORT_COL_LABELS[c];
     const bi = c - 19;
@@ -1972,9 +1880,9 @@
   // ---------- Base articles : champs métier ajoutés après les 19 colonnes balance ----------
   // Index 19 à 25. Ces colonnes ne sont JAMAIS envoyées dans le CSV balance (voir buildCsvText) —
   // elles ne vivent que dans la base articles complète.
-  const BIZCOL = { FOURNISSEUR:19, ACHAT_HT:20, TVA:21, STOCK:22, STOCK_MINI:23, STOCK_MAXI:24, BIO:25, LOCAL:26, TEMPLATE:27, UNIT_DISPLAY:28, GROUP:29, PACK_SIZE:30, ORDER_PERIOD:31, DESC_LONGUE:32, SUB_CATEGORY:33, EMPLACEMENT:34, PAYS:35, POSITION_CAMION:36 };
-  const BIZ_COL_COUNT = 18;
-  const BIZ_HEADERS = ['Fournisseur','Prix achat HT (centimes)','Taux TVA (%)','Stock actuel','Stock mini','Stock maxi','Bio (1/0)','Local (1/0)','Trame étiquette','Affichage prix (kg/100g)','Groupe de variantes','Taille du lot (unités)','Période de commande','Description longue','Sous-catégorie (Dolibarr, hors export balance)','Emplacement (Dolibarr, tri des étiquettes)','Pays d\'origine (étiquette, si produit non local)','Position dans le camion (Dolibarr, tri/filtre)'];
+  const BIZCOL = { FOURNISSEUR:19, ACHAT_HT:20, TVA:21, STOCK:22, STOCK_MINI:23, STOCK_MAXI:24, BIO:25, LOCAL:26, TEMPLATE:27, UNIT_DISPLAY:28, GROUP:29, PACK_SIZE:30, ORDER_PERIOD:31, DESC_LONGUE:32, SUB_CATEGORY:33, EMPLACEMENT:34, PAYS:35 };
+  const BIZ_COL_COUNT = 17;
+  const BIZ_HEADERS = ['Fournisseur','Prix achat HT (centimes)','Taux TVA (%)','Stock actuel','Stock mini','Stock maxi','Bio (1/0)','Local (1/0)','Trame étiquette','Affichage prix (kg/100g)','Groupe de variantes','Taille du lot (unités)','Période de commande','Description longue','Sous-catégorie (Dolibarr, hors export balance)','Emplacement (Dolibarr, tri des étiquettes)','Pays d\'origine (étiquette, si produit non local)'];
   const ORDER_PERIODS = {
     hebdo:      { label:'Hebdomadaire (7 jours)', days:7 },
     quinzaine:  { label:'Toutes les 2 semaines (15 jours)', days:15 },
@@ -2285,35 +2193,6 @@
     return raw.split(',').map(s=>s.trim()).includes(state.subCategoryFilter);
   }
 
-  function updatePositionCamionOptions(){
-    const POSCOL = BIZCOL.POSITION_CAMION;
-    const hasAny = state.rows.some(r=> (r[POSCOL]||'').trim());
-    if(state.rows.length===0 || !hasAny){
-      positionCamionFilterLabel.style.display = 'none';
-      return;
-    }
-    positionCamionFilterLabel.style.display = 'flex';
-    const counts = {};
-    state.rows.forEach(r=>{
-      const raw = (r[POSCOL]||'').trim();
-      if(!raw) return;
-      counts[raw] = (counts[raw]||0)+1;
-    });
-    const values = Object.keys(counts).sort((a,b)=> a.localeCompare(b,'fr'));
-    const prev = state.positionCamionFilter;
-    positionCamionFilter.innerHTML = '<option value="ALL">Toutes</option>' +
-      values.map(v=> `<option value="${escapeHtml(v)}">${escapeHtml(v)} (${counts[v]})</option>`).join('');
-    if(prev!=='ALL' && !values.includes(prev)) state.positionCamionFilter = 'ALL';
-    positionCamionFilter.value = state.positionCamionFilter;
-  }
-
-  function matchesPositionCamionFilter(row){
-    if(state.positionCamionFilter==='ALL') return true;
-    const raw = (row[BIZCOL.POSITION_CAMION]||'').trim();
-    if(!raw) return false;
-    return raw === state.positionCamionFilter;
-  }
-
   function render(){
     dropzone.style.display = 'none';
     sheetWrap.classList.add('show');
@@ -2334,7 +2213,6 @@
     btnExportExcel.disabled = false;
     updateCategoryOptions();
     updateSubCategoryOptions();
-    updatePositionCamionOptions();
     searchLabel.style.display = 'flex';
     allColsLabel.style.display = 'flex';
 
@@ -2440,7 +2318,6 @@
       .map((row, ri)=>({row, ri}))
       .filter(x => state.categoryFilter==='ALL' || (x.row[CATCOL]||'').trim() === state.categoryFilter)
       .filter(x => matchesSubCategoryFilter(x.row))
-      .filter(x => matchesPositionCamionFilter(x.row))
       .filter(x => !q || (x.row[0]||'').toLowerCase().includes(q) || (x.row[1]||'').toLowerCase().includes(q));
 
     const visiblePlus = visibleRows.map(x=> (x.row[0]||'').trim());
@@ -2659,10 +2536,9 @@
     const visibleCount = state.rows
       .filter(r => state.categoryFilter==='ALL' || (r[CATCOL]||'').trim() === state.categoryFilter)
       .filter(r => matchesSubCategoryFilter(r))
-      .filter(r => matchesPositionCamionFilter(r))
       .filter(r => !q || (r[0]||'').toLowerCase().includes(q) || (r[1]||'').toLowerCase().includes(q))
       .length;
-    const filtered = state.categoryFilter!=='ALL' || state.subCategoryFilter!=='ALL' || state.positionCamionFilter!=='ALL' || !!q;
+    const filtered = state.categoryFilter!=='ALL' || state.subCategoryFilter!=='ALL' || !!q;
     const rowsPill = filtered
       ? `${visibleCount} / ${state.rows.length} lignes affichées`
       : `${state.rows.length} lignes`;
@@ -3291,11 +3167,6 @@
     state.selectedRow = -1;
     render();
   });
-  positionCamionFilter.addEventListener('change', ()=>{
-    state.positionCamionFilter = positionCamionFilter.value;
-    state.selectedRow = -1;
-    render();
-  });
   searchInput.addEventListener('input', ()=>{
     state.searchText = searchInput.value;
     searchClear.style.display = state.searchText ? 'inline-flex' : 'none';
@@ -3311,72 +3182,34 @@
   });
 
   // ---------- Persistance de session (dernier fichier ouvert) ----------
-  // Priorité au stockage d'artefacts fourni par Claude (window.storage) quand il est
-  // disponible (usage dans un artefact Claude.ai). En usage réel (GitHub Pages, double-clic
-  // local), window.storage n'existe pas : on utilise alors localStorage comme repli, qui lui
-  // fonctionne vraiment dans une page web ordinaire. La sauvegarde localStorage est debouncée
-  // (écriture synchrone, coûteuse sur une grosse base) et une erreur de quota est signalée
-  // à l'utilisateur au lieu d'être avalée silencieusement.
-  const LOCAL_STORAGE_KEY = 'opev_session';
-  const PERSIST_DEBOUNCE_MS = 800;
-  let persistDebounceTimer = null;
-
-  function buildSessionSnapshot(){
-    return {
-      fileName: state.fileName,
-      rows: state.rows,
-      salesHistory: state.salesHistory,
-      ticketCounts: state.ticketCounts,
-      categoryLabels: state.categoryLabels,
-      storeInfo: state.storeInfo,
-      adMessages: state.adMessages,
-      suppliers: state.suppliers,
-      allergens: state.allergens,
-      labelSettings: state.labelSettings
-    };
-  }
-
-  function persistSessionToLocalStorageNow(){
-    try{
-      const snapshot = buildSessionSnapshot();
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(snapshot));
-    } catch(e){
-      if(e && (e.name === 'QuotaExceededError' || e.code === 22 || e.code === 1014)){
-        footerNote.textContent = 'Sauvegarde automatique impossible (espace de stockage local plein) — pense à exporter tes fichiers régulièrement.';
-      }
-      /* autre erreur de stockage : on continue sans bloquer l'outil */
-    }
-  }
-
+  // N'utilise QUE le stockage d'artefacts fourni par Claude (window.storage) — jamais
+  // localStorage/sessionStorage. Si l'outil est ouvert en dehors de Claude.ai (double-clic
+  // local), window.storage n'existe pas : on échoue silencieusement, sans casser l'outil.
   async function persistSession(){
-    if(window.storage){
-      try{
-        const snapshot = buildSessionSnapshot();
-        await window.storage.set('opev_session', JSON.stringify(snapshot), false);
-      } catch(e){ /* stockage indisponible ou trop volumineux : on continue sans bloquer */ }
-      return;
-    }
-    // Repli localStorage (cas réel hors Claude.ai) : écriture debouncée pour éviter de
-    // sérialiser toute la base à chaque frappe.
-    clearTimeout(persistDebounceTimer);
-    persistDebounceTimer = setTimeout(persistSessionToLocalStorageNow, PERSIST_DEBOUNCE_MS);
+    if(!window.storage) return;
+    try{
+      const snapshot = {
+        fileName: state.fileName,
+        rows: state.rows,
+        salesHistory: state.salesHistory,
+        ticketCounts: state.ticketCounts,
+        categoryLabels: state.categoryLabels,
+        storeInfo: state.storeInfo,
+        adMessages: state.adMessages,
+        suppliers: state.suppliers,
+        allergens: state.allergens,
+        labelSettings: state.labelSettings
+      };
+      await window.storage.set('opev_session', JSON.stringify(snapshot), false);
+    } catch(e){ /* stockage indisponible ou trop volumineux : on continue sans bloquer */ }
   }
 
   async function restoreSession(){
-    let raw = null;
-    if(window.storage){
-      try{
-        const res = await window.storage.get('opev_session', false);
-        if(res && res.value) raw = res.value;
-      } catch(e){ /* pas de session precedente valide : on garde l'etat vide par defaut */ }
-    } else {
-      try{
-        raw = localStorage.getItem(LOCAL_STORAGE_KEY);
-      } catch(e){ /* localStorage indisponible (navigation privée, etc.) : on garde l'etat vide */ }
-    }
-    if(!raw) return;
+    if(!window.storage) return;
     try{
-      const snap = JSON.parse(raw);
+      const res = await window.storage.get('opev_session', false);
+      if(!res || !res.value) return;
+      const snap = JSON.parse(res.value);
       if(!snap.rows || !snap.rows.length) return;
       state.fileName = snap.fileName || state.fileName;
       state.rows = snap.rows;
@@ -3452,20 +3285,7 @@
       return row.slice(0,19).map((val,ci)=>{ // seules les 19 colonnes balance sont exportées (jamais la base articles)
         const meta = state.colMeta[ci];
         let v = val;
-        if(ci===0){
-          // PLU : jamais paddé dans le fichier balance, même si stocké paddé (ex.
-          // refs Dolibarr sur 4 chiffres "0006") — on retire les zéros de tête ici.
-          const n = parseInt((v||'').trim(),10);
-          v = isNaN(n) ? (v||'').trim() : String(n);
-        } else if(ci===1){
-          // Nom : la balance l'écrit toujours en MAJUSCULES et paddé à 26 caractères —
-          // vérifié sur de vrais exports. Les noms venant de Dolibarr arrivent propres
-          // (casse mixte, non paddés), donc on ne peut plus compter sur la détection
-          // automatique de largeur fixe (colMeta) pour cette colonne : on l'applique
-          // toujours, quoi qu'il arrive.
-          v = (v||'').toUpperCase();
-          if(v.length < 26) v = v + ' '.repeat(26 - v.length);
-        } else if(meta.fixed){
+        if(meta.fixed && ci!==0){ // jamais de padding sur le PLU (colonne 1)
           if(v.length < meta.width) v = v + ' '.repeat(meta.width - v.length);
           // si dépassement : on exporte tel quel (pas de troncature silencieuse)
         }
@@ -3693,11 +3513,9 @@
   // techniques propres à la balance (code B000, département, code long...) que
   // Dolibarr ne connaît pas sont repris de la base déjà chargée quand le PLU existe
   // déjà, sinon complétés avec les valeurs constantes observées sur le reste du fichier.
-  const BALANCE_CONST_DEFAULTS = ['                          ','0','0','0','0','0','0','0','0','1','B000','P1','D0','O000000000000000000000000000000000000','0','             ','D0'];
-  // index 0..16 correspond aux colonnes 2..18 : champ3, type(temp), prix(temp),
-  // categorie(temp), champ7, champ8, champ9, champ10, champ11, champ12, code,
-  // statut(temp), departement, codelong, champ17, champ18(13 espaces), champ19.
-  // (les "temp" sont immédiatement écrasés juste après par les vraies valeurs)
+  const BALANCE_CONST_DEFAULTS = ['','0','0','0','0','0','1','B000','P1','D0','O000000000000000000000000000000000000','0','','D0'];
+  // index 0..13 correspond aux colonnes 2..18 les moins variables (champ3, champ7-12,
+  // code, statut, departement, codelong, champ17, champ18, champ19)
 
   function readSpreadsheetFile(file){
     return new Promise((resolve, reject)=>{
@@ -3774,12 +3592,24 @@
     updateDolibarrImportReadiness();
   });
 
-  // Cœur commun de la fusion Dolibarr -> base articles, utilisé aussi bien par l'import
-  // 3-fichiers ci-dessous que par la synchronisation directe API (voir plus bas
-  // "Synchro directe via API Dolibarr"). productRows/categoryListRows/categoryRows suivent
-  // exactement le format des fichiers d'export Dolibarr (mêmes noms de colonnes), que la
-  // source soit un fichier uploadé ou reconstruite depuis les réponses JSON de l'API.
-  function applyDolibarrImportData(productRows, categoryListRows, categoryRows, sourceLabel, extraWarnings){
+  btnRunDolibarrImport.addEventListener('click', async ()=>{
+    const productFile = dolibarrProductFile;
+    const categoryListFile = dolibarrCategoryListFile;
+    const categoryFile = dolibarrCategoryFile;
+    if(!productFile || !categoryListFile || !categoryFile) return;
+
+    let productRows, categoryListRows, categoryRows;
+    try{
+      [productRows, categoryListRows, categoryRows] = await Promise.all([
+        readSpreadsheetFile(productFile),
+        readSpreadsheetFile(categoryListFile),
+        readSpreadsheetFile(categoryFile)
+      ]);
+    } catch(err){
+      alert("Erreur de lecture des fichiers : " + err.message);
+      return;
+    }
+
     // ---- Liste des catégories : classe chaque ID (vraie catégorie / Bio / Local / allergène) ----
     function findCategoryCodeByLabel(dolibarrLabel){
       const target = (dolibarrLabel||'').trim().toLowerCase();
@@ -3804,7 +3634,6 @@
     const allergenIdToCode = {};     // id Dolibarr -> code allergene 1-14
     const bioIds = new Set(), localIds = new Set();
     const emplacementIds = new Set(); // id -> reconnu via catMeta[id].label directement
-    const positionCamionIds = new Set(); // id -> toute catégorie dont le parent est "Position dans Camion"
     Object.entries(catMeta).forEach(([id,m])=>{
       if(m.parentLabel==='Produits'){
         const code = findCategoryCodeByLabel(m.label);
@@ -3820,8 +3649,6 @@
         if(match) allergenIdToCode[id] = parseInt(match[1],10);
       } else if(m.parentLabel==='Emplacement'){
         emplacementIds.add(id);
-      } else if(m.parentLabel==='Position dans Camion'){
-        positionCamionIds.add(id);
       }
     });
     // Sous-catégorie : toute catégorie qui n'est ni Bio/Local/Allergène ni une des 5
@@ -3839,7 +3666,7 @@
     const subCategoryIds = new Set();
     Object.entries(catMeta).forEach(([id,m])=>{
       if(realCategoryIdToCode[id]) return; // deja classee comme categorie principale
-      if(bioIds.has(id) || localIds.has(id) || allergenIdToCode[id]!==undefined || emplacementIds.has(id) || positionCamionIds.has(id)) return;
+      if(bioIds.has(id) || localIds.has(id) || allergenIdToCode[id]!==undefined || emplacementIds.has(id)) return;
       if(m.parentLabel==='Produits') return; // deja geree ci-dessus (cas non reconnu -> ignoree, pas une sous-cat)
       if(isUnderProduits(id, 0)) subCategoryIds.add(id);
     });
@@ -3850,7 +3677,6 @@
     const allergensByPlu = {};
     const subCategoriesByPlu = {};
     const emplacementByPlu = {};
-    const positionCamionByPlu = {};
     categoryRows.forEach(r=>{
       const plu = String(r['Réf.']||'').replace(/^ref:/i,'').trim();
       const id = String(r['ID du(de la) tag/catégorie']||'').trim();
@@ -3864,9 +3690,6 @@
       }
       else if(emplacementIds.has(id)){
         emplacementByPlu[plu] = catMeta[id] ? catMeta[id].label : '';
-      }
-      else if(positionCamionIds.has(id)){
-        positionCamionByPlu[plu] = catMeta[id] ? catMeta[id].label : '';
       }
       else if(subCategoryIds.has(id)){
         if(!subCategoriesByPlu[plu]) subCategoriesByPlu[plu] = [];
@@ -3988,11 +3811,6 @@
       row[BIZCOL.EMPLACEMENT] = emplacementByPlu[pluStr] !== undefined
         ? emplacementByPlu[pluStr]
         : (existing ? existing[BIZCOL.EMPLACEMENT] : '');
-      // Position dans le camion (ex. "Panneau Arrière") — sert uniquement à trier/filtrer
-      // dans l'outil, jamais utilisée pour l'export balance.
-      row[BIZCOL.POSITION_CAMION] = positionCamionByPlu[pluStr] !== undefined
-        ? positionCamionByPlu[pluStr]
-        : (existing ? existing[BIZCOL.POSITION_CAMION] : '');
 
       // Allergènes : priorité aux catégories, repli sur l'extrafield texte "Allergènes"
       if(allergensByPlu[pluStr] && allergensByPlu[pluStr].length){
@@ -4025,8 +3843,7 @@
     const nLocal = newRows.filter(r=>r[BIZCOL.LOCAL]==='1').length;
     const nAllerg = Object.keys(state.allergens).length;
 
-    const originLabel = sourceLabel==='api' ? 'Synchronisation Dolibarr (API) terminée' : 'Import Dolibarr terminé';
-    let msg = `${originLabel} : ${newRows.length} produit(s) chargé(s) (${fromExisting} rapprochés avec la base précédente, ${brandNew} nouveaux sans historique technique balance).\n` +
+    let msg = `Import Dolibarr terminé : ${newRows.length} produit(s) chargé(s) (${fromExisting} rapprochés avec la base précédente, ${brandNew} nouveaux sans historique technique balance).\n` +
       `Bio : ${nBio} · Local : ${nLocal} · Produits avec allergène(s) renseigné(s) : ${nAllerg}.`;
     if(typeDefaulted > 0){
       msg += `\n\n⚠ ${typeDefaulted} produit(s) sans "Type Vente" NI unité reconnue (kg/g/l ou pièce/unité) dans Dolibarr, et sans base précédente pour se replier — mis par défaut sur "à la pièce" (C). Vérifie le champ "Unité" sur ces fiches produit dans Dolibarr.`;
@@ -4037,349 +3854,9 @@
     if(emptyCategoryPlu.length){
       msg += `\n\n⚠ ${emptyCategoryPlu.length} produit(s) sans catégorie reconnue (PLU : ${emptyCategoryPlu.slice(0,15).join(', ')}${emptyCategoryPlu.length>15?'…':''}).`;
     }
-    if(sourceLabel==='api'){
-      msg += `\n\nRappel : en synchro API, "Fournisseur" et "Prix d'achat" ne sont pas encore récupérés (limitation connue de la V1) — les valeurs déjà présentes dans la base sont conservées.`;
-    }
-    if(extraWarnings && extraWarnings.length){
-      extraWarnings.forEach(w=>{ msg += `\n\n⚠ ${w}`; });
-    }
     alert(msg);
-  }
-
-  btnRunDolibarrImport.addEventListener('click', async ()=>{
-    const productFile = dolibarrProductFile;
-    const categoryListFile = dolibarrCategoryListFile;
-    const categoryFile = dolibarrCategoryFile;
-    if(!productFile || !categoryListFile || !categoryFile) return;
-
-    let productRows, categoryListRows, categoryRows;
-    try{
-      [productRows, categoryListRows, categoryRows] = await Promise.all([
-        readSpreadsheetFile(productFile),
-        readSpreadsheetFile(categoryListFile),
-        readSpreadsheetFile(categoryFile)
-      ]);
-    } catch(err){
-      alert("Erreur de lecture des fichiers : " + err.message);
-      return;
-    }
-
-    applyDolibarrImportData(productRows, categoryListRows, categoryRows, 'file');
     dolibarrProductFile = null; dolibarrCategoryListFile = null; dolibarrCategoryFile = null;
     updateDolibarrImportReadiness();
-  });
-
-  // ---------- Synchro directe via API Dolibarr ----------
-  // V1 : lecture seule. Récupère produits + catégories + rattachements catégorie par
-  // produit directement depuis l'API REST Dolibarr, reconstruit les mêmes structures
-  // que l'import 3-fichiers ci-dessus (productRows/categoryListRows/categoryRows), puis
-  // réutilise à l'identique applyDolibarrImportData pour ne pas dupliquer la logique de
-  // classification. La clé API n'est jamais écrite dans ce fichier : elle est saisie par
-  // l'utilisateur et stockée uniquement dans le localStorage de son navigateur.
-  const DOLIBARR_API_URL_KEY = 'opev_dolibarr_api_url';
-  const DOLIBARR_API_KEY_KEY = 'opev_dolibarr_api_key';
-
-  function getDolibarrApiConfig(){
-    return {
-      url: (localStorage.getItem(DOLIBARR_API_URL_KEY) || '').trim(),
-      key: (localStorage.getItem(DOLIBARR_API_KEY_KEY) || '').trim()
-    };
-  }
-
-  function saveDolibarrApiConfig(url, key){
-    localStorage.setItem(DOLIBARR_API_URL_KEY, (url||'').trim());
-    localStorage.setItem(DOLIBARR_API_KEY_KEY, (key||'').trim());
-  }
-
-  async function dolibarrApiGet(path){
-    const cfg = getDolibarrApiConfig();
-    if(!cfg.url || !cfg.key){
-      throw new Error("Configure d'abord l'URL de l'API et la clé API Dolibarr (⚙ Configurer l'API Dolibarr…).");
-    }
-    const base = cfg.url.replace(/\/+$/,'');
-    const res = await fetch(base + path, {
-      headers: { 'DOLAPIKEY': cfg.key, 'Accept': 'application/json' }
-    });
-    if(!res.ok){
-      let detail = '';
-      try{ const j = await res.json(); detail = (j && j.error && j.error.message) || ''; } catch(e){}
-      throw new Error(`Erreur API Dolibarr (${res.status}) sur ${path}${detail ? ' — ' + detail : ''}`);
-    }
-    return res.json();
-  }
-
-  // Récupère le nombre total de produits déclaré par Dolibarr (paramètre pagination_data de
-  // l'endpoint /products) avant de lancer la pagination complète — permet d'afficher le total
-  // à l'utilisateur et sert de garde-fou contre une boucle de pagination anormale (offset qui
-  // dépasse le total réel sans que l'API ne renvoie de page vide, cf. incident du 04/09).
-  async function getDolibarrProductTotal(){
-    try{
-      const res = await dolibarrApiGet(`/products?limit=1&page=0&pagination_data=true`);
-      const total = res && res.pagination && typeof res.pagination.total === 'number' ? res.pagination.total : null;
-      return (total!=null && total>=0) ? total : null;
-    } catch(err){
-      return null; // total non disponible sur cette instance/version : on continue sans garde-fou basé sur le total
-    }
-  }
-
-  async function fetchAllDolibarrProducts(onProgress, expectedTotal){
-    const limit = 500;
-    let offset = 0;
-    const all = [];
-    let lastFirstId = null;
-    // Plafond de sécurité : le total attendu (+une marge de 2 pages) si connu, sinon une limite
-    // large mais finie — évite qu'une pagination qui boucle indéfiniment côté serveur (offset
-    // au-delà du total sans page vide en retour) ne tourne à l'infini.
-    const hardCap = (typeof expectedTotal === 'number' && expectedTotal >= 0) ? expectedTotal + limit*2 : 20000;
-    while(true){
-      const page = await dolibarrApiGet(`/products?limit=${limit}&offset=${offset}&sortfield=t.rowid&sortorder=ASC`);
-      if(!Array.isArray(page) || page.length===0) break;
-      // Garde-fou anti-boucle : si Dolibarr renvoie la même page qu'à l'itération précédente
-      // (offset allé au-delà du total réel sur une instance qui ne renvoie pas de page vide),
-      // on arrête plutôt que de dupliquer indéfiniment.
-      const firstId = page[0] && page[0].id;
-      if(firstId!=null && firstId === lastFirstId) break;
-      lastFirstId = firstId;
-      all.push(...page);
-      if(onProgress) onProgress(all.length, expectedTotal);
-      offset += limit;
-      // Sur une instance multi-société (conf->entity), une page intermédiaire peut être filtrée
-      // en dessous de la limite demandée côté serveur sans que ce soit réellement la fin de la
-      // liste — on ne peut donc plus se fier uniquement à "page.length < limit" pour détecter la
-      // fin. Quand le total réel est connu (pagination_data), on continue jusqu'à l'avoir
-      // atteint ; sinon on retombe sur l'ancienne heuristique (taille de page).
-      if(expectedTotal!=null){
-        if(all.length >= expectedTotal) break;
-      } else if(page.length < limit){
-        break;
-      }
-      if(all.length >= hardCap){
-        console.warn(`Synchronisation Dolibarr : plafond de sécurité (${hardCap}) atteint, arrêt de la pagination des produits.`);
-        break;
-      }
-    }
-    return all;
-  }
-
-  async function fetchAllDolibarrCategories(){
-    const limit = 500;
-    let offset = 0;
-    const all = [];
-    let lastFirstId = null;
-    const hardCap = 20000; // pas de total connu pour les catégories (pas de pagination_data sur cet endpoint) : plafond fixe par sécurité
-    while(true){
-      const page = await dolibarrApiGet(`/categories?limit=${limit}&offset=${offset}`);
-      if(!Array.isArray(page) || page.length===0) break;
-      // Garde-fou anti-boucle, identique à fetchAllDolibarrProducts.
-      const firstId = page[0] && page[0].id;
-      if(firstId!=null && firstId === lastFirstId) break;
-      lastFirstId = firstId;
-      all.push(...page);
-      offset += limit;
-      // Contrairement à l'ancienne version, on ne s'arrête plus sur une page intermédiaire
-      // renvoyant moins que la limite demandée (peut arriver sur une instance multi-société où
-      // le filtrage serveur réduit une page sans que ce soit réellement la fin de la liste) — on
-      // continue jusqu'à une page réellement vide.
-      if(all.length >= hardCap){
-        console.warn(`Synchronisation Dolibarr : plafond de sécurité (${hardCap}) atteint, arrêt de la pagination des catégories.`);
-        break;
-      }
-    }
-    return all;
-  }
-
-  // Un appel /products/{id}/categories par produit (pas d'endpoint Dolibarr en masse
-  // disponible sur cette instance) — exécuté avec une concurrence limitée pour rester
-  // raisonnable sur plusieurs centaines de produits sans saturer le serveur.
-  async function fetchCategoriesForProducts(products, onProgress){
-    const CONCURRENCY = 8;
-    const result = {}; // id produit Dolibarr -> array d'id catégorie
-    let idx = 0, done = 0;
-    async function worker(){
-      while(idx < products.length){
-        const i = idx++;
-        const p = products[i];
-        try{
-          const cats = await dolibarrApiGet(`/products/${p.id}/categories`);
-          result[p.id] = Array.isArray(cats) ? cats.map(c=>String(c.id)) : [];
-        } catch(err){
-          result[p.id] = [];
-        }
-        done++;
-        if(onProgress) onProgress(done, products.length);
-      }
-    }
-    await Promise.all(new Array(CONCURRENCY).fill(0).map(worker));
-    return result;
-  }
-
-  // L'API renvoie les prix en notation décimale point ("19.50000000") ; parseFrPrice
-  // attend le format virgule utilisé dans les exports fichiers Dolibarr ("19,50").
-  function euroApiToFrString(v){
-    const n = parseFloat(v);
-    if(v==null || v==='' || isNaN(n)) return '';
-    return n.toFixed(2).replace('.', ',');
-  }
-
-  const btnSyncDolibarrApi = $('btnSyncDolibarrApi');
-
-  async function runDolibarrApiSync(){
-    const cfg = getDolibarrApiConfig();
-    if(!cfg.url || !cfg.key){
-      openDolibarrApiConfigModal();
-      return;
-    }
-    const originalLabel = btnSyncDolibarrApi.textContent;
-    btnSyncDolibarrApi.disabled = true;
-    try{
-      btnSyncDolibarrApi.textContent = '⏳ Vérification du nombre de produits…';
-      const expectedTotal = await getDolibarrProductTotal();
-      const totalLabel = expectedTotal!=null ? `/${expectedTotal}` : '';
-      btnSyncDolibarrApi.textContent = expectedTotal!=null ? `⏳ Produits… (0${totalLabel})` : '⏳ Récupération des produits…';
-      const products = await fetchAllDolibarrProducts((n)=>{ btnSyncDolibarrApi.textContent = `⏳ Produits… (${n}${totalLabel})`; }, expectedTotal);
-      let productCountMismatchWarning = null;
-      if(expectedTotal!=null && products.length !== expectedTotal){
-        productCountMismatchWarning = `Écart persistant : ${products.length} produit(s) récupéré(s) via l'API pour un total de ${expectedTotal} annoncé par Dolibarr. Relance la synchro — s'il persiste, contacte-moi avec ces deux chiffres.`;
-        console.warn(`Synchronisation Dolibarr : ${products.length} produit(s) récupéré(s) pour un total annoncé de ${expectedTotal}.`);
-      }
-      btnSyncDolibarrApi.textContent = '⏳ Récupération des catégories…';
-      const categories = await fetchAllDolibarrCategories();
-      const categoriesById = {};
-      categories.forEach(c=>{ categoriesById[String(c.id)] = c; });
-
-      btnSyncDolibarrApi.textContent = `⏳ Classement des produits… (0/${products.length})`;
-      const catsByProductId = await fetchCategoriesForProducts(products, (done,total)=>{
-        btnSyncDolibarrApi.textContent = `⏳ Classement des produits… (${done}/${total})`;
-      });
-
-      // ---- Reconstruction du format "fichiers" attendu par applyDolibarrImportData ----
-      const categoryListRows = categories.map(c=>{
-        const parent = categoriesById[String(c.fk_parent)];
-        return {
-          'ID du(de la) tag/catégorie': String(c.id),
-          'Libellé': c.label || '',
-          'ID du tag/catégorie parent': c.fk_parent!=null ? String(c.fk_parent) : '',
-          'Libellé du tag/catégorie parent': parent ? (parent.label || '') : ''
-        };
-      });
-
-      const productRows = [];
-      const categoryRows = [];
-      // Produits Dolibarr sans référence (ref) : ignorés (impossible à rapprocher/afficher sans
-      // PLU), mais désormais comptabilisés et signalés dans le message final — piste probable en
-      // cas d'écart de nombre de produits entre la synchro API et un export fichier Dolibarr, qui
-      // lui n'applique pas ce filtre.
-      const skippedNoRef = [];
-      products.forEach(p=>{
-        const ref = String(p.ref||'').trim();
-        if(!ref){ skippedNoRef.push(p.label || `#${p.id}`); return; }
-        const opts = p.array_options || {};
-        productRows.push({
-          'Réf.': ref,
-          'Libellé': p.label || '',
-          'Prix unitaire TTC': euroApiToFrString(p.price_ttc),
-          'En vente': (String(p.status)==='1') ? '1' : '0',
-          'Type Vente': '',
-          'Unité': p.fk_unit!=null ? String(p.fk_unit) : '',
-          'Fournisseur': '',
-          "Prix d'achat": '',
-          'Taux TVA': p.tva_tx!=null && p.tva_tx!=='' ? String(parseFloat(p.tva_tx)) : '',
-          'Stock': p.stock_reel!=null ? String(p.stock_reel) : '',
-          'Limite stock pour alerte': p.seuil_stock_alerte!=null ? String(p.seuil_stock_alerte) : '',
-          'Stock désiré optimal': p.desiredstock!=null ? String(p.desiredstock) : '',
-          'Produit Bio': opts.options_produit_bio==='1' ? '1' : '0',
-          'Produit Local': opts.options_produit_local==='1' ? '1' : '0',
-          'Affichage Prix': opts.options_affichage_prix || '',
-          'Allergènes': opts.options_allergenes || '',
-          'Description': p.description || ''
-        });
-        (catsByProductId[p.id]||[]).forEach(catId=>{
-          categoryRows.push({ 'Réf.': ref, 'ID du(de la) tag/catégorie': catId, 'Libellé': '' });
-        });
-      });
-
-      const extraWarnings = [];
-      if(skippedNoRef.length){
-        extraWarnings.push(`${skippedNoRef.length} produit(s) Dolibarr sans référence (ref) ignoré(s) par la synchro API (absents de la base) : ${skippedNoRef.slice(0,15).join(', ')}${skippedNoRef.length>15?'…':''}.`);
-      }
-      if(productCountMismatchWarning){
-        extraWarnings.push(productCountMismatchWarning);
-      }
-      applyDolibarrImportData(productRows, categoryListRows, categoryRows, 'api', extraWarnings);
-    } catch(err){
-      alert("Échec de la synchronisation avec Dolibarr : " + err.message);
-    } finally {
-      btnSyncDolibarrApi.disabled = false;
-      btnSyncDolibarrApi.textContent = originalLabel;
-    }
-  }
-
-  btnSyncDolibarrApi.addEventListener('click', runDolibarrApiSync);
-
-  // Hooks de test (sans effet en usage normal) : permettent de déclencher la synchro
-  // et d'inspecter l'état sans passer par les clics UI, utilisés par les tests automatisés.
-  window.__opevRunDolibarrApiSyncForTest = runDolibarrApiSync;
-  window.__opevDebugState = function(){
-    return {
-      rowCount: state.rows.length,
-      sampleByPlu: Object.fromEntries(state.rows.filter(r=>['0524','0523','0900'].includes(r[0])).map(r=>[r[0], r])),
-      allergens: state.allergens
-    };
-  };
-
-  // ---- Modal de configuration URL/clé API ----
-  const dolibarrApiConfigOverlay = $('dolibarrApiConfigOverlay');
-  const dolibarrApiUrlInput = $('dolibarrApiUrlInput');
-  const dolibarrApiKeyInput = $('dolibarrApiKeyInput');
-  const dolibarrApiTestResult = $('dolibarrApiTestResult');
-
-  function openDolibarrApiConfigModal(){
-    const cfg = getDolibarrApiConfig();
-    dolibarrApiUrlInput.value = cfg.url;
-    dolibarrApiKeyInput.value = cfg.key;
-    dolibarrApiTestResult.textContent = '';
-    dolibarrApiConfigOverlay.classList.add('show');
-  }
-  function closeDolibarrApiConfigModal(){ dolibarrApiConfigOverlay.classList.remove('show'); }
-
-  $('btnConfigDolibarrApi').addEventListener('click', openDolibarrApiConfigModal);
-  $('dolibarrApiConfigClose').addEventListener('click', closeDolibarrApiConfigModal);
-  $('dolibarrApiConfigCancel').addEventListener('click', closeDolibarrApiConfigModal);
-  dolibarrApiConfigOverlay.addEventListener('click', (e)=>{ if(e.target===dolibarrApiConfigOverlay) closeDolibarrApiConfigModal(); });
-
-  $('dolibarrApiConfigSave').addEventListener('click', ()=>{
-    const url = dolibarrApiUrlInput.value.trim();
-    const key = dolibarrApiKeyInput.value.trim();
-    if(!url || !key){
-      dolibarrApiTestResult.textContent = 'Renseigne l\'URL et la clé avant d\'enregistrer.';
-      return;
-    }
-    saveDolibarrApiConfig(url, key);
-    closeDolibarrApiConfigModal();
-  });
-
-  $('dolibarrApiTestBtn').addEventListener('click', async ()=>{
-    const url = dolibarrApiUrlInput.value.trim();
-    const key = dolibarrApiKeyInput.value.trim();
-    if(!url || !key){
-      dolibarrApiTestResult.textContent = 'Renseigne l\'URL et la clé avant de tester.';
-      return;
-    }
-    dolibarrApiTestResult.textContent = 'Test en cours…';
-    try{
-      const res = await fetch(url.replace(/\/+$/,'') + '/status', {
-        headers: { 'DOLAPIKEY': key, 'Accept':'application/json' }
-      });
-      if(res.ok){
-        const j = await res.json();
-        const v = j && j.success && j.success.dolibarr_version;
-        dolibarrApiTestResult.textContent = `✓ Connexion réussie (Dolibarr ${v||'?'}).`;
-      } else {
-        dolibarrApiTestResult.textContent = `✗ Échec (HTTP ${res.status}) — vérifie l'URL et la clé.`;
-      }
-    } catch(err){
-      dolibarrApiTestResult.textContent = `✗ Échec de connexion : ${err.message}`;
-    }
   });
 
   let masterDbFileHandle = null; // lien vers le fichier cible (File System Access API), si le navigateur le permet
@@ -4867,7 +4344,7 @@
   }
 
   // ---------- Étiquettes à imprimer et découper ----------
-  const LABEL_MARGIN = 8, LABEL_GAP = 0; // écart entre étiquettes supprimé (demande client) : les traits de découpe en pointillés (drawCutGuide) de deux étiquettes voisines se superposent exactement au lieu de laisser une bande blanche entre deux traits — un seul trait net à couper au lieu de deux avec du blanc entre les deux
+  const LABEL_MARGIN = 8, LABEL_GAP = 2;
   function getLabelTemplates(){
     const s = state.labelSettings;
     return {
@@ -4907,13 +4384,6 @@
         return collator(ea,eb) || collator((a.row[1]||''),(b.row[1]||''));
       });
     }
-    if(sortBy==='position_camion'){
-      return rows.slice().sort((a,b)=>{
-        const pa = (a.row[BIZCOL.POSITION_CAMION]||'').trim() || 'zzz-sans-position';
-        const pb = (b.row[BIZCOL.POSITION_CAMION]||'').trim() || 'zzz-sans-position';
-        return collator(pa,pb) || collator((a.row[1]||''),(b.row[1]||''));
-      });
-    }
     if(sortBy==='plu'){
       return rows.slice().sort((a,b)=> collator((a.row[0]||''),(b.row[0]||'')));
     }
@@ -4947,11 +4417,6 @@
       tdEmpl.textContent = (row[BIZCOL.EMPLACEMENT]||'').trim() || '—';
       tdEmpl.style.color = 'var(--ink-soft)';
       tr.appendChild(tdEmpl);
-
-      const tdPosCamion = document.createElement('td');
-      tdPosCamion.textContent = (row[BIZCOL.POSITION_CAMION]||'').trim() || '—';
-      tdPosCamion.style.color = 'var(--ink-soft)';
-      tr.appendChild(tdPosCamion);
 
       const tdTrame = document.createElement('td');
       const sel = document.createElement('select');
@@ -5017,42 +4482,25 @@
     compactNameFont: 8.5, compactPriceFont: 13,
     bioAsText: true,
     bioFontSize: 8, // taille du texte "BIO" (pt, trame détaillée) — la trame compacte en dérive une taille réduite
-    localFontSize: 8, // taille du texte "Local"/pays (pt, trame détaillée) — indépendante de bioFontSize, la trame compacte en dérive une taille réduite
-    bioDotSize: 4.4, // diamètre (mm) du point vert Bio, trame détaillée — la trame compacte en dérive une taille réduite
-    localIconSize: 4.4, // diamètre (mm) de la tête de l'épingle Local, trame détaillée — la trame compacte en dérive une taille réduite
-    allergenFontSize: 6, // taille (pt) de la mention allergènes, trame détaillée
-    detailKgFont: 7, // taille (pt) de la ligne "soit X €/kg", trame détaillée
-    compactKgFont: 6, // taille (pt) de la ligne "soit X €/kg", trame compacte
     detailPadding: 4, compactPadding: 2.5,
     detailAlign: 'center',
     elementSpacing: 0,
     bioColor: '#3C823C',
     localColor: '#DB4437',
     showSupplier: false,
-    showDescription: false,
-    showLogo: true,
-    logoStyle: 'icon'
+    showDescription: false
   };
   // Plafonds de sécurité pour les tailles de police personnalisables (revue-graphiste
   // #2) : au-delà, le texte se chevauche dans les cellules aux dimensions par défaut
   // (démontré par le test de stress avec une police prix compacte à 24 pt). Les
   // positions du bloc prix sont désormais proportionnelles à la police choisie (voir
   // drawLabelCompact/drawLabelDetail), mais ces plafonds restent la garantie de base.
-  // Depuis l'évolution "badges empilés", les mêmes plafonds couvrent aussi les tailles
-  // (mm) du point Bio et de l'épingle Local — clampLabelFont() est générique, seule
-  // l'unité change selon le réglage.
   const LABEL_FONT_CAPS = {
     compactNameFont: { min:5, max:11 },
     compactPriceFont: { min:6, max:16 },
     detailNameFont: { min:8, max:20 },
     detailPriceFont: { min:8, max:28 },
-    bioFontSize: { min:6, max:14 },
-    localFontSize: { min:6, max:14 },
-    bioDotSize: { min:2, max:8 },
-    localIconSize: { min:2, max:8 },
-    allergenFontSize: { min:5, max:9 },
-    detailKgFont: { min:5, max:10 },
-    compactKgFont: { min:4, max:8 }
+    bioFontSize: { min:6, max:14 }
   };
   const clampLabelFont = (key, v)=>{
     const c = LABEL_FONT_CAPS[key];
@@ -5074,27 +4522,11 @@
     $('lsCompactPadding').value = s.compactPadding;
     $('lsBioAsText').checked = !!s.bioAsText;
     $('lsBioFont').value = s.bioFontSize;
-    $('lsLocalFont').value = s.localFontSize;
-    $('lsBioDotSize').value = s.bioDotSize;
-    $('lsLocalIconSize').value = s.localIconSize;
     $('lsBioColor').value = s.bioColor;
     $('lsLocalColor').value = s.localColor;
-    $('lsAllergenFont').value = s.allergenFontSize;
-    $('lsDetailKgFont').value = s.detailKgFont;
-    $('lsCompactKgFont').value = s.compactKgFont;
     $('lsShowSupplier').checked = !!s.showSupplier;
     $('lsShowDescription').checked = !!s.showDescription;
-    $('lsShowLogo').checked = s.showLogo !== false; // défaut affiché si réglage absent (compat anciens réglages)
-    $('lsLogoStyle').value = s.logoStyle === 'band' ? 'band' : 'icon';
-    updateLogoStyleVisibility();
     updateLabelPreview(); // reflète immédiatement les réglages courants dans l'aperçu à l'ouverture du panneau
-  }
-  // Le choix du style de logo n'a de sens que si le logo est affiché — masqué sinon (le
-  // réglage sous-jacent est conservé tel quel, seul son offre visuelle disparaît).
-  function updateLogoStyleVisibility(){
-    const shown = $('lsShowLogo').checked;
-    $('lsLogoStyleWrap').style.display = shown ? '' : 'none';
-    $('lsLogoStyleNote').style.display = shown ? '' : 'none';
   }
   // Relit tous les champs du formulaire et renvoie un objet labelSettings complet — utilisé à la fois
   // pour l'enregistrement (lsSave) et pour l'aperçu en direct, afin de garantir qu'ils restent cohérents.
@@ -5113,12 +4545,6 @@
       compactPriceFont: clampLabelFont('compactPriceFont', num('lsCompactPriceFont', LABEL_SETTINGS_DEFAULTS.compactPriceFont)),
       bioAsText: $('lsBioAsText').checked,
       bioFontSize: clampLabelFont('bioFontSize', num('lsBioFont', LABEL_SETTINGS_DEFAULTS.bioFontSize)),
-      localFontSize: clampLabelFont('localFontSize', num('lsLocalFont', LABEL_SETTINGS_DEFAULTS.localFontSize)),
-      bioDotSize: clampLabelFont('bioDotSize', num('lsBioDotSize', LABEL_SETTINGS_DEFAULTS.bioDotSize)),
-      localIconSize: clampLabelFont('localIconSize', num('lsLocalIconSize', LABEL_SETTINGS_DEFAULTS.localIconSize)),
-      allergenFontSize: clampLabelFont('allergenFontSize', num('lsAllergenFont', LABEL_SETTINGS_DEFAULTS.allergenFontSize)),
-      detailKgFont: clampLabelFont('detailKgFont', num('lsDetailKgFont', LABEL_SETTINGS_DEFAULTS.detailKgFont)),
-      compactKgFont: clampLabelFont('compactKgFont', num('lsCompactKgFont', LABEL_SETTINGS_DEFAULTS.compactKgFont)),
       detailPadding: num('lsDetailPadding', LABEL_SETTINGS_DEFAULTS.detailPadding),
       compactPadding: num('lsCompactPadding', LABEL_SETTINGS_DEFAULTS.compactPadding),
       detailAlign: $('lsDetailAlign').value || LABEL_SETTINGS_DEFAULTS.detailAlign,
@@ -5126,9 +4552,7 @@
       bioColor: $('lsBioColor').value || LABEL_SETTINGS_DEFAULTS.bioColor,
       localColor: $('lsLocalColor').value || LABEL_SETTINGS_DEFAULTS.localColor,
       showSupplier: $('lsShowSupplier').checked,
-      showDescription: $('lsShowDescription').checked,
-      showLogo: $('lsShowLogo').checked,
-      logoStyle: $('lsLogoStyle').value === 'band' ? 'band' : 'icon'
+      showDescription: $('lsShowDescription').checked
     };
   }
   $('btnLabelSettings').addEventListener('click', ()=>{
@@ -5154,11 +4578,9 @@
   [
     'lsDetailW','lsDetailH','lsDetailNameFont','lsDetailPriceFont','lsDetailPadding','lsElementSpacing',
     'lsCompactCols','lsCompactRows','lsCompactNameFont','lsCompactPriceFont','lsCompactPadding',
-    'lsBioFont','lsLocalFont','lsBioDotSize','lsLocalIconSize','lsBioColor','lsLocalColor',
-    'lsAllergenFont','lsDetailKgFont','lsCompactKgFont'
+    'lsBioFont','lsBioColor','lsLocalColor'
   ].forEach(id=> $(id).addEventListener('input', updateLabelPreview));
-  ['lsDetailAlign','lsBioAsText','lsShowSupplier','lsShowDescription','lsShowLogo','lsLogoStyle'].forEach(id=> $(id).addEventListener('change', updateLabelPreview));
-  $('lsShowLogo').addEventListener('change', updateLogoStyleVisibility);
+  ['lsDetailAlign','lsBioAsText','lsShowSupplier','lsShowDescription'].forEach(id=> $(id).addEventListener('change', updateLabelPreview));
 
   function drawCutGuide(doc, x, y, w, h){
     doc.setDrawColor(180,170,150);
@@ -5210,12 +4632,9 @@
     // Repère bio/local, à côté du PLU — la trame compacte est celle par défaut et en était
     // totalement dépourvue jusqu'ici (revue-graphiste #1). Même logique de détection que la
     // trame détaillée : un point plein + "BIO" (bio) et une épingle + son texte (local, ou
-    // pays d'origine si le produit n'est pas local — cf. drawLabelDetail). L'espace de cette
-    // trame est trop contraint pour empiler les badges autour du logo comme en trame
-    // détaillée (nom, prix et logo se disputent déjà les ~33 mm de hauteur disponibles) : ils
-    // restent en ligne, à côté du PLU, mais leurs tailles dérivent désormais des réglages
-    // dédiés (bioDotSize/localIconSize/bioFontSize/localFontSize), proportionnellement
-    // réduites pour tenir dans l'espace disponible, plutôt que de constantes fixes.
+    // pays d'origine si le produit n'est pas local — cf. drawLabelDetail), à une taille de
+    // police réduite dérivée de s.bioFontSize pour tenir dans l'espace très contraint de
+    // cette trame.
     const nomLowerC = (r[1]||'').toLowerCase();
     const isBioC = (r[BIZCOL.BIO]||'').trim()!=='' ? (r[BIZCOL.BIO]||'').trim()==='1' : nomLowerC.includes('bio');
     const isLocalC = (r[BIZCOL.LOCAL]||'').trim()!=='' ? (r[BIZCOL.LOCAL]||'').trim()==='1' : nomLowerC.includes('local');
@@ -5225,26 +4644,23 @@
       // bx mesuré avec la police du PLU encore active (6,5 pt normal, posée plus haut) —
       // même principe que la mesure du PLU pour les colonnes du tableau (revue-graphiste).
       let bx = x+pad+doc.getTextWidth(pluStr)+2;
-      const bioDotRC = Math.max(0.6, Math.min(1.6, s.bioDotSize*0.25));
-      const pinRC = Math.max(0.6, Math.min(1.6, s.localIconSize*0.25));
-      const bioBadgeFontC = Math.max(4, Math.min(6, s.bioFontSize*0.65));
-      const localBadgeFontC = Math.max(4, Math.min(6, s.localFontSize*0.65));
+      const badgeFontC = Math.max(4, Math.min(6, s.bioFontSize*0.65));
       const maxBadgeRight = x+w-pad; // ne jamais déborder du bord droit de l'étiquette
       if(isBioC){
         doc.setFillColor(...hexToRgbArray(s.bioColor, [60,130,60]));
-        doc.circle(bx+bioDotRC, y+3.9, bioDotRC, 'F');
-        bx += bioDotRC*2+0.4;
+        doc.circle(bx+1.1, y+3.9, 1.1, 'F');
+        bx += 2.6;
         doc.setFont('helvetica','bold');
-        doc.setFontSize(bioBadgeFontC);
+        doc.setFontSize(badgeFontC);
         doc.setTextColor(...hexToRgbArray(s.bioColor, [60,130,60]));
         doc.text('BIO', bx, y+4.6);
         bx += doc.getTextWidth('BIO') + 2;
       }
       if(pinTextC){
-        drawMapPin(doc, bx+pinRC, y+4.6, pinRC, hexToRgbArray(s.localColor, PIN_RED));
-        bx += pinRC*2+0.4;
+        drawMapPin(doc, bx+1.1, y+4.6, 1.1, hexToRgbArray(s.localColor, PIN_RED));
+        bx += 2.6;
         doc.setFont('helvetica','bold');
-        doc.setFontSize(localBadgeFontC);
+        doc.setFontSize(badgeFontC);
         doc.setTextColor(...hexToRgbArray(s.localColor, PIN_RED));
         doc.text(truncateTextToWidth(doc, pinTextC, maxBadgeRight-bx), bx, y+4.6);
       }
@@ -5256,15 +4672,9 @@
     const nomLines = doc.splitTextToSize((r[1]||'').trim(), w-2*pad);
     doc.text(ellipsizeLines(nomLines, 1), x+pad, y+10);
 
-    // logo au centre de l'étiquette (réduit de 10%) — désactivable (réglage showLogo, défaut
-    // affiché si absent pour compat des réglages enregistrés avant cette évolution). Le style
-    // 'band' (bandeau noir + logo complet) n'est pas proposé ici : l'espace de la trame compacte
-    // est trop réduit pour loger le texte du logo — l'icône seule reste utilisée dans tous les
-    // cas, quel que soit s.logoStyle (voir panneau de réglages, note sous le sélecteur de style).
-    if(s.showLogo !== false){
-      const iconW = Math.min(9, w*0.22) * 0.9, iconH = iconW/LOGO_ICON_RATIO;
-      doc.addImage(LOGO_ICON_URI, 'PNG', x+w/2-iconW/2, y+h/2-iconH/2-1.5, iconW, iconH);
-    }
+    // logo au centre de l'étiquette (réduit de 10%)
+    const iconW = Math.min(9, w*0.22) * 0.9, iconH = iconW/LOGO_ICON_RATIO;
+    doc.addImage(LOGO_ICON_URI, 'PNG', x+w/2-iconW/2, y+h/2-iconH/2-1.5, iconW, iconH);
 
     // Bloc prix : positions calculées à partir de la police choisie plutôt que des
     // constantes fixes en mm (revue-graphiste #2 — évite le chevauchement de texte
@@ -5275,42 +4685,25 @@
     const pu = priceAndUnitFor(r);
     const marginBottom = 3;
     const unitFont = Math.max(6, Math.min(9, s.compactPriceFont*0.6));
-    // Emplacements fixes, comme en trame détaillée : le prix ne dépend plus de la présence de
-    // la ligne "soit X €/kg" ou de l'unité.
-    const kgLineYC = y+h-marginBottom;
-    const unitLineYC = kgLineYC - (s.compactKgFont*0.42 + 1.4);
-    const priceYC = unitLineYC - (unitFont*0.42 + 1.4);
+    let cursorY = y+h-marginBottom;
     if(pu.showKgSecondary){
       doc.setFont('helvetica','normal');
-      doc.setFontSize(s.compactKgFont);
+      doc.setFontSize(6);
       doc.setTextColor(130,124,114);
-      doc.text(`soit ${pu.priceKgStr}/kg`, x+w-pad, kgLineYC, { align:'right' });
+      doc.text(`soit ${pu.priceKgStr}/kg`, x+w-pad, cursorY, { align:'right' });
+      cursorY -= 6*0.42 + 1.4;
     }
     if(pu.unitLabel){
       doc.setFont('helvetica','normal');
       doc.setFontSize(unitFont);
       doc.setTextColor(96,88,78);
-      doc.text(pu.unitLabel, x+w-pad, unitLineYC, { align:'right' });
+      doc.text(pu.unitLabel, x+w-pad, cursorY, { align:'right' });
+      cursorY -= unitFont*0.42 + 1.4;
     }
     doc.setFont('helvetica','bold');
     doc.setFontSize(s.compactPriceFont);
     doc.setTextColor(...BRAND_COLOR);
-    doc.text(pu.priceStr, x+w-pad, priceYC, { align:'right' });
-  }
-
-  // Bandeau logo (style 'band', trame détaillée uniquement) : dimensionne le logo de marque
-  // complet (pictogramme + texte, LOGO_BRAND_URI) pour une bande d'environ 10 % de la hauteur
-  // de l'étiquette, avec un repli sur la largeur disponible si l'étiquette est très étroite —
-  // même esprit que le bandeau de drawCatalogHeader ou le logo des pages de garde du catalogue.
-  // Partagé entre le rendu PDF (drawLabelDetail) et l'aperçu HTML (renderDetailPreview) pour
-  // qu'ils restent visuellement identiques.
-  function detailBandMetrics(w, h){
-    const padV = 2.2, padH = 3; // marges (mm) autour du logo, à l'intérieur du bandeau
-    let logoH = Math.max(5, Math.min(8, h*0.09));
-    let logoW = logoH * LOGO_BRAND_RATIO;
-    const maxW = w - 2*padH;
-    if(logoW > maxW){ logoW = maxW; logoH = logoW/LOGO_BRAND_RATIO; }
-    return { bandH: logoH + 2*padV, logoW, logoH, padV, padH };
+    doc.text(pu.priceStr, x+w-pad, cursorY, { align:'right' });
   }
 
   function drawLabelDetail(doc, x, y, w, h, r){
@@ -5318,46 +4711,46 @@
     const s = state.labelSettings;
     const pad = s.detailPadding;
     const align = s.detailAlign || 'center'; // 'left' | 'center' | 'right' — alignement du nom, du prix et des badges
-    const spacing = s.elementSpacing || 0; // mm additionnels entre le logo/bandeau et les éléments qui suivent (badges/fournisseur/description)
+    const spacing = s.elementSpacing || 0; // mm additionnels entre le logo et les éléments qui suivent (fournisseur/description/badges)
     // tx/opt : position et option d'alignement jsPDF communes à tous les blocs de texte du contenu principal
     const tx = align==='left' ? x+pad : align==='right' ? x+w-pad : x+w/2;
     const opt = { align: align==='left' ? 'left' : align==='right' ? 'right' : 'center' };
-    const cx = x+w/2; // axe de centrage des badges Bio/Local (et, en style bandeau, du logo) — toujours centré, indépendant de detailAlign
-
-    // Logo désactivable (réglage showLogo, défaut affiché si absent pour compat des réglages
-    // enregistrés avant cette évolution). Style 'band' (bandeau noir + logo de marque complet,
-    // cf. drawCatalogHeader) : n'a de sens que si le logo est affiché — retombe silencieusement
-    // sur l'ancien style 'icon' sinon.
-    const showLogo = s.showLogo !== false;
-    const useBand = showLogo && s.logoStyle === 'band';
-
-    let bandH = 0;
-    if(useBand){
-      const bm = detailBandMetrics(w, h);
-      bandH = bm.bandH;
-      doc.setFillColor(0,0,0);
-      doc.rect(x, y, w, bandH, 'F');
-      doc.addImage(LOGO_BRAND_URI, 'PNG', cx-bm.logoW/2, y+bm.padV, bm.logoW, bm.logoH);
-    }
-
     doc.setTextColor(42,36,32);
     doc.setFont('helvetica','normal');
     doc.setFontSize(8);
-    // Le PLU reste le repère constant en haut à gauche, quel que soit l'alignement choisi —
-    // simplement repoussé sous le bandeau quand celui-ci occupe désormais le haut de l'étiquette.
-    const pluY = useBand ? y+bandH+5 : y+7;
-    doc.text((r[0]||'').trim(), x+pad, pluY);
+    doc.text((r[0]||'').trim(), x+pad, y+7); // le PLU reste toujours en haut à gauche, quel que soit l'alignement choisi (repère constant)
 
     doc.setFont('helvetica','bold');
     doc.setFontSize(s.detailNameFont);
     const nomLines = doc.splitTextToSize((r[1]||'').trim(), w-2*pad);
-    const nomLinesShown = ellipsizeLines(nomLines, 3); // ellipse si le nom dépasse 3 lignes (revue-graphiste #3)
-    const nomY = useBand ? pluY+6 : y+16;
-    doc.text(nomLinesShown, tx, nomY, opt);
+    doc.text(ellipsizeLines(nomLines, 3), tx, y+16, opt); // ellipse si le nom dépasse 3 lignes (revue-graphiste #3)
 
-    // Repères bio / local (détection depuis les données) — calculés avant le logo/bandeau car
-    // la présence du badge Bio conditionne la position verticale du logo en style 'icon'
-    // (évolution "badges empilés" : Bio au-dessus du logo, Local en dessous).
+    // logo au centre de l'étiquette (réduit de 10%) — toujours centré, sert de repère visuel constant
+    const iconW = Math.min(w,h)*0.32*0.9, iconH = iconW/LOGO_ICON_RATIO;
+    const iconCy = y+h/2;
+    doc.addImage(LOGO_ICON_URI, 'PNG', x+w/2-iconW/2, iconCy-iconH/2, iconW, iconH);
+
+    // fournisseur / description (optionnels), juste sous le logo
+    let belowIconY = iconCy + iconH/2 + 4 + spacing;
+    const fournisseur = (r[BIZCOL.FOURNISSEUR]||'').trim();
+    const description = (r[BIZCOL.DESC_LONGUE]||'').trim();
+    if(s.showSupplier && fournisseur){
+      doc.setFont('helvetica','normal');
+      doc.setFontSize(6.5);
+      doc.setTextColor(110,100,88);
+      doc.text(fournisseur, tx, belowIconY, opt);
+      belowIconY += 3.2;
+    }
+    if(s.showDescription && description){
+      doc.setFont('helvetica','normal');
+      doc.setFontSize(6);
+      doc.setTextColor(120,112,100);
+      const descLines = doc.splitTextToSize(description, w-2*pad).slice(0,2);
+      doc.text(descLines, tx, belowIconY, opt);
+      belowIconY += descLines.length*2.8;
+    }
+
+    // badges bio / local, sous le logo OPEV (et sous fournisseur/description si affichés) avec un espace plus marqué
     const nomLower = (r[1]||'').toLowerCase();
     const bioStored = (r[BIZCOL.BIO]||'').trim();
     const localStored = (r[BIZCOL.LOCAL]||'').trim();
@@ -5367,143 +4760,49 @@
     // Texte du badge "épingle" : "Local" si la catégorie Local est cochée, sinon le pays
     // d'origine renseigné, sinon rien — l'épingle disparaît alors complètement, comme avant.
     const pinText = isLocal ? 'Local' : paysOrigine;
+    // sans fournisseur/description affichés, on retombe exactement sur la position d'origine (espacement par défaut = 0)
+    const badgeY = Math.max(belowIconY+2, iconCy + iconH/2 + 9 + spacing);
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(s.bioFontSize);
+    // Point vert à gauche du texte "BIO" (revue-graphiste — même principe que drawLabelCompact,
+    // à une échelle deux fois plus grande, cohérente avec l'épingle "Local" de cette trame qui
+    // est elle aussi deux fois plus grande qu'en trame compacte : 2,2 mm de rayon ici vs 1,1 mm).
+    const bioDotD = 4.4, bioDotGap = 0.8;
+    const abW = s.bioAsText ? (bioDotD+bioDotGap+doc.getTextWidth('BIO')) : 5.5, abH = abW/LOGO_AB_RATIO;
+    const pinIconW = 5.5; // empreinte de l'épingle seule, identique au comportement d'origine sans texte
+    // Largeur réelle du texte "Local"/pays mesurée à la police du badge (comme le PLU, ligne
+    // ~4598) — tronquée avec une ellipse si elle ne tient pas dans la largeur disponible de
+    // l'étiquette (le pays peut être nettement plus long que "Local").
     let pinTextShown = pinText;
     if(pinTextShown){
+      const maxPinTextW = w - 2*pad - pinIconW - (isBio ? abW+2.5 : 0);
+      pinTextShown = truncateTextToWidth(doc, pinTextShown, maxPinTextW);
+    }
+    const pinBlockW = pinTextShown ? pinIconW + doc.getTextWidth(pinTextShown) + 1 : 0;
+    let badgesWidth = 0;
+    if(isBio) badgesWidth += abW;
+    if(pinTextShown) badgesWidth += pinBlockW;
+    if(isBio && pinTextShown) badgesWidth += 2.5;
+    let bx = align==='left' ? x+pad : align==='right' ? x+w-pad-badgesWidth : x+w/2-badgesWidth/2;
+    if(isBio){
+      if(s.bioAsText){
+        doc.setFillColor(...hexToRgbArray(s.bioColor, [60,130,60]));
+        doc.circle(bx+bioDotD/2, badgeY-0.3, bioDotD/2, 'F');
+        doc.setFont('helvetica','bold');
+        doc.setFontSize(s.bioFontSize);
+        doc.setTextColor(...hexToRgbArray(s.bioColor, [60,130,60]));
+        doc.text('BIO', bx+bioDotD+bioDotGap, badgeY+1.4);
+      } else {
+        doc.addImage(LOGO_AB_URI, 'PNG', bx, badgeY-abH/2, abW, abH);
+      }
+      bx += abW+2.5;
+    }
+    if(pinTextShown){
+      drawMapPin(doc, bx+1.8, badgeY, 2.2, hexToRgbArray(s.localColor, PIN_RED));
       doc.setFont('helvetica','bold');
-      doc.setFontSize(s.localFontSize);
-      // le badge est empilé (épingle au-dessus du texte) et n'a donc plus à partager sa
-      // largeur avec le badge Bio — seule la largeur utile de l'étiquette limite la troncature.
-      pinTextShown = truncateTextToWidth(doc, pinTextShown, w-2*pad);
-    }
-
-    let belowY; // curseur vertical (mm) — position juste sous le dernier badge, point de départ du fournisseur/de la description
-
-    if(useBand){
-      // Style bandeau : le contenu s'enchaîne du haut vers le bas sous le bandeau (nom déjà posé
-      // ci-dessus, puis badge Bio, puis badge Local, puis fournisseur/description). Chaque
-      // emplacement (nom, Bio, Local) réserve toujours la même hauteur, qu'il soit rempli ou non
-      // — nom plafonné à 3 lignes (comme ellipsizeLines ci-dessus), badges Bio/Local à leur
-      // hauteur maximale — afin que la position de chaque repère reste identique d'une étiquette
-      // à l'autre, quels que soient les autres éléments présents (demande client : Bio/Local
-      // toujours au même endroit sur toutes les étiquettes d'une planche, qu'il y ait l'autre
-      // badge, un prix au kg ou des allergènes ou non).
-      const NAME_MAX_LINES = 3; // plafond d'ellipsizeLines(nomLines, 3) ci-dessus
-      const nameLineH = s.detailNameFont*0.42; // hauteur de ligne approx (mm), même facteur que le bloc prix plus bas
-      const bioDotD = s.bioDotSize, bioDotGap = 0.8;
-      const bioTxtH = s.bioFontSize * 0.42;
-      const abImgW = 5.5, abImgH = abImgW/LOGO_AB_RATIO;
-      const bioSlotH = s.bioAsText ? (bioDotD+bioDotGap+bioTxtH) : abImgH; // hauteur réservée, badge affiché ou non
-      const headR = s.localIconSize/2;
-      const localTxtH = s.localFontSize * 0.42;
-      const localSlotH = headR*2.9 + 0.8 + localTxtH; // hauteur réservée (pointe de l'épingle + gap + texte), badge affiché ou non
-
-      let flowY = nomY + NAME_MAX_LINES*nameLineH + 2 + spacing; // emplacement Bio, fixe
-
-      if(isBio){
-        if(s.bioAsText){
-          const dotCy = flowY + bioDotD/2;
-          doc.setFillColor(...hexToRgbArray(s.bioColor, [60,130,60]));
-          doc.circle(cx, dotCy, bioDotD/2, 'F');
-          const textBaseline = dotCy + bioDotD/2 + bioDotGap + bioTxtH*0.8;
-          doc.setFont('helvetica','bold');
-          doc.setFontSize(s.bioFontSize);
-          doc.setTextColor(...hexToRgbArray(s.bioColor, [60,130,60]));
-          doc.text('BIO', cx, textBaseline, { align:'center' });
-        } else {
-          doc.addImage(LOGO_AB_URI, 'PNG', cx-abImgW/2, flowY, abImgW, abImgH);
-        }
-        doc.setTextColor(42,36,32);
-      }
-      flowY += bioSlotH + 2.5; // emplacement Local, fixe (réserve toujours la place du badge Bio)
-
-      if(pinTextShown){
-        const pinTopY = flowY; // haut de la tête de l'épingle, cf. drawMapPin (top = cy - headR*1.4)
-        const pinCenterParam = pinTopY + headR*1.4;
-        const pinTipY = pinTopY + headR*2.9; // pointe de l'épingle, cf. drawMapPin (tip = cy + headR*1.5)
-        drawMapPin(doc, cx, pinCenterParam, headR, hexToRgbArray(s.localColor, PIN_RED));
-        const textBaseline = pinTipY + 0.8 + localTxtH*0.8;
-        doc.setFont('helvetica','bold');
-        doc.setFontSize(s.localFontSize);
-        doc.setTextColor(...hexToRgbArray(s.localColor, PIN_RED));
-        doc.text(pinTextShown, cx, textBaseline, { align:'center' });
-        doc.setTextColor(42,36,32);
-      }
-      flowY += localSlotH + 2.5; // emplacement fournisseur/description, fixe (réserve toujours la place du badge Local)
-
-      belowY = flowY;
-    } else {
-      // Style 'icon' : logo toujours centré exactement au milieu de l'étiquette (repère visuel
-      // constant), badges Bio et Local à des emplacements fixes au-dessus/en dessous — chacun
-      // réserve toujours sa hauteur maximale, qu'il soit affiché ou non, afin que la position de
-      // l'un ne dépende plus de la présence de l'autre (demande client : Bio/Local toujours au
-      // même endroit, quels que soient les autres éléments présents). Sans logo
-      // (showLogo=false), sa largeur/hauteur tombe à 0 mais iconCy reste le même point fixe.
-      const iconW = showLogo ? Math.min(w,h)*0.32*0.9 : 0, iconH = showLogo ? iconW/LOGO_ICON_RATIO : 0;
-      const badgeLogoGap = (showLogo ? 2 : 1) + spacing; // mm, entre un badge (bio ou local) et le logo (ou le centre, si logo masqué)
-      const bioDotD = s.bioDotSize, bioDotGap = 0.8; // gap entre le point et le texte "BIO"
-      const bioTxtH = s.bioFontSize * 0.42;
-      const abImgW = 5.5, abImgH = abImgW/LOGO_AB_RATIO; // logo AB image, utilisé si bioAsText est désactivé
-      const iconCy = y+h/2; // toujours le centre exact de l'étiquette, quel que soit le contenu
-      if(showLogo){
-        doc.addImage(LOGO_ICON_URI, 'PNG', cx-iconW/2, iconCy-iconH/2, iconW, iconH);
-      }
-
-      // Badge Bio, emplacement fixe au-dessus du logo : point plein puis "BIO" en dessous (ou logo AB seul).
-      const iconTop = iconCy - iconH/2;
-      const badgeBottom = iconTop - badgeLogoGap; // bas du badge, toujours au même endroit
-      if(isBio){
-        if(s.bioAsText){
-          const textBaseline = badgeBottom;
-          const dotCy = textBaseline - bioTxtH - bioDotGap - bioDotD/2;
-          doc.setFillColor(...hexToRgbArray(s.bioColor, [60,130,60]));
-          doc.circle(cx, dotCy, bioDotD/2, 'F');
-          doc.setFont('helvetica','bold');
-          doc.setFontSize(s.bioFontSize);
-          doc.setTextColor(...hexToRgbArray(s.bioColor, [60,130,60]));
-          doc.text('BIO', cx, textBaseline, { align:'center' });
-        } else {
-          doc.addImage(LOGO_AB_URI, 'PNG', cx-abImgW/2, badgeBottom-abImgH, abImgW, abImgH);
-        }
-        doc.setTextColor(42,36,32);
-      }
-
-      // Badge Local, emplacement fixe sous le logo : épingle puis "Local"/pays en dessous.
-      const localGap = 0.8; // gap entre la pointe de l'épingle et le texte
-      const localTxtH = s.localFontSize * 0.42;
-      const headR = s.localIconSize/2;
-      const localSlotH = headR*2.9 + localGap + localTxtH; // hauteur réservée, badge affiché ou non
-      const localSlotTop = iconCy + iconH/2 + badgeLogoGap; // toujours le même point, que le badge Bio soit affiché ou non
-      if(pinTextShown){
-        const pinCenterParam = localSlotTop + headR*1.4;
-        const pinTipY = localSlotTop + headR*2.9; // pointe de l'épingle, cf. drawMapPin (tip = cy + headR*1.5)
-        drawMapPin(doc, cx, pinCenterParam, headR, hexToRgbArray(s.localColor, PIN_RED));
-        const textBaseline = pinTipY + localGap + localTxtH*0.8;
-        doc.setFont('helvetica','bold');
-        doc.setFontSize(s.localFontSize);
-        doc.setTextColor(...hexToRgbArray(s.localColor, PIN_RED));
-        doc.text(pinTextShown, cx, textBaseline, { align:'center' });
-        doc.setTextColor(42,36,32);
-      }
-      belowY = localSlotTop + localSlotH + 2.5; // toujours fixe, badge Local affiché ou non
-    }
-
-    // fournisseur / description (optionnels), juste après les badges (avant le bloc prix)
-    const fournisseur = (r[BIZCOL.FOURNISSEUR]||'').trim();
-    const description = (r[BIZCOL.DESC_LONGUE]||'').trim();
-    if(s.showSupplier && fournisseur){
-      doc.setFont('helvetica','normal');
-      doc.setFontSize(6.5);
-      doc.setTextColor(110,100,88);
-      doc.text(fournisseur, tx, belowY, opt);
-      belowY += 3.2;
-    }
-    if(s.showDescription && description){
-      doc.setFont('helvetica','normal');
-      doc.setFontSize(6);
-      doc.setTextColor(120,112,100);
-      const descLines = doc.splitTextToSize(description, w-2*pad).slice(0,2);
-      doc.text(descLines, tx, belowY, opt);
-      belowY += descLines.length*2.8;
+      doc.setFontSize(s.bioFontSize);
+      doc.setTextColor(...hexToRgbArray(s.localColor, PIN_RED));
+      doc.text(pinTextShown, bx+pinIconW, badgeY+1.4);
     }
 
     // Bloc prix : positions proportionnelles à la police choisie (revue-graphiste #2) et
@@ -5514,37 +4813,25 @@
     const pu = priceAndUnitFor(r);
     const marginBottomD = 4;
     const detailUnitFont = Math.max(7, Math.min(11, s.detailPriceFont*0.5));
-    // Ligne allergènes : emplacement toujours réservé en bas de l'étiquette (qu'il y ait ou non
-    // des allergènes pour cet article), pour que le bloc prix ne varie jamais de hauteur d'une
-    // étiquette à l'autre — et surtout pour ne plus jamais partager sa ligne avec "soit X €/kg"
-    // (les deux étaient auparavant à la même hauteur y+h-4 et se chevauchaient dès que l'article
-    // avait à la fois un prix au kg et des allergènes, notamment en alignement prix à droite).
-    const allergenLineH = s.allergenFontSize*0.42 + 1.6;
-    const allergenLineY = y+h-4;
-    // Emplacements fixes, réservés qu'ils soient utilisés ou non : le prix (ligne principale)
-    // reste toujours à la même hauteur, que l'article ait ou non une ligne "soit X €/kg" ou une
-    // unité affichée — ces lignes optionnelles poussaient auparavant le prix vers le haut selon
-    // les cas (demande client : prix toujours au même endroit sur toutes les étiquettes d'une
-    // planche, avec ou sans prix au kg / allergènes).
-    const kgLineY = y+h-marginBottomD-allergenLineH;
-    const unitLineY = kgLineY - (s.detailKgFont*0.42 + 1.8);
-    const priceY = unitLineY - (detailUnitFont*0.42 + 1.8);
+    let cursorYD = y+h-marginBottomD;
     if(pu.showKgSecondary){
       doc.setFont('helvetica','normal');
-      doc.setFontSize(s.detailKgFont);
+      doc.setFontSize(7);
       doc.setTextColor(150,150,150);
-      doc.text(`soit ${pu.priceKgStr}/kg`, tx, kgLineY, opt);
+      doc.text(`soit ${pu.priceKgStr}/kg`, tx, cursorYD, opt);
+      cursorYD -= 7*0.42 + 1.8;
     }
     if(pu.unitLabel){
       doc.setFont('helvetica','normal');
       doc.setFontSize(detailUnitFont);
       doc.setTextColor(110,102,92);
-      doc.text(pu.unitLabel, tx, unitLineY, opt);
+      doc.text(pu.unitLabel, tx, cursorYD, opt);
+      cursorYD -= detailUnitFont*0.42 + 1.8;
     }
     doc.setFont('helvetica','bold');
     doc.setFontSize(s.detailPriceFont);
     doc.setTextColor(...BRAND_COLOR);
-    doc.text(pu.priceStr, tx, priceY, opt);
+    doc.text(pu.priceStr, tx, cursorYD, opt);
 
     const realCat = (r[5]||'').trim();
     if(realCat === '1'){
@@ -5552,9 +4839,9 @@
       const codes = state.allergens[plu] !== undefined ? state.allergens[plu] : detectAllergens(r[1]);
       if(codes.length){
         doc.setFont('helvetica','normal');
-        doc.setFontSize(s.allergenFontSize);
+        doc.setFontSize(6);
         doc.setTextColor(120,120,120);
-        doc.text('Allerg. '+codes.join(','), x+w-pad, allergenLineY, { align:'right' }); // >= 3-4 mm avant le repère de découpe (revue-graphiste #5), sur sa propre ligne réservée (ne chevauche plus le prix au kg)
+        doc.text('Allerg. '+codes.join(','), x+w-pad, y+h-4, { align:'right' }); // >= 3-4 mm avant le repère de découpe (revue-graphiste #5)
       }
     }
   }
@@ -5649,27 +4936,6 @@
     if(t.length > 0) return t+'…';
     return lsMeasureTextWidthMm('…', fontSizePt, bold) <= maxWMm ? '…' : '';
   }
-  // Estime le nombre de lignes (retour à la ligne par mot, plafonné à maxLines) que prendrait
-  // un texte à un corps donné dans une largeur maxWMm — miroir approximatif de
-  // doc.splitTextToSize côté PDF, utilisé en style bandeau (renderDetailPreview) pour savoir où
-  // reprendre le flux vertical après le nom du produit, qui peut tenir sur plusieurs lignes.
-  function lsWrapLineCount(text, fontSizePt, bold, maxWMm, maxLines){
-    if(!text) return 0;
-    const words = text.split(/\s+/).filter(Boolean);
-    if(!words.length) return 0;
-    let lines = 1, cur = '';
-    for(const word of words){
-      const test = cur ? cur+' '+word : word;
-      if(!cur || lsMeasureTextWidthMm(test, fontSizePt, bold) <= maxWMm){
-        cur = test;
-      } else {
-        lines++;
-        cur = word;
-        if(lines >= maxLines) break;
-      }
-    }
-    return Math.min(lines, maxLines);
-  }
 
   // Construit l'aperçu de la trame détaillée dans `container`, à partir des réglages en cours (s) et d'un article (r).
   function renderDetailPreview(container, s, r){
@@ -5679,236 +4945,47 @@
     const pad = s.detailPadding;
     const align = s.detailAlign || 'center';
     const spacing = s.elementSpacing || 0;
-    const cxMm = w/2; // axe de centrage des badges Bio/Local (et, en style bandeau, du logo) — indépendant de align
 
     const label = document.createElement('div');
     label.className = 'ls-label';
     label.style.width = (w*scale)+'px';
     label.style.height = (h*scale)+'px';
 
-    // Logo désactivable (showLogo, défaut affiché si absent). Style 'band' (bandeau noir +
-    // logo de marque complet) : n'a de sens que si le logo est affiché.
-    const showLogo = s.showLogo !== false;
-    const useBand = showLogo && s.logoStyle === 'band';
-
-    let bandH = 0;
-    if(useBand){
-      const bm = detailBandMetrics(w, h);
-      bandH = bm.bandH;
-      const band = document.createElement('div');
-      band.style.left = '0px';
-      band.style.top = '0px';
-      band.style.width = (w*scale)+'px';
-      band.style.height = (bandH*scale)+'px';
-      band.style.background = '#000';
-      label.appendChild(band);
-      const bandLogo = document.createElement('img');
-      bandLogo.src = LOGO_BRAND_URI;
-      bandLogo.style.left = '50%';
-      bandLogo.style.top = (bm.padV*scale)+'px';
-      bandLogo.style.width = (bm.logoW*scale)+'px';
-      bandLogo.style.transform = 'translateX(-50%)';
-      label.appendChild(bandLogo);
-    }
-
-    // PLU, toujours en haut à gauche (repère constant, comme sur le PDF) — repoussé sous le
-    // bandeau quand celui-ci occupe le haut de l'étiquette (style 'band').
-    const pluTopMm = useBand ? bandH+3 : 3;
+    // PLU, toujours en haut à gauche (repère constant, comme sur le PDF)
     const pluEl = document.createElement('div');
     pluEl.textContent = (r[0]||'').trim();
     pluEl.style.left = (pad*scale)+'px';
-    pluEl.style.top = (pluTopMm*scale)+'px';
+    pluEl.style.top = (3*scale)+'px';
     pluEl.style.fontSize = (8*0.3528*scale)+'px';
     pluEl.style.color = '#2A2420';
     label.appendChild(pluEl);
 
     // Nom du produit
     const nom = (r[1]||'').trim();
-    const nomTopMm = useBand ? pluTopMm+6 : 10;
     const nomEl = document.createElement('div');
     nomEl.className = 'ls-wrap';
     nomEl.textContent = nom;
-    nomEl.style.top = (nomTopMm*scale)+'px';
+    nomEl.style.top = (10*scale)+'px';
     nomEl.style.fontWeight = '700';
     nomEl.style.fontSize = (s.detailNameFont*0.3528*scale)+'px';
     nomEl.style.color = '#2A2420';
     lsApplyAlignX(nomEl, align, w, pad, scale);
     label.appendChild(nomEl);
 
-    // Repères bio / local (détection depuis les données) — calculés avant le logo, la présence
-    // du badge Bio conditionnant la position verticale du logo en style 'icon' (miroir de drawLabelDetail).
-    const bioStored = (r[BIZCOL.BIO]||'').trim();
-    const localStored = (r[BIZCOL.LOCAL]||'').trim();
-    const nomLower = nom.toLowerCase();
-    const isBio = bioStored!=='' ? bioStored==='1' : nomLower.includes('bio');
-    const isLocal = localStored!=='' ? localStored==='1' : nomLower.includes('local');
-    const paysOrigine = (r[BIZCOL.PAYS]||'').trim();
-    const pinText = isLocal ? 'Local' : paysOrigine;
-    let pinTextShown = pinText;
-    if(pinTextShown){
-      pinTextShown = lsTruncateToWidth(pinTextShown, s.localFontSize, true, w-2*pad);
-    }
+    // Logo, toujours centré (repère visuel constant, comme sur le PDF)
+    const iconW = Math.min(w,h)*0.32*0.9;
+    const iconCy = h/2;
+    const logoEl = document.createElement('img');
+    logoEl.src = LOGO_ICON_URI;
+    logoEl.style.left = '50%';
+    logoEl.style.top = (iconCy*scale)+'px';
+    logoEl.style.width = (iconW*scale)+'px';
+    logoEl.style.transform = 'translate(-50%,-50%)';
+    logoEl.style.opacity = '.92';
+    label.appendChild(logoEl);
 
-    let belowIconY; // curseur vertical (mm) — position juste sous le dernier badge, point de départ du fournisseur/de la description
-
-    if(useBand){
-      // Style bandeau : le contenu s'enchaîne du haut vers le bas sous le bandeau. Chaque
-      // emplacement (nom, Bio, Local) réserve toujours la même hauteur, qu'il soit rempli ou non
-      // — nom plafonné à 3 lignes, badges Bio/Local à leur hauteur maximale — pour que la
-      // position de chaque repère reste identique quels que soient les autres éléments présents
-      // (miroir de drawLabelDetail).
-      const NAME_MAX_LINES = 3;
-      const nameLineH = s.detailNameFont*0.42;
-      const bioDotD = s.bioDotSize, bioDotGap = 0.8;
-      const bioTxtH = s.bioFontSize * 0.42;
-      const abImgW = 5.5, abImgH = abImgW/LOGO_AB_RATIO;
-      const bioSlotH = s.bioAsText ? (bioDotD+bioDotGap+bioTxtH) : abImgH;
-      const pinD = s.localIconSize;
-      const localTxtH = s.localFontSize * 0.42;
-      const localSlotH = pinD*1.2 + 0.8 + localTxtH;
-
-      let flowY = nomTopMm + NAME_MAX_LINES*nameLineH + 2 + spacing; // emplacement Bio, fixe
-
-      if(isBio){
-        if(s.bioAsText){
-          const dotCy = flowY + bioDotD/2;
-          const dot = document.createElement('div');
-          dot.style.left = ((cxMm-bioDotD/2)*scale)+'px';
-          dot.style.top = ((dotCy-bioDotD/2)*scale)+'px';
-          dot.style.width = (bioDotD*scale)+'px';
-          dot.style.height = (bioDotD*scale)+'px';
-          dot.style.borderRadius = '50%';
-          dot.style.background = s.bioColor;
-          label.appendChild(dot);
-          const textBaseline = dotCy + bioDotD/2 + bioDotGap + bioTxtH*0.8;
-          const el = document.createElement('div');
-          el.textContent = 'BIO';
-          el.style.left = '50%';
-          el.style.transform = 'translateX(-50%)';
-          el.style.top = ((textBaseline - s.bioFontSize*0.325)*scale)+'px';
-          el.style.fontWeight = '700';
-          el.style.fontSize = (s.bioFontSize*0.3528*scale)+'px';
-          el.style.color = s.bioColor;
-          label.appendChild(el);
-        } else {
-          const el = document.createElement('img');
-          el.src = LOGO_AB_URI;
-          el.style.left = ((cxMm-abImgW/2)*scale)+'px';
-          el.style.top = (flowY*scale)+'px';
-          el.style.width = (abImgW*scale)+'px';
-          label.appendChild(el);
-        }
-      }
-      flowY += bioSlotH + 2.5; // emplacement Local, fixe
-
-      if(pinTextShown){
-        const pinPx = pinD*scale;
-        const pinTopY = flowY;
-        const pinTipY = pinTopY + pinD*1.2; // approximation propre au tracé de lsBuildPinSvg (viewBox 20x26, tête + pointe)
-        const svg = lsBuildPinSvg(s.localColor, pinPx);
-        svg.style.left = ((cxMm-pinD/2)*scale)+'px';
-        svg.style.top = (pinTopY*scale)+'px';
-        label.appendChild(svg);
-        const textBaseline = pinTipY + 0.8 + localTxtH*0.8;
-        const txt = document.createElement('div');
-        txt.textContent = pinTextShown;
-        txt.style.left = '50%';
-        txt.style.transform = 'translateX(-50%)';
-        txt.style.top = ((textBaseline - s.localFontSize*0.325)*scale)+'px';
-        txt.style.fontWeight = '700';
-        txt.style.fontSize = (s.localFontSize*0.3528*scale)+'px';
-        txt.style.color = s.localColor;
-        label.appendChild(txt);
-      }
-      flowY += localSlotH + 2.5; // emplacement fournisseur/description, fixe
-
-      belowIconY = flowY;
-    } else {
-      // Style 'icon' : logo toujours centré exactement au milieu de l'étiquette, badges Bio et
-      // Local à des emplacements fixes au-dessus/en dessous — chacun réserve toujours sa hauteur
-      // maximale, qu'il soit affiché ou non, pour que la position de l'un ne dépende plus de la
-      // présence de l'autre (miroir de drawLabelDetail). Sans logo (showLogo=false), sa
-      // largeur/hauteur tombe à 0 mais iconCy reste le même point fixe.
-      const iconW = showLogo ? Math.min(w,h)*0.32*0.9 : 0; // logo carré (LOGO_ICON_RATIO=1) : iconH === iconW
-      const badgeLogoGap = (showLogo ? 2 : 1) + spacing; // mm, entre un badge (bio ou local) et le logo (ou le centre, si logo masqué)
-      const bioDotD = s.bioDotSize, bioDotGap = 0.8;
-      const bioTxtH = s.bioFontSize * 0.42;
-      const abImgW = 5.5, abImgH = abImgW/LOGO_AB_RATIO; // logo AB image, utilisé si bioAsText est désactivé
-      const iconCy = h/2; // toujours le centre exact de l'étiquette, quel que soit le contenu
-      if(showLogo){
-        const logoEl = document.createElement('img');
-        logoEl.src = LOGO_ICON_URI;
-        logoEl.style.left = '50%';
-        logoEl.style.top = (iconCy*scale)+'px';
-        logoEl.style.width = (iconW*scale)+'px';
-        logoEl.style.transform = 'translate(-50%,-50%)';
-        logoEl.style.opacity = '.92';
-        label.appendChild(logoEl);
-      }
-
-      // Badge Bio, emplacement fixe au-dessus du logo : point plein puis "BIO" en dessous (ou logo AB seul).
-      const iconTop = iconCy - iconW/2;
-      const badgeBottom = iconTop - badgeLogoGap;
-      if(isBio){
-        if(s.bioAsText){
-          const textBaseline = badgeBottom;
-          const dotCy = textBaseline - bioTxtH - bioDotGap - bioDotD/2;
-          const dot = document.createElement('div');
-          dot.style.left = ((cxMm-bioDotD/2)*scale)+'px';
-          dot.style.top = ((dotCy-bioDotD/2)*scale)+'px';
-          dot.style.width = (bioDotD*scale)+'px';
-          dot.style.height = (bioDotD*scale)+'px';
-          dot.style.borderRadius = '50%';
-          dot.style.background = s.bioColor;
-          label.appendChild(dot);
-          const el = document.createElement('div');
-          el.textContent = 'BIO';
-          el.style.left = '50%';
-          el.style.transform = 'translateX(-50%)';
-          el.style.top = ((textBaseline - s.bioFontSize*0.325)*scale)+'px';
-          el.style.fontWeight = '700';
-          el.style.fontSize = (s.bioFontSize*0.3528*scale)+'px';
-          el.style.color = s.bioColor;
-          label.appendChild(el);
-        } else {
-          const el = document.createElement('img');
-          el.src = LOGO_AB_URI;
-          el.style.left = ((cxMm-abImgW/2)*scale)+'px';
-          el.style.top = ((badgeBottom-abImgH)*scale)+'px';
-          el.style.width = (abImgW*scale)+'px';
-          label.appendChild(el);
-        }
-      }
-
-      // Badge Local, emplacement fixe sous le logo : épingle puis "Local"/pays en dessous.
-      const localGap = 0.8;
-      const localTxtH = s.localFontSize * 0.42;
-      const pinD = s.localIconSize;
-      const localSlotH = pinD*1.2 + localGap + localTxtH;
-      const localSlotTop = iconCy + iconW/2 + badgeLogoGap; // toujours le même point, que le badge Bio soit affiché ou non
-      if(pinTextShown){
-        const pinPx = pinD*scale;
-        const pinTopY = localSlotTop;
-        const pinTipY = pinTopY + pinD*1.2; // approximation propre au tracé de lsBuildPinSvg (viewBox 20x26, tête + pointe)
-        const svg = lsBuildPinSvg(s.localColor, pinPx);
-        svg.style.left = ((cxMm-pinD/2)*scale)+'px';
-        svg.style.top = (pinTopY*scale)+'px';
-        label.appendChild(svg);
-        const textBaseline = pinTipY + localGap + localTxtH*0.8;
-        const txt = document.createElement('div');
-        txt.textContent = pinTextShown;
-        txt.style.left = '50%';
-        txt.style.transform = 'translateX(-50%)';
-        txt.style.top = ((textBaseline - s.localFontSize*0.325)*scale)+'px';
-        txt.style.fontWeight = '700';
-        txt.style.fontSize = (s.localFontSize*0.3528*scale)+'px';
-        txt.style.color = s.localColor;
-        label.appendChild(txt);
-      }
-      belowIconY = localSlotTop + localSlotH + 2.5; // toujours fixe, badge Local affiché ou non
-    }
-
-    // Fournisseur / description (optionnels), juste après les badges (avant le bloc prix)
+    // Fournisseur / description (optionnels), sous le logo
+    let belowIconY = iconCy + iconW/2 + 4 + spacing;
     const fournisseur = (r[BIZCOL.FOURNISSEUR]||'').trim();
     const description = (r[BIZCOL.DESC_LONGUE]||'').trim();
     if(s.showSupplier && fournisseur){
@@ -5934,36 +5011,104 @@
       belowIconY += 5.6;
     }
 
-    // Bloc prix : emplacements fixes, réservés qu'ils soient utilisés ou non — le prix reste
-    // toujours à la même hauteur, avec ou sans ligne "soit X €/kg" ou unité (miroir de
-    // drawLabelDetail).
+    // Badges bio / local — miroir de drawLabelDetail (point vert + "BIO", épingle + "Local"/pays)
+    const bioStored = (r[BIZCOL.BIO]||'').trim();
+    const localStored = (r[BIZCOL.LOCAL]||'').trim();
+    const nomLower = nom.toLowerCase();
+    const isBio = bioStored!=='' ? bioStored==='1' : nomLower.includes('bio');
+    const isLocal = localStored!=='' ? localStored==='1' : nomLower.includes('local');
+    const paysOrigine = (r[BIZCOL.PAYS]||'').trim();
+    const pinText = isLocal ? 'Local' : paysOrigine;
+    const badgeY = Math.max(belowIconY+2, iconCy + iconW/2 + 9 + spacing);
+    const bioDotD = 4.4, bioDotGap = 0.8; // deux fois la taille de la trame compacte, comme l'épingle "Local" ci-dessous
+    const abW = s.bioAsText ? (bioDotD+bioDotGap+lsMeasureTextWidthMm('BIO', s.bioFontSize, true)) : 5.5;
+    const pinIconW = 5.5; // même empreinte que l'ancienne épingle seule, sans texte
+    let pinTextShown = pinText;
+    if(pinTextShown){
+      const maxPinTextW = w - 2*pad - pinIconW - (isBio ? abW+2.5 : 0);
+      pinTextShown = lsTruncateToWidth(pinTextShown, s.bioFontSize, true, maxPinTextW);
+    }
+    const pinBlockW = pinTextShown ? pinIconW + lsMeasureTextWidthMm(pinTextShown, s.bioFontSize, true) + 1 : 0;
+    let badgesWidth = 0;
+    if(isBio) badgesWidth += abW;
+    if(pinTextShown) badgesWidth += pinBlockW;
+    if(isBio && pinTextShown) badgesWidth += 2.5;
+    let bx = align==='left' ? pad : align==='right' ? (w-pad-badgesWidth) : (w/2-badgesWidth/2);
+    const bioTextTopOffset = s.bioFontSize * 0.325; // proportion constatée sur l'ancien texte fixe à 8pt (offset 2,6mm)
+    if(isBio){
+      if(s.bioAsText){
+        const dot = document.createElement('div');
+        dot.style.left = (bx*scale)+'px';
+        dot.style.top = ((badgeY-bioDotD/2-0.3)*scale)+'px';
+        dot.style.width = (bioDotD*scale)+'px';
+        dot.style.height = (bioDotD*scale)+'px';
+        dot.style.borderRadius = '50%';
+        dot.style.background = s.bioColor;
+        label.appendChild(dot);
+        const el = document.createElement('div');
+        el.textContent = 'BIO';
+        el.style.left = ((bx+bioDotD+bioDotGap)*scale)+'px';
+        el.style.top = ((badgeY-bioTextTopOffset)*scale)+'px';
+        el.style.fontWeight = '700';
+        el.style.fontSize = (s.bioFontSize*0.3528*scale)+'px';
+        el.style.color = s.bioColor;
+        label.appendChild(el);
+      } else {
+        const abH = abW/LOGO_AB_RATIO;
+        const el = document.createElement('img');
+        el.src = LOGO_AB_URI;
+        el.style.left = (bx*scale)+'px';
+        el.style.top = ((badgeY-abH/2)*scale)+'px';
+        el.style.width = (abW*scale)+'px';
+        label.appendChild(el);
+      }
+      bx += abW + 2.5;
+    }
+    if(pinTextShown){
+      const pinPx = pinIconW*scale;
+      const svg = lsBuildPinSvg(s.localColor, pinPx);
+      svg.style.left = (bx*scale)+'px';
+      svg.style.top = (badgeY*scale - pinPx*0.5)+'px';
+      label.appendChild(svg);
+      const txt = document.createElement('div');
+      txt.textContent = pinTextShown;
+      txt.style.left = ((bx+pinIconW)*scale)+'px';
+      txt.style.top = ((badgeY-bioTextTopOffset)*scale)+'px';
+      txt.style.fontWeight = '700';
+      txt.style.fontSize = (s.bioFontSize*0.3528*scale)+'px';
+      txt.style.color = s.localColor;
+      label.appendChild(txt);
+    }
+
+    // Bloc prix : ancré depuis le bas (marge >= 4mm, revue-graphiste #5), empilé du bas
+    // vers le haut, avec une unité dérivée de la police du prix mais toujours nettement
+    // plus petite (revue-graphiste #4) — reflète drawLabelDetail (revue-graphiste #2).
     const pu = priceAndUnitFor(r);
     const marginBottomD = 4;
     const detailUnitFont = Math.max(7, Math.min(11, s.detailPriceFont*0.5));
-    const fromBottomKgD = marginBottomD;
-    const fromBottomUnitD = fromBottomKgD + (s.detailKgFont*0.42 + 1.8);
-    const fromBottomPriceD = fromBottomUnitD + (detailUnitFont*0.42 + 1.8);
+    let fromBottomD = marginBottomD;
     if(pu.showKgSecondary){
       const el = document.createElement('div');
       el.className = 'ls-wrap';
       el.textContent = `soit ${pu.priceKgStr}/kg`;
-      el.style.bottom = (fromBottomKgD*scale)+'px';
-      el.style.fontSize = (s.detailKgFont*0.3528*scale)+'px';
+      el.style.bottom = (fromBottomD*scale)+'px';
+      el.style.fontSize = (7*0.3528*scale)+'px';
       el.style.color = '#969696';
       lsApplyAlignX(el, align, w, pad, scale);
       label.appendChild(el);
+      fromBottomD += 7*0.42 + 1.8;
     }
     if(pu.unitLabel){
       const el = document.createElement('div');
       el.className = 'ls-wrap';
       el.textContent = pu.unitLabel;
-      el.style.bottom = (fromBottomUnitD*scale)+'px';
+      el.style.bottom = (fromBottomD*scale)+'px';
       el.style.fontSize = (detailUnitFont*0.3528*scale)+'px';
       el.style.color = '#6E6258';
       lsApplyAlignX(el, align, w, pad, scale);
       label.appendChild(el);
+      fromBottomD += detailUnitFont*0.42 + 1.8;
     }
-    const fromBottomD = fromBottomPriceD;
     const priceEl = document.createElement('div');
     priceEl.className = 'ls-wrap';
     priceEl.textContent = pu.priceStr;
@@ -5984,7 +5129,7 @@
         el.textContent = `Allerg. ${codes.join(',')}`;
         el.style.right = (pad*scale)+'px';
         el.style.bottom = (4*scale)+'px';
-        el.style.fontSize = (s.allergenFontSize*0.3528*scale)+'px';
+        el.style.fontSize = (6*0.3528*scale)+'px';
         el.style.color = '#787066';
         label.appendChild(el);
       }
@@ -6015,68 +5160,58 @@
     pluEl.style.color = '#2A2420';
     label.appendChild(pluEl);
 
-    // Repère bio/local, à côté du PLU — reflète drawLabelCompact (revue-graphiste #1 puis
-    // évolution "badges empilés") : point + "BIO", épingle + "Local"/pays. L'espace de cette
-    // trame est trop contraint pour empiler les badges autour du logo comme en trame
-    // détaillée ; ils restent en ligne, mais leurs tailles dérivent désormais des réglages
-    // dédiés (bioDotSize/localIconSize/bioFontSize/localFontSize), proportionnellement
-    // réduites, au lieu de constantes fixes.
+    // Repère bio/local, à côté du PLU — reflète drawLabelCompact (revue-graphiste #1) : point
+    // + "BIO", épingle + "Local"/pays, taille de police réduite dérivée de s.bioFontSize.
     const nomLowerC = (r[1]||'').toLowerCase();
     const isBioC = (r[BIZCOL.BIO]||'').trim()!=='' ? (r[BIZCOL.BIO]||'').trim()==='1' : nomLowerC.includes('bio');
     const isLocalC = (r[BIZCOL.LOCAL]||'').trim()!=='' ? (r[BIZCOL.LOCAL]||'').trim()==='1' : nomLowerC.includes('local');
     const paysC = (r[BIZCOL.PAYS]||'').trim();
     const pinTextC = isLocalC ? 'Local' : paysC;
     if(isBioC || pinTextC){
-      const bioDotDC = 2*Math.max(0.6, Math.min(1.6, s.bioDotSize*0.25));
-      const pinDC = 2*Math.max(0.6, Math.min(1.6, s.localIconSize*0.25));
-      const bioBadgeFontC = Math.max(4, Math.min(6, s.bioFontSize*0.65));
-      const localBadgeFontC = Math.max(4, Math.min(6, s.localFontSize*0.65));
+      const badgeFontC = Math.max(4, Math.min(6, s.bioFontSize*0.65));
       // largeur réelle du PLU mesurée à sa police (6,5pt normal), comme côté jsPDF
       const badgeLeftMm = pad + lsMeasureTextWidthMm(pluStr, 6.5, false) + 1.5;
       let bx = badgeLeftMm;
       const maxBadgeRightMm = w - pad;
+      const badgeTextTopOffset = badgeFontC * 0.325;
       if(isBioC){
-        // centre du point à 3,5 mm du haut de l'étiquette, quelle que soit sa taille (comme
-        // l'ancien point fixe de 2,2 mm dont il reprend le centre)
         const dot = document.createElement('div');
         dot.style.left = (bx*scale)+'px';
-        dot.style.top = ((3.5-bioDotDC/2)*scale)+'px';
-        dot.style.width = (bioDotDC*scale)+'px';
-        dot.style.height = (bioDotDC*scale)+'px';
+        dot.style.top = ((1+1.4)*scale)+'px';
+        dot.style.width = (2.2*scale)+'px';
+        dot.style.height = (2.2*scale)+'px';
         dot.style.borderRadius = '50%';
         dot.style.background = s.bioColor || '#3C823C';
         label.appendChild(dot);
-        bx += bioDotDC+0.4;
+        bx += 2.6;
         const txt = document.createElement('div');
         txt.textContent = 'BIO';
         txt.style.left = (bx*scale)+'px';
-        txt.style.top = ((1+2.4-bioBadgeFontC*0.325)*scale)+'px';
+        txt.style.top = ((1+2.4-badgeTextTopOffset)*scale)+'px';
         txt.style.fontWeight = '700';
-        txt.style.fontSize = (bioBadgeFontC*0.3528*scale)+'px';
+        txt.style.fontSize = (badgeFontC*0.3528*scale)+'px';
         txt.style.color = s.bioColor || '#3C823C';
         label.appendChild(txt);
-        bx += lsMeasureTextWidthMm('BIO', bioBadgeFontC, true) + 2;
+        bx += lsMeasureTextWidthMm('BIO', badgeFontC, true) + 2;
       }
       if(pinTextC){
-        // centre de l'épingle à 3,1 mm du haut de l'étiquette, quelle que soit sa taille
-        // (comme l'ancienne épingle fixe de 2,2 mm dont elle reprend le centre)
         const pin = document.createElement('div');
         pin.style.left = (bx*scale)+'px';
-        pin.style.top = ((3.1-pinDC/2)*scale)+'px';
-        pin.style.width = (pinDC*scale)+'px';
-        pin.style.height = (pinDC*scale)+'px';
+        pin.style.top = ((1+1)*scale)+'px';
+        pin.style.width = (2.2*scale)+'px';
+        pin.style.height = (2.2*scale)+'px';
         pin.style.borderRadius = '50% 50% 50% 0';
         pin.style.transform = 'rotate(-45deg)';
         pin.style.background = s.localColor || '#DB4437';
         label.appendChild(pin);
-        bx += pinDC+0.4;
-        const shown = lsTruncateToWidth(pinTextC, localBadgeFontC, true, maxBadgeRightMm-bx);
+        bx += 2.6;
+        const shown = lsTruncateToWidth(pinTextC, badgeFontC, true, maxBadgeRightMm-bx);
         const txt = document.createElement('div');
         txt.textContent = shown;
         txt.style.left = (bx*scale)+'px';
-        txt.style.top = ((1+2-localBadgeFontC*0.325)*scale)+'px';
+        txt.style.top = ((1+2-badgeTextTopOffset)*scale)+'px';
         txt.style.fontWeight = '700';
-        txt.style.fontSize = (localBadgeFontC*0.3528*scale)+'px';
+        txt.style.fontSize = (badgeFontC*0.3528*scale)+'px';
         txt.style.color = s.localColor || '#DB4437';
         label.appendChild(txt);
       }
@@ -6093,46 +5228,42 @@
     nomEl.style.color = '#2A2420';
     label.appendChild(nomEl);
 
-    // Logo désactivable (showLogo, défaut affiché si absent) — trame compacte : les badges
-    // Bio/Local restent en ligne près du PLU (voir plus haut), donc rien d'autre à réorganiser.
-    // s.logoStyle ('band') est ignoré ici, trop peu d'espace pour le texte du logo — miroir de drawLabelCompact.
-    if(s.showLogo !== false){
-      const iconW = Math.min(9, w*0.22)*0.9;
-      const logoEl = document.createElement('img');
-      logoEl.src = LOGO_ICON_URI;
-      logoEl.style.left = '50%';
-      logoEl.style.top = ((h/2-1.5)*scale)+'px';
-      logoEl.style.width = (iconW*scale)+'px';
-      logoEl.style.transform = 'translate(-50%,-50%)';
-      logoEl.style.opacity = '.92';
-      label.appendChild(logoEl);
-    }
+    const iconW = Math.min(9, w*0.22)*0.9;
+    const logoEl = document.createElement('img');
+    logoEl.src = LOGO_ICON_URI;
+    logoEl.style.left = '50%';
+    logoEl.style.top = ((h/2-1.5)*scale)+'px';
+    logoEl.style.width = (iconW*scale)+'px';
+    logoEl.style.transform = 'translate(-50%,-50%)';
+    logoEl.style.opacity = '.92';
+    label.appendChild(logoEl);
 
-    // Bloc prix : emplacements fixes, réservés qu'ils soient utilisés ou non (miroir de
-    // drawLabelCompact).
+    // Bloc prix : ancré depuis le bas (marge >= 3mm, revue-graphiste #5), empilé du bas
+    // vers le haut, avec une unité nettement plus petite que le prix (revue-graphiste #4)
+    // — reflète les positions proportionnelles de drawLabelCompact (revue-graphiste #2).
     const pu = priceAndUnitFor(r);
     const marginBottom = 3;
     const unitFont = Math.max(6, Math.min(9, s.compactPriceFont*0.6));
-    const fromBottomKg = marginBottom;
-    const fromBottomUnit = fromBottomKg + (s.compactKgFont*0.42 + 1.4);
-    const fromBottomMm = fromBottomUnit + (unitFont*0.42 + 1.4);
+    let fromBottomMm = marginBottom;
     if(pu.showKgSecondary){
       const el = document.createElement('div');
       el.textContent = `soit ${pu.priceKgStr}/kg`;
       el.style.right = (pad*scale)+'px';
-      el.style.bottom = (fromBottomKg*scale)+'px';
-      el.style.fontSize = (s.compactKgFont*0.3528*scale)+'px';
+      el.style.bottom = (fromBottomMm*scale)+'px';
+      el.style.fontSize = (6*0.3528*scale)+'px';
       el.style.color = '#827c6f';
       label.appendChild(el);
+      fromBottomMm += 6*0.42 + 1.4;
     }
     if(pu.unitLabel){
       const el = document.createElement('div');
       el.textContent = pu.unitLabel;
       el.style.right = (pad*scale)+'px';
-      el.style.bottom = (fromBottomUnit*scale)+'px';
+      el.style.bottom = (fromBottomMm*scale)+'px';
       el.style.fontSize = (unitFont*0.3528*scale)+'px';
       el.style.color = '#60584e';
       label.appendChild(el);
+      fromBottomMm += unitFont*0.42 + 1.4;
     }
     const priceEl = document.createElement('div');
     priceEl.textContent = pu.priceStr;
@@ -8137,7 +7268,6 @@
       .filter(r => (r[1]||'').trim() && (r[1]||'').trim()!=='NON UTILISE')
       .filter(r => state.categoryFilter==='ALL' || (r[CATCOL]||'').trim() === state.categoryFilter)
       .filter(r => matchesSubCategoryFilter(r))
-      .filter(r => matchesPositionCamionFilter(r))
       .filter(r => !q || (r[0]||'').toLowerCase().includes(q) || (r[1]||'').toLowerCase().includes(q));
 
     if(filtered.length === 0){
