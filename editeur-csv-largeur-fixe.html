@@ -1831,7 +1831,7 @@
 (function(){
   // Version affichée en haut à droite de la page — à mettre à jour à chaque modification
   // poussée sur GitHub, pour que l'utilisateur puisse vérifier qu'il a bien la dernière version.
-  const APP_VERSION = '2026-09-07';
+  const APP_VERSION = '2026-09-07 (diag pagination)';
   const versionBadge = document.getElementById('appVersionBadge');
   if(versionBadge) versionBadge.textContent = `Version du ${APP_VERSION}`;
 
@@ -4148,18 +4148,25 @@
     let offset = 0;
     const all = [];
     let lastFirstId = null;
+    let stopReason = 'total_atteint';
     // Plafond de sécurité : le total attendu (+une marge de 2 pages) si connu, sinon une limite
     // large mais finie — évite qu'une pagination qui boucle indéfiniment côté serveur (offset
     // au-delà du total sans page vide en retour) ne tourne à l'infini.
     const hardCap = (typeof expectedTotal === 'number' && expectedTotal >= 0) ? expectedTotal + limit*2 : 20000;
     while(true){
       const page = await dolibarrApiGet(`/products?limit=${limit}&offset=${offset}&sortfield=t.rowid&sortorder=ASC`);
-      if(!Array.isArray(page) || page.length===0) break;
+      if(!Array.isArray(page) || page.length===0){
+        stopReason = `page_vide_a_offset_${offset} (total attendu : ${expectedTotal})`;
+        break;
+      }
       // Garde-fou anti-boucle : si Dolibarr renvoie la même page qu'à l'itération précédente
       // (offset allé au-delà du total réel sur une instance qui ne renvoie pas de page vide),
       // on arrête plutôt que de dupliquer indéfiniment.
       const firstId = page[0] && page[0].id;
-      if(firstId!=null && firstId === lastFirstId) break;
+      if(firstId!=null && firstId === lastFirstId){
+        stopReason = `page_dupliquee_a_offset_${offset}`;
+        break;
+      }
       lastFirstId = firstId;
       all.push(...page);
       if(onProgress) onProgress(all.length, expectedTotal);
@@ -4170,15 +4177,18 @@
       // fin. Quand le total réel est connu (pagination_data), on continue jusqu'à l'avoir
       // atteint ; sinon on retombe sur l'ancienne heuristique (taille de page).
       if(expectedTotal!=null){
-        if(all.length >= expectedTotal) break;
+        if(all.length >= expectedTotal){ stopReason = 'total_atteint'; break; }
       } else if(page.length < limit){
+        stopReason = `page_incomplete_sans_total_connu (page.length=${page.length} < limit=${limit})`;
         break;
       }
       if(all.length >= hardCap){
+        stopReason = `plafond_securite_${hardCap}`;
         console.warn(`Synchronisation Dolibarr : plafond de sécurité (${hardCap}) atteint, arrêt de la pagination des produits.`);
         break;
       }
     }
+    all._stopReason = stopReason; // diagnostic, lu par l'appelant pour le message final
     return all;
   }
 
@@ -4260,8 +4270,10 @@
       const products = await fetchAllDolibarrProducts((n)=>{ btnSyncDolibarrApi.textContent = `⏳ Produits… (${n}${totalLabel})`; }, expectedTotal);
       let productCountMismatchWarning = null;
       if(expectedTotal!=null && products.length !== expectedTotal){
-        productCountMismatchWarning = `Écart persistant : ${products.length} produit(s) récupéré(s) via l'API pour un total de ${expectedTotal} annoncé par Dolibarr. Relance la synchro — s'il persiste, contacte-moi avec ces deux chiffres.`;
-        console.warn(`Synchronisation Dolibarr : ${products.length} produit(s) récupéré(s) pour un total annoncé de ${expectedTotal}.`);
+        productCountMismatchWarning = `Écart persistant : ${products.length} produit(s) récupéré(s) via l'API pour un total de ${expectedTotal} annoncé par Dolibarr (arrêt : ${products._stopReason}). Relance la synchro — s'il persiste, contacte-moi avec ce message complet.`;
+        console.warn(`Synchronisation Dolibarr : ${products.length} produit(s) récupéré(s) pour un total annoncé de ${expectedTotal}. Raison d'arrêt : ${products._stopReason}`);
+      } else if(expectedTotal==null){
+        productCountMismatchWarning = `Total Dolibarr non détecté (pagination_data indisponible sur cette instance) — ${products.length} produit(s) récupéré(s), arrêt : ${products._stopReason}. Vérifie ce nombre correspond bien à ton catalogue complet.`;
       }
       btnSyncDolibarrApi.textContent = '⏳ Récupération des catégories…';
       const categories = await fetchAllDolibarrCategories();
