@@ -328,14 +328,27 @@
     background:var(--red-bg);
     border:1px solid #d9b6ac;
     border-radius:8px;
-    padding:12px 16px;
+    padding:12px 40px 12px 16px;
     color:#5c231a;
     font-size:12.5px;
     font-family:'IBM Plex Mono',monospace;
     display:none;
+    position:relative;
   }
   .anomalies.show{ display:block; }
   .anomalies ul{ margin:6px 0 0; padding-left:18px; max-height:120px; overflow:auto; }
+  .anomalies-close{
+    all:unset;
+    position:absolute;
+    top:10px;
+    right:12px;
+    cursor:pointer;
+    font-size:14px;
+    color:#5c231a;
+    padding:2px 6px;
+    border-radius:4px;
+  }
+  .anomalies-close:hover{ background:rgba(92,35,26,.12); }
 
   /* ---- Grille façon registre papier ---- */
   .sheet-wrap{
@@ -1164,6 +1177,7 @@
     </div>
 
     <div class="anomalies" id="anomalies">
+      <button class="anomalies-close" id="anomaliesClose" title="Fermer">✕</button>
       <strong>⚠ Points à vérifier avant export</strong>
       <ul id="anomaliesList"></ul>
     </div>
@@ -1835,7 +1849,7 @@
 (function(){
   // Version affichée en haut à droite de la page — à mettre à jour à chaque modification
   // poussée sur GitHub, pour que l'utilisateur puisse vérifier qu'il a bien la dernière version.
-  const APP_VERSION = 'v20260907_8';
+  const APP_VERSION = 'v20260907_9';
   const versionBadge = document.getElementById('appVersionBadge');
   if(versionBadge) versionBadge.textContent = `Version du ${APP_VERSION}`;
 
@@ -2703,13 +2717,22 @@
     `;
 
     if(problems.length){
-      anomaliesBox.classList.add('show');
-      anomaliesList.innerHTML = problems.slice(0,30).map(p=>`<li>${p}</li>`).join('');
-      if(problems.length>30) anomaliesList.innerHTML += `<li>… et ${problems.length-30} de plus</li>`;
+      lastAnomaliesSignature = problems.join('|');
+      if(lastAnomaliesSignature !== dismissedAnomaliesSignature){
+        anomaliesBox.classList.add('show');
+        anomaliesList.innerHTML = problems.slice(0,30).map(p=>`<li>${p}</li>`).join('');
+        if(problems.length>30) anomaliesList.innerHTML += `<li>… et ${problems.length-30} de plus</li>`;
+      }
     } else {
       anomaliesBox.classList.remove('show');
+      dismissedAnomaliesSignature = null; // plus rien a afficher -> repart a zero pour la prochaine fois
     }
   }
+  let dismissedAnomaliesSignature = null, lastAnomaliesSignature = null;
+  $('anomaliesClose').addEventListener('click', ()=>{
+    dismissedAnomaliesSignature = lastAnomaliesSignature;
+    anomaliesBox.classList.remove('show');
+  });
 
   // ---------- Fiche produit ----------
   let sheetRow = -1;
