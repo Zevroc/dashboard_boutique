@@ -2378,9 +2378,16 @@
     allColsLabel.style.display = 'flex';
 
     const maxCols = state.colMeta.length;
-    const visibleCols = state.showAllCols
+    const baseCols = state.showAllCols
       ? Array.from({length:maxCols}, (_,i)=>i)
       : COMPACT_COLS.filter(c=>c<maxCols);
+    // Prix d'achat (colonne métier, hors bloc balance) affiché juste après Prix vente
+    // plutôt qu'à sa position naturelle (loin à droite, à côté de Fournisseur).
+    const achatCol = BIZCOL.ACHAT_HT;
+    const visibleCols = (achatCol < maxCols)
+      ? [...baseCols.filter(c=>c!==achatCol)]
+      : baseCols;
+    if(achatCol < maxCols) visibleCols.splice(visibleCols.indexOf(4)+1, 0, achatCol);
 
     // tri alphabétique/numérique sur PLU (col 0) ou Description (col 1)
     if(state.sortCol !== null){
