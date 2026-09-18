@@ -1849,7 +1849,7 @@
 (function(){
   // Version affichée en haut à droite de la page — à mettre à jour à chaque modification
   // poussée sur GitHub, pour que l'utilisateur puisse vérifier qu'il a bien la dernière version.
-  const APP_VERSION = 'v20260908_1';
+  const APP_VERSION = 'v20260918_1';
   const versionBadge = document.getElementById('appVersionBadge');
   if(versionBadge) versionBadge.textContent = `Version du ${APP_VERSION}`;
 
@@ -4095,9 +4095,6 @@
     if(emptyCategoryPlu.length){
       msg += `\n\n⚠ ${emptyCategoryPlu.length} produit(s) sans catégorie reconnue (PLU : ${emptyCategoryPlu.slice(0,15).join(', ')}${emptyCategoryPlu.length>15?'…':''}).`;
     }
-    if(sourceLabel==='api'){
-      msg += `\n\nRappel : en synchro API, "Fournisseur" et "Prix d'achat" ne sont pas encore récupérés (limitation connue de la V1) — les valeurs déjà présentes dans la base sont conservées.`;
-    }
     if(extraWarnings && extraWarnings.length){
       extraWarnings.forEach(w=>{ msg += `\n\n⚠ ${w}`; });
     }
@@ -4293,6 +4290,52 @@
     return n.toFixed(2).replace('.', ',');
   }
 
+  // Récupère en un minimum d'appels le prix d'achat (fournisseur) de tous les produits.
+  // Dolibarr expose /products/purchase_prices (méthode Products::getSupplierProducts) qui,
+  // pour UN appel HTTP, fait déjà la boucle par produit côté serveur et renvoie un objet
+  // { "<id produit>": [ {fourn_name, fourn_unitprice, ...}, ... ], ... } — donc une poignée
+  // d'appels (paginés) suffit, pas un appel par produit comme pour les catégories avant leur
+  // bascule en fetch par catégorie. Seuls les produits ayant au moins un prix fournisseur
+  // renseigné dans Dolibarr apparaissent dans le résultat (jointure interne côté API).
+  // Pagination par curseur (sqlfilters sur t.rowid), même contournement que pour /products et
+  // /categories : la pagination par offset de Dolibarr peut se dupliquer/boucler (issue #29425).
+  async function fetchAllDolibarrPurchasePrices(onProgress){
+    const limit = 500;
+    let lastId = 0;
+    const result = {}; // id produit Dolibarr (string) -> array de lignes prix fournisseur (triées : fournisseur, quantité, prix)
+    const hardCap = 20000;
+    let total = 0;
+    while(true){
+      const filter = encodeURIComponent(`(t.rowid:>:${lastId})`);
+      let page;
+      try{
+        page = await dolibarrApiGet(`/products/purchase_prices?limit=${limit}&mode=1&sortfield=t.rowid&sortorder=ASC&sqlfilters=${filter}`);
+      } catch(err){
+        console.warn('Récupération des prix d\'achat : échec, la synchro continue sans ces données.', err);
+        result._error = err.message || String(err);
+        break;
+      }
+      const keys = (page && typeof page === 'object') ? Object.keys(page) : [];
+      if(keys.length === 0) break;
+      let maxId = lastId;
+      keys.forEach(k=>{
+        result[k] = page[k];
+        const n = parseInt(k, 10);
+        if(!isNaN(n) && n > maxId) maxId = n;
+      });
+      total += keys.length;
+      if(onProgress) onProgress(total);
+      if(keys.length < limit) break; // moins que la limite demandée = fin de liste
+      if(maxId <= lastId) break; // garde-fou anti-boucle infinie si le curseur n'avance plus
+      lastId = maxId;
+      if(total >= hardCap){
+        console.warn(`Récupération des prix d'achat : plafond de sécurité (${hardCap}) atteint, arrêt de la pagination.`);
+        break;
+      }
+    }
+    return result;
+  }
+
   const btnSyncDolibarrApi = $('btnSyncDolibarrApi');
 
   async function runDolibarrApiSync(){
@@ -4326,6 +4369,11 @@
         btnSyncDolibarrApi.textContent = `⏳ Classement par catégorie… (${done}/${total})`;
       });
 
+      btnSyncDolibarrApi.textContent = '⏳ Récupération des prix d\'achat…';
+      const purchasePricesByProductId = await fetchAllDolibarrPurchasePrices((n)=>{
+        btnSyncDolibarrApi.textContent = `⏳ Prix d'achat… (${n})`;
+      });
+
       // ---- Reconstruction du format "fichiers" attendu par applyDolibarrImportData ----
       const categoryListRows = categories.map(c=>{
         const parent = categoriesById[String(c.fk_parent)];
@@ -4348,6 +4396,12 @@
         const ref = String(p.ref||'').trim();
         if(!ref){ skippedNoRef.push(p.label || `#${p.id}`); return; }
         const opts = p.array_options || {};
+        // Prix d'achat fournisseur : quand plusieurs lignes existent (plusieurs fournisseurs
+        // et/ou paliers de quantité), on retient la première — déjà triée côté Dolibarr par
+        // nom de fournisseur puis quantité puis prix croissants, donc le fournisseur "principal"
+        // au tarif de base (quantité la plus faible).
+        const purchaseRows = purchasePricesByProductId[String(p.id)];
+        const mainPurchase = (Array.isArray(purchaseRows) && purchaseRows.length) ? purchaseRows[0] : null;
         productRows.push({
           'Réf.': ref,
           'Libellé': p.label || '',
@@ -4355,8 +4409,8 @@
           'En vente': (String(p.status)==='1') ? '1' : '0',
           'Type Vente': '',
           'Unité': p.fk_unit!=null ? String(p.fk_unit) : '',
-          'Fournisseur': '',
-          "Prix d'achat": '',
+          'Fournisseur': mainPurchase ? String(mainPurchase.fourn_name||'').trim() : '',
+          "Prix d'achat": mainPurchase ? euroApiToFrString(mainPurchase.fourn_unitprice) : '',
           'Taux TVA': p.tva_tx!=null && p.tva_tx!=='' ? String(parseFloat(p.tva_tx)) : '',
           'Stock': p.stock_reel!=null ? String(p.stock_reel) : '',
           'Limite stock pour alerte': p.seuil_stock_alerte!=null ? String(p.seuil_stock_alerte) : '',
@@ -4378,6 +4432,9 @@
       }
       if(catsByProductId._failedCount > 0){
         extraWarnings.push(`⚠ ${catsByProductId._failedCount} catégorie(s) sur ${categories.length} non interrogée(s) malgré 2 nouvelles tentatives (serveur Dolibarr temporairement saturé — erreurs 503) : les produits qui y sont rattachés garderont leur ancienne catégorie/tags s'ils en avaient déjà, sinon resteront sans catégorie. Relance la synchro une deuxième fois pour compléter.`);
+      }
+      if(purchasePricesByProductId._error){
+        extraWarnings.push(`⚠ Récupération des prix d'achat fournisseur échouée (${purchasePricesByProductId._error}) — "Fournisseur" et "Prix d'achat" conservent leur valeur précédente pour tous les produits cette fois-ci.`);
       }
       if(productCountMismatchWarning){
         extraWarnings.push(productCountMismatchWarning);
