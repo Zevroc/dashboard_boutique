@@ -1849,7 +1849,7 @@
 (function(){
   // Version affichée en haut à droite de la page — à mettre à jour à chaque modification
   // poussée sur GitHub, pour que l'utilisateur puisse vérifier qu'il a bien la dernière version.
-  const APP_VERSION = 'v20260918_1';
+  const APP_VERSION = 'v20260927_1';
   const versionBadge = document.getElementById('appVersionBadge');
   if(versionBadge) versionBadge.textContent = `Version du ${APP_VERSION}`;
 
@@ -2253,7 +2253,8 @@
     // font 3 chiffres) est un faux positif de l'heuristique. On force une largeur
     // indicative de 4 caractères (les nouveaux PLU peuvent monter à 4 chiffres),
     // gardée pour l'avertissement visuel de dépassement, mais jamais utilisée pour
-    // le padding réel à l'export (voir buildCsvText).
+    // le padding réel à l'export (le zero-padding sur 4 chiffres est fait en dur dans
+    // buildBalancePluCsvText, indépendamment de cette largeur détectée).
     if(meta[0]) meta[0] = { fixed:true, width:4, coverage:1 };
     // Colonnes métier (19+, base articles) : jamais de padding, toujours libres.
     for(let c=19; c<meta.length; c++) meta[c] = { fixed:false, width:0, coverage:1 };
@@ -3544,6 +3545,47 @@
     return out;
   }
 
+  // Format réellement attendu par la balance HELMAC HSM Pro pour B_PLU.CSV, vérifié directement
+  // sur un export natif pris sur la balance : point-virgule (pas virgule), PLU zero-paddé sur 4
+  // chiffres (ex. "0006", jamais dépaddé), et casse du nom préservée telle que saisie (pas forcée
+  // en majuscules) — contrairement à buildCsvText() ci-dessus, conservée telle quelle pour l'export
+  // Excel (bouton "Export Excel", format volontairement différent pour un tableur). C'est cette
+  // fonction-ci qui doit alimenter tout ce qui part vers la balance physique (bouton "Exporter" et
+  // B_PLU.CSV de l'export ZIP).
+  function buildBalancePluCsvText(){
+    const lines = rowsSortedByPlu().map(row=>{
+      const fields = row.slice(0,19).map((val,ci)=>{ // seules les 19 colonnes balance sont exportées (jamais la base articles)
+        const meta = state.colMeta[ci];
+        let v = val;
+        if(ci===0){
+          // PLU : zero-paddé sur 4 chiffres dans le fichier natif (ex. "0006"), jamais dépaddé.
+          const n = parseInt((v||'').trim(),10);
+          v = isNaN(n) ? (v||'').trim() : String(n).padStart(4,'0');
+        } else if(ci===1){
+          // Nom : paddé à 26 caractères, casse préservée telle que saisie — vérifié sur un
+          // export natif pris sur la balance (ex. "Cajou", "huile d'olive bio douce 50cl" :
+          // 137 des 468 lignes de la référence ne sont pas en majuscules), contrairement à
+          // l'hypothèse précédente qui forçait la majuscule.
+          v = (v||'');
+          if(v.length < 26) v = v + ' '.repeat(26 - v.length);
+        } else if(meta.fixed){
+          if(v.length < meta.width) v = v + ' '.repeat(meta.width - v.length);
+          // si dépassement : on exporte tel quel (pas de troncature silencieuse)
+        }
+        // Le format natif n'a aucun mécanisme de guillemets/échappement (champs strictement à
+        // largeur fixe) : un ';' ou un retour à la ligne égaré dans une valeur casserait le
+        // découpage en colonnes attendu par la balance, donc on le neutralise plutôt que de le
+        // protéger par des guillemets qui n'existent pas dans le format réel.
+        return v.replace(/[;\r\n]/g, ' ');
+      });
+      fields.push(''); // champ vide traînant, toujours présent en fin de ligne dans le fichier natif
+      return fields.join(';');
+    });
+    let out = lines.join(state.lineEnding);
+    if(state.trailingNewline) out += state.lineEnding;
+    return out;
+  }
+
   function downloadCsv(text, filename){
     const bytes = encodeWin1252(text);
     const blob = new Blob([bytes], {type:'text/csv'});
@@ -3559,7 +3601,7 @@
 
   btnExport.addEventListener('click', ()=>{
     const base = state.fileName.replace(/\.csv$/i,'');
-    downloadCsv(buildCsvText(), base + '_edite.CSV');
+    downloadCsv(buildBalancePluCsvText(), base + '_edite.CSV');
   });
 
   btnExportExcel.addEventListener('click', ()=>{
@@ -8248,7 +8290,7 @@
       return;
     }
     const zip = new JSZip();
-    zip.file('B_PLU.CSV', encodeWin1252(buildCsvText()));
+    zip.file('B_PLU.CSV', encodeWin1252(buildBalancePluCsvText()));
     zip.file('B_GRU.CSV', encodeWin1252(buildGruCsv()));
     zip.file('B_ISC.CSV', encodeWin1252(buildIscCsv()));
     zip.file('B_ADV.CSV', encodeWin1252(buildAdvCsv()));
