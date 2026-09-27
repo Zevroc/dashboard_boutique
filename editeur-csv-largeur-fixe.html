@@ -1849,7 +1849,7 @@
 (function(){
   // Version affichée en haut à droite de la page — à mettre à jour à chaque modification
   // poussée sur GitHub, pour que l'utilisateur puisse vérifier qu'il a bien la dernière version.
-  const APP_VERSION = 'v20260927_2';
+  const APP_VERSION = 'v20260927_3';
   const versionBadge = document.getElementById('appVersionBadge');
   if(versionBadge) versionBadge.textContent = `Version du ${APP_VERSION}`;
 
@@ -1930,6 +1930,26 @@
     }
     return parseFloat(s);
   };
+  // Cherche, parmi les clés d'un objet (en-têtes de colonnes d'un export Dolibarr, ou clés
+  // d'extrafields de l'API `array_options` du type "options_xxx"), la première qui contient
+  // TOUS les mots donnés (insensible à la casse) — plutôt que de coder un intitulé exact en dur,
+  // qui varie selon le profil d'export Dolibarr ou la configuration de l'extrafield.
+  function findFieldKeyByWords(obj, words){
+    return Object.keys(obj||{}).find(k=>{
+      const kl = k.toLowerCase();
+      return words.every(w=> kl.includes(w));
+    });
+  }
+  // Extrait le code numérique en début de valeur d'un extrafield liste déroulante Dolibarr type
+  // "Code balance" : soit juste le code ("0100"), soit le code suivi d'une description
+  // ("0100 – Pâtes 4€/kg") — on ne garde que la séquence de chiffres en tête, paddée à 4
+  // chiffres. Chaîne vide si rien d'exploitable (= pas de regroupement, PLU individuel).
+  function extractCodeBalance(raw){
+    const s = String(raw==null ? '' : raw).trim();
+    if(!s) return '';
+    const m = s.match(/^\s*(\d{3,4})/);
+    return m ? m[1].padStart(4,'0') : '';
+  }
   const dropzone = $('dropzone');
   const sheetWrap = $('sheetWrap');
   const anomaliesBox = $('anomalies');
@@ -2000,7 +2020,7 @@
     'PLU','Nom','Champ 3','Type','Prix vente','Catégorie','Champ 7','Champ 8','Champ 9',
     'Champ 10','Champ 11','Champ 12','Code','Statut','Département','Code long','Champ 17','Champ 18','Champ 19'
   ];
-  const SHORT_BIZ_LABELS = ['Fournisseur','Prix achat','TVA','Stock','Stock mini','Stock maxi','Bio','Local','Trame étiquette','Affichage prix','Groupe variantes','Taille lot','Période commande','Description longue','Sous-catégorie','Emplacement','Pays','Position camion'];
+  const SHORT_BIZ_LABELS = ['Fournisseur','Prix achat','TVA','Stock','Stock mini','Stock maxi','Bio','Local','Trame étiquette','Affichage prix','Groupe variantes','Taille lot','Période commande','Description longue','Sous-catégorie','Emplacement','Pays','Position camion','Code balance','WooCommerce'];
   function shortColLabel(c){
     if(c < SHORT_COL_LABELS.length) return SHORT_COL_LABELS[c];
     const bi = c - 19;
@@ -2011,9 +2031,19 @@
   // ---------- Base articles : champs métier ajoutés après les 19 colonnes balance ----------
   // Index 19 à 25. Ces colonnes ne sont JAMAIS envoyées dans le CSV balance (voir buildCsvText) —
   // elles ne vivent que dans la base articles complète.
-  const BIZCOL = { FOURNISSEUR:19, ACHAT_HT:20, TVA:21, STOCK:22, STOCK_MINI:23, STOCK_MAXI:24, BIO:25, LOCAL:26, TEMPLATE:27, UNIT_DISPLAY:28, GROUP:29, PACK_SIZE:30, ORDER_PERIOD:31, DESC_LONGUE:32, SUB_CATEGORY:33, EMPLACEMENT:34, PAYS:35, POSITION_CAMION:36 };
-  const BIZ_COL_COUNT = 18;
-  const BIZ_HEADERS = ['Fournisseur','Prix achat HT (centimes)','Taux TVA (%)','Stock actuel','Stock mini','Stock maxi','Bio (1/0)','Local (1/0)','Trame étiquette','Affichage prix (kg/100g)','Groupe de variantes','Taille du lot (unités)','Période de commande','Description longue','Sous-catégorie (Dolibarr, hors export balance)','Emplacement (Dolibarr, tri des étiquettes)','Pays d\'origine (étiquette, si produit non local)','Position dans le camion (Dolibarr, tri/filtre)'];
+  const BIZCOL = { FOURNISSEUR:19, ACHAT_HT:20, TVA:21, STOCK:22, STOCK_MINI:23, STOCK_MAXI:24, BIO:25, LOCAL:26, TEMPLATE:27, UNIT_DISPLAY:28, GROUP:29, PACK_SIZE:30, ORDER_PERIOD:31, DESC_LONGUE:32, SUB_CATEGORY:33, EMPLACEMENT:34, PAYS:35, POSITION_CAMION:36, CODE_BALANCE:37, WOOCOMMERCE:38 };
+  const BIZ_COL_COUNT = 20;
+  const BIZ_HEADERS = ['Fournisseur','Prix achat HT (centimes)','Taux TVA (%)','Stock actuel','Stock mini','Stock maxi','Bio (1/0)','Local (1/0)','Trame étiquette','Affichage prix (kg/100g)','Groupe de variantes','Taille du lot (unités)','Période de commande','Description longue','Sous-catégorie (Dolibarr, hors export balance)','Emplacement (Dolibarr, tri des étiquettes)','Pays d\'origine (étiquette, si produit non local)','Position dans le camion (Dolibarr, tri/filtre)','Code balance (extrafield Dolibarr, regroupe plusieurs articles sous un meme PLU balance)','WooCommerce (1/0 — catégorie Dolibarr "WooCommerce", exclu étiquettes/catalogue)'];
+
+  // Code réellement affiché/imprimé pour un article (étiquettes, catalogue, export balance) :
+  // le "Code balance" (extrafield Dolibarr) quand plusieurs articles Dolibarr distincts sont
+  // volontairement regroupés sous un même code sur la balance (ex. plusieurs pâtes à 4€/kg),
+  // sinon le PLU propre de l'article. Ne remplace jamais le PLU réel dans les données (fiche
+  // produit, tri, recherche...), uniquement ce qui est montré/imprimé.
+  function codeAfficheFor(row){
+    const codeBalance = (row[BIZCOL.CODE_BALANCE]||'').trim();
+    return codeBalance || (row[0]||'').trim();
+  }
   const ORDER_PERIODS = {
     hebdo:      { label:'Hebdomadaire (7 jours)', days:7 },
     quinzaine:  { label:'Toutes les 2 semaines (15 jours)', days:15 },
@@ -2490,7 +2520,11 @@
       .filter(x => matchesPositionCamionFilter(x.row))
       .filter(x => !q || (x.row[0]||'').toLowerCase().includes(q) || (x.row[1]||'').toLowerCase().includes(q));
 
-    const visiblePlus = visibleRows.map(x=> (x.row[0]||'').trim());
+    // Articles WooCommerce (site web, pas forcément en boutique) : jamais sélectionnables pour
+    // l'impression d'étiquettes, ni via "tout sélectionner" ni case à case ci-dessous.
+    const visiblePlus = visibleRows
+      .filter(x => (x.row[BIZCOL.WOOCOMMERCE]||'')!=='1')
+      .map(x=> (x.row[0]||'').trim());
     selectAllCb.checked = visiblePlus.length>0 && visiblePlus.every(p=> state.labelSelection.has(p));
     selectAllCb.addEventListener('change', ()=>{
       if(selectAllCb.checked) visiblePlus.forEach(p=> state.labelSelection.add(p));
@@ -2507,21 +2541,29 @@
       actionsWrap.className = 'actionsWrap';
 
       const plu = (row[0]||'').trim();
+      const isWooCommerce = (row[BIZCOL.WOOCOMMERCE]||'')==='1';
       const labelCb = document.createElement('input');
       labelCb.type = 'checkbox';
       labelCb.className = 'label-select-cb';
-      labelCb.title = 'Sélectionner pour l\'impression d\'étiquettes';
-      labelCb.checked = state.labelSelection.has(plu);
-      labelCb.addEventListener('change', ()=>{
-        // On relit le PLU courant sur `row` (référence stable) plutôt que sur
-        // la variable `plu` figée au moment du rendu : si la cellule PLU a été
-        // renommée en édition inline sans re-render (cas courant, voir onCellBlur),
-        // `plu` serait obsolète et on cocherait/décocherait le mauvais PLU.
-        const currentPlu = (row[0]||'').trim();
-        if(labelCb.checked) state.labelSelection.add(currentPlu);
-        else state.labelSelection.delete(currentPlu);
-        updateLabelsButtonCount();
-      });
+      if(isWooCommerce){
+        // Article WooCommerce (site web) : jamais imprimé en étiquette.
+        labelCb.title = 'Article WooCommerce (site web) : non sélectionnable pour l\'impression d\'étiquettes';
+        labelCb.checked = false;
+        labelCb.disabled = true;
+      } else {
+        labelCb.title = 'Sélectionner pour l\'impression d\'étiquettes';
+        labelCb.checked = state.labelSelection.has(plu);
+        labelCb.addEventListener('change', ()=>{
+          // On relit le PLU courant sur `row` (référence stable) plutôt que sur
+          // la variable `plu` figée au moment du rendu : si la cellule PLU a été
+          // renommée en édition inline sans re-render (cas courant, voir onCellBlur),
+          // `plu` serait obsolète et on cocherait/décocherait le mauvais PLU.
+          const currentPlu = (row[0]||'').trim();
+          if(labelCb.checked) state.labelSelection.add(currentPlu);
+          else state.labelSelection.delete(currentPlu);
+          updateLabelsButtonCount();
+        });
+      }
       actionsWrap.appendChild(labelCb);
 
       const editBtn = document.createElement('button');
@@ -3581,15 +3623,73 @@
     { width:2,  numeric:false }  // 18 Departement final (D0)
   ];
 
+  // Regroupe les lignes balance par "code effectif" (code balance de l'extrafield Dolibarr si
+  // renseigné, sinon PLU propre de l'article — voir codeAfficheFor) avant l'export : plusieurs
+  // articles Dolibarr distincts partageant volontairement un même code balance (ex. plusieurs
+  // pâtes à 4€/kg) ne doivent produire qu'UNE seule ligne B_PLU — sinon la balance recevrait
+  // plusieurs lignes avec le même PLU, ce qui est invalide.
+  // Le prix (row[4], en centimes) doit être identique entre tous les articles d'un même groupe :
+  // sinon, avertit clairement (PLU et prix de chaque article du groupe) et laisse l'utilisateur
+  // choisir de continuer quand même en connaissance de cause (même pattern confirm() qu'ailleurs
+  // dans le fichier, ex. la fusion d'un CSV balance tronqué) ou d'annuler pour corriger les prix
+  // côté Dolibarr avant de réessayer.
+  // Retourne null si l'utilisateur annule — l'export doit alors être abandonné.
+  function buildBalanceExportGroups(){
+    const groups = new Map(); // code effectif -> lignes du groupe, dans l'ordre PLU croissant
+    rowsSortedByPlu().forEach(row=>{
+      const code = codeAfficheFor(row);
+      if(!groups.has(code)) groups.set(code, []);
+      groups.get(code).push(row);
+    });
+
+    const mismatches = [];
+    groups.forEach((rows, code)=>{
+      if(rows.length < 2) return;
+      const prices = new Set(rows.map(r=> (r[4]||'').trim()));
+      if(prices.size > 1){
+        const detail = rows.map(r=> `PLU ${(r[0]||'').trim()} (${(r[1]||'').trim()}) : ${eurosFromCents(r[4])}`).join('\n  ');
+        mismatches.push(`Code balance ${code} :\n  ${detail}`);
+      }
+    });
+
+    if(mismatches.length){
+      const ok = confirm(
+        `Prix incohérent(s) entre des articles partageant le même code balance — seul le prix du premier article de chaque groupe (le plus petit PLU) part sur la balance, les autres prix sont ignorés :\n\n${mismatches.join('\n\n')}\n\nContinuer quand même l'export ?`
+      );
+      if(!ok) return null;
+    }
+
+    // Ordre de sortie : code effectif croissant (numérique), comme l'exige la balance pour le PLU.
+    return Array.from(groups.entries())
+      .sort((a,b)=>{
+        const na = parseInt(a[0],10), nb = parseInt(b[0],10);
+        if(!isNaN(na) && !isNaN(nb)) return na-nb;
+        return a[0].localeCompare(b[0],'fr',{numeric:true});
+      })
+      .map(([code, rows])=>{
+        // Ligne de sortie du groupe : le premier article (plus petit PLU) sert de gabarit pour
+        // le nom et le prix — à changer facilement ici si un libellé de groupe distinct est
+        // voulu plus tard (ex. un nom saisi manuellement plutôt que celui du premier article).
+        const template = rows[0];
+        const merged = template.slice();
+        merged[0] = code;
+        return merged;
+      });
+  }
+
   // Format réellement attendu par la balance HELMAC HSM Pro pour B_PLU.CSV, vérifié directement
   // sur un export natif pris sur la balance : point-virgule (pas virgule), largeurs fixes exactes
   // (BALANCE_COL_SPECS ci-dessus, pas colMeta), et casse du nom préservée telle que saisie (pas
   // forcée en majuscules) — contrairement à buildCsvText() ci-dessus, conservée telle quelle pour
   // l'export Excel (bouton "Export Excel", format volontairement différent pour un tableur).
   // C'est cette fonction-ci qui doit alimenter tout ce qui part vers la balance physique (bouton
-  // "Exporter" et B_PLU.CSV de l'export ZIP).
+  // "Exporter" et B_PLU.CSV de l'export ZIP). Regroupe d'abord les articles par code balance
+  // (voir buildBalanceExportGroups) — retourne null si l'utilisateur annule l'export suite à un
+  // avertissement de prix incohérent, à propager tel quel par l'appelant.
   function buildBalancePluCsvText(){
-    const lines = rowsSortedByPlu().map(row=>{
+    const groupedRows = buildBalanceExportGroups();
+    if(groupedRows === null) return null;
+    const lines = groupedRows.map(row=>{
       const fields = row.slice(0,19).map((val,ci)=>{ // seules les 19 colonnes balance sont exportées (jamais la base articles)
         const spec = BALANCE_COL_SPECS[ci];
         let v = (val||'');
@@ -3647,8 +3747,10 @@
   }
 
   btnExport.addEventListener('click', ()=>{
+    const csvText = buildBalancePluCsvText();
+    if(csvText === null) return; // export annulé (avertissement de prix incohérent refusé)
     const base = state.fileName.replace(/\.csv$/i,'');
-    downloadCsv(buildBalancePluCsvText(), base + '_edite.CSV');
+    downloadCsv(csvText, base + '_edite.CSV');
   });
 
   btnExportExcel.addEventListener('click', ()=>{
@@ -3985,10 +4087,31 @@
       if(!m.parentId || !catMeta[m.parentId]) return false;
       return isUnderProduits(m.parentId, depth+1);
     }
+    // WooCommerce : catégorie(s) littéralement "WooCommerce" (posée probablement par une synchro
+    // avec le site web onpartenvrac-drive.com), plus toute sous-catégorie descendant d'elle
+    // (même principe ascendant que isUnderProduits ci-dessus, mais vers une racine nommée plutôt
+    // qu'un libellé de parent direct) — un produit tagué par une sous-catégorie de WooCommerce
+    // doit être exclu au même titre qu'un produit tagué directement.
+    const wooCommerceRootIds = new Set();
+    Object.entries(catMeta).forEach(([id,m])=>{
+      if(m.label.trim().toLowerCase()==='woocommerce') wooCommerceRootIds.add(id);
+    });
+    function isUnderWooCommerce(id, depth){
+      if(depth > 6) return false; // garde-fou anti-boucle
+      if(wooCommerceRootIds.has(id)) return true;
+      const m = catMeta[id];
+      if(!m) return false;
+      if(!m.parentId || !catMeta[m.parentId]) return false;
+      return isUnderWooCommerce(m.parentId, depth+1);
+    }
+    const wooCommerceIds = new Set();
+    Object.keys(catMeta).forEach(id=>{
+      if(isUnderWooCommerce(id, 0)) wooCommerceIds.add(id);
+    });
     const subCategoryIds = new Set();
     Object.entries(catMeta).forEach(([id,m])=>{
       if(realCategoryIdToCode[id]) return; // deja classee comme categorie principale
-      if(bioIds.has(id) || localIds.has(id) || allergenIdToCode[id]!==undefined || emplacementIds.has(id) || positionCamionIds.has(id)) return;
+      if(bioIds.has(id) || localIds.has(id) || allergenIdToCode[id]!==undefined || emplacementIds.has(id) || positionCamionIds.has(id) || wooCommerceIds.has(id)) return;
       if(m.parentLabel==='Produits') return; // deja geree ci-dessus (cas non reconnu -> ignoree, pas une sous-cat)
       if(isUnderProduits(id, 0)) subCategoryIds.add(id);
     });
@@ -3997,6 +4120,7 @@
     const categoryByPlu = {};
     const bioByPlu = {}, localByPlu = {};
     const allergensByPlu = {};
+    const wooCommerceByPlu = {};
     const subCategoriesByPlu = {};
     const emplacementByPlu = {};
     const positionCamionByPlu = {};
@@ -4016,6 +4140,9 @@
       }
       else if(positionCamionIds.has(id)){
         positionCamionByPlu[plu] = catMeta[id] ? catMeta[id].label : '';
+      }
+      else if(wooCommerceIds.has(id)){
+        wooCommerceByPlu[plu] = true;
       }
       else if(subCategoryIds.has(id)){
         if(!subCategoriesByPlu[plu]) subCategoriesByPlu[plu] = [];
@@ -4042,6 +4169,12 @@
     const newRows = [];
     let fromExisting = 0, brandNew = 0, typeDefaulted = 0;
     const seenPlu = new Set();
+
+    // "Code balance" : nom de colonne variable selon le profil d'export Dolibarr ou la
+    // config de l'extrafield (ex. "Code balance", "options_code_balance"...) — détecté une
+    // seule fois sur la première ligne plutôt que codé en dur (cf. findFieldKeyByWords).
+    const codeBalanceKey = productRows.length ? findFieldKeyByWords(productRows[0], ['code','balance']) : undefined;
+    const codeBalanceColumnMissing = productRows.length > 0 && codeBalanceKey === undefined;
 
     productRows.forEach(d=>{
       const pluStr = String(d['Réf.']||'').trim();
@@ -4108,6 +4241,15 @@
       if(localByPlu[pluStr]!==undefined) row[BIZCOL.LOCAL] = '1';
       else if(String(d['Produit Local']||'').trim()==='1') row[BIZCOL.LOCAL] = '1';
       else row[BIZCOL.LOCAL] = '0';
+
+      // WooCommerce : entièrement piloté par la catégorie Dolibarr (pas d'extrafield produit
+      // de repli, contrairement à Bio/Local ci-dessus) — jamais de valeur héritée de l'existant,
+      // pour refléter fidèlement le classement Dolibarr à chaque import.
+      row[BIZCOL.WOOCOMMERCE] = wooCommerceByPlu[pluStr]!==undefined ? '1' : '0';
+
+      // Code balance : source de vérité = extrafield Dolibarr à chaque import (pas de repli sur
+      // l'existant) — un code balance retiré côté Dolibarr doit redevenir un PLU individuel.
+      row[BIZCOL.CODE_BALANCE] = codeBalanceKey!==undefined ? extractCodeBalance(d[codeBalanceKey]) : '';
 
       row[BIZCOL.TEMPLATE] = existing ? existing[BIZCOL.TEMPLATE] : '';
       const affPrix = String(d['Affichage Prix']||'').trim().toLowerCase();
@@ -4190,6 +4332,9 @@
     }
     if(emptyCategoryPlu.length){
       msg += `\n\n⚠ ${emptyCategoryPlu.length} produit(s) sans catégorie reconnue (PLU : ${emptyCategoryPlu.slice(0,15).join(', ')}${emptyCategoryPlu.length>15?'…':''}).`;
+    }
+    if(codeBalanceColumnMissing){
+      msg += `\n\n⚠ Aucune colonne "Code balance" trouvée dans cet export Dolibarr (recherche insensible à la casse sur les mots "code" et "balance") — le regroupement d'articles sur la balance est désactivé pour cet import, chaque produit garde son PLU individuel.`;
     }
     if(extraWarnings && extraWarnings.length){
       extraWarnings.forEach(w=>{ msg += `\n\n⚠ ${w}`; });
@@ -4492,6 +4637,10 @@
         const ref = String(p.ref||'').trim();
         if(!ref){ skippedNoRef.push(p.label || `#${p.id}`); return; }
         const opts = p.array_options || {};
+        // "Code balance" : nom de clé extrafield variable selon la config Dolibarr (le plus
+        // probable est "options_code_balance", auto-dérivé du libellé, mais on ne le suppose
+        // pas) — même recherche floue que côté import fichier (findFieldKeyByWords).
+        const codeBalanceOptKey = findFieldKeyByWords(opts, ['code','balance']);
         // Prix d'achat fournisseur : quand plusieurs lignes existent (plusieurs fournisseurs
         // et/ou paliers de quantité), on retient la première — déjà triée côté Dolibarr par
         // nom de fournisseur puis quantité puis prix croissants, donc le fournisseur "principal"
@@ -4515,7 +4664,8 @@
           'Produit Local': opts.options_produit_local==='1' ? '1' : '0',
           'Affichage Prix': opts.options_affichage_prix || '',
           'Allergènes': opts.options_allergenes || '',
-          'Description': p.description || ''
+          'Description': p.description || '',
+          'Code balance': codeBalanceOptKey!==undefined ? (opts[codeBalanceOptKey]||'') : ''
         });
         (catsByProductId[p.id]||[]).forEach(catId=>{
           categoryRows.push({ 'Réf.': ref, 'ID du(de la) tag/catégorie': catId, 'Libellé': '' });
@@ -4557,6 +4707,31 @@
       allergens: state.allergens
     };
   };
+  // Hooks de test dédiés au code balance / WooCommerce (voir CLAUDE.md et l'historique de
+  // conversation) : permettent d'injecter des lignes directement (sans passer par un vrai
+  // import Dolibarr) et d'exercer étiquettes/catalogue/export balance depuis un test.
+  window.__opevBIZCOL = BIZCOL;
+  window.__opevBIZ_COL_COUNT = BIZ_COL_COUNT;
+  window.__opevApplyDolibarrImportDataForTest = applyDolibarrImportData;
+  window.__opevSetRowsForTest = function(rows){
+    state.rows = rows.map(r=>{
+      const copy = r.slice();
+      while(copy.length < 19+BIZ_COL_COUNT) copy.push('');
+      return copy;
+    });
+    state.colWidths = {};
+    state.labelSelection = new Set();
+    refreshSuppliersList();
+    analyzeColumns();
+    render();
+  };
+  window.__opevGetRowsForTest = function(){ return state.rows; };
+  window.__opevCodeAfficheForTest = codeAfficheFor;
+  window.__opevCatalogFilteredRowsForTest = function(){
+    return catalogFilteredRows().map(r=>({ plu:(r[0]||'').trim(), codeAffiche: codeAfficheFor(r) }));
+  };
+  window.__opevBuildBalancePluCsvTextForTest = buildBalancePluCsvText;
+  window.__opevSelectForLabelsForTest = function(plu){ state.labelSelection.add(plu); };
 
   // ---- Modal de configuration URL/clé API ----
   const dolibarrApiConfigOverlay = $('dolibarrApiConfigOverlay');
@@ -5158,7 +5333,14 @@
     }
     const base = state.rows
       .map((row,ri)=>({row,ri}))
-      .filter(x => state.labelSelection.has((x.row[0]||'').trim()));
+      .filter(x => state.labelSelection.has((x.row[0]||'').trim()))
+      // Garde-fou : un article WooCommerce ne doit jamais être imprimé, même s'il s'est
+      // retrouvé dans labelSelection avant sa catégorisation WooCommerce (session existante).
+      .filter(x => (x.row[BIZCOL.WOOCOMMERCE]||'')!=='1');
+    if(base.length === 0){
+      alert("Les article(s) coché(s) sont classés WooCommerce (site web) : ils ne sont jamais imprimés en étiquette. Coche un autre article physique.");
+      return;
+    }
     const sortBy = $('labelsSortBy').value || 'nom';
     const selected = sortSelectedForLabels(base, sortBy);
 
@@ -5435,7 +5617,10 @@
     doc.setTextColor(42,36,32);
     doc.setFont('helvetica','normal');
     doc.setFontSize(6.5);
-    const pluStr = (r[0]||'').trim();
+    // Code balance (regroupement d'articles) si renseigné, sinon PLU propre de l'article —
+    // voir codeAfficheFor. Seul le code imprimé change, le reste de l'étiquette (nom, prix,
+    // bio/local...) reste propre à cet article précis.
+    const pluStr = codeAfficheFor(r);
     doc.text(pluStr, x+pad, y+5);
 
     // Repère bio/local, à côté du PLU — la trame compacte est celle par défaut et en était
@@ -5577,7 +5762,8 @@
     // Le PLU reste le repère constant en haut à gauche, quel que soit l'alignement choisi —
     // simplement repoussé sous le bandeau quand celui-ci occupe désormais le haut de l'étiquette.
     const pluY = useBand ? y+bandH+5 : y+7;
-    doc.text((r[0]||'').trim(), x+pad, pluY);
+    // Code balance si renseigné, sinon PLU propre — voir codeAfficheFor.
+    doc.text(codeAfficheFor(r), x+pad, pluY);
 
     doc.setFont('helvetica','bold');
     doc.setFontSize(s.detailNameFont);
@@ -5946,7 +6132,7 @@
     // bandeau quand celui-ci occupe le haut de l'étiquette (style 'band').
     const pluTopMm = useBand ? bandH+3 : 3;
     const pluEl = document.createElement('div');
-    pluEl.textContent = (r[0]||'').trim();
+    pluEl.textContent = codeAfficheFor(r);
     pluEl.style.left = (pad*scale)+'px';
     pluEl.style.top = (pluTopMm*scale)+'px';
     pluEl.style.fontSize = (8*0.3528*scale)+'px';
@@ -6237,7 +6423,7 @@
     label.style.width = (w*scale)+'px';
     label.style.height = (h*scale)+'px';
 
-    const pluStr = (r[0]||'').trim();
+    const pluStr = codeAfficheFor(r);
     const pluEl = document.createElement('div');
     pluEl.textContent = pluStr;
     pluEl.style.left = (pad*scale)+'px';
@@ -8336,8 +8522,10 @@
       alert('Charge d\'abord une base articles ou un CSV balance avant de générer l\'export complet.');
       return;
     }
+    const pluCsvText = buildBalancePluCsvText();
+    if(pluCsvText === null) return; // export annulé (avertissement de prix incohérent refusé)
     const zip = new JSZip();
-    zip.file('B_PLU.CSV', encodeWin1252(buildBalancePluCsvText()));
+    zip.file('B_PLU.CSV', encodeWin1252(pluCsvText));
     zip.file('B_GRU.CSV', encodeWin1252(buildGruCsv()));
     zip.file('B_ISC.CSV', encodeWin1252(buildIscCsv()));
     zip.file('B_ADV.CSV', encodeWin1252(buildAdvCsv()));
@@ -8353,6 +8541,23 @@
     URL.revokeObjectURL(url);
   });
 
+  // Articles réellement imprimables dans le catalogue PDF : respecte les filtres actuels de la
+  // grille (catégorie/sous-catégorie/emplacement-camion/recherche) et exclut systématiquement
+  // les articles WooCommerce (site web, pas forcément des articles physiques en boutique).
+  // Fonction nommée (plutôt qu'inline dans le handler ci-dessous) pour être réutilisable telle
+  // quelle par les tests automatisés (voir window.__opevCatalogFilteredRowsForTest).
+  function catalogFilteredRows(){
+    const CATCOL = 5;
+    const q = state.searchText.trim().toLowerCase();
+    return state.rows
+      .filter(r => (r[1]||'').trim() && (r[1]||'').trim()!=='NON UTILISE')
+      .filter(r => (r[BIZCOL.WOOCOMMERCE]||'')!=='1')
+      .filter(r => state.categoryFilter==='ALL' || (r[CATCOL]||'').trim() === state.categoryFilter)
+      .filter(r => matchesSubCategoryFilter(r))
+      .filter(r => matchesPositionCamionFilter(r))
+      .filter(r => !q || (r[0]||'').toLowerCase().includes(q) || (r[1]||'').toLowerCase().includes(q));
+  }
+
   btnCatalog.addEventListener('click', ()=>{
     if(!window.jspdf){
       alert("La librairie PDF n'a pas pu se charger (pas de connexion internet ?). Réessaie une fois en ligne.");
@@ -8363,13 +8568,7 @@
     const dateStr = new Date().toLocaleDateString('fr-FR');
 
     const CATCOL = 5;
-    const q = state.searchText.trim().toLowerCase();
-    const filtered = state.rows
-      .filter(r => (r[1]||'').trim() && (r[1]||'').trim()!=='NON UTILISE')
-      .filter(r => state.categoryFilter==='ALL' || (r[CATCOL]||'').trim() === state.categoryFilter)
-      .filter(r => matchesSubCategoryFilter(r))
-      .filter(r => matchesPositionCamionFilter(r))
-      .filter(r => !q || (r[0]||'').toLowerCase().includes(q) || (r[1]||'').toLowerCase().includes(q));
+    const filtered = catalogFilteredRows();
 
     if(filtered.length === 0){
       alert('Aucun produit à imprimer avec les filtres actuels.');
@@ -8415,7 +8614,7 @@
         const pu = priceAndUnitFor(r);
         const uniteCell = pu.showKgSecondary ? `${pu.unitLabel}\n(${pu.priceKgStr}/kg)` : pu.unitLabel;
         const row = [
-          (r[0]||'').trim(),
+          codeAfficheFor(r),
           (r[1]||'').trim(),
           uniteCell,
           pu.priceStr

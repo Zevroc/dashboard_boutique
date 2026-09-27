@@ -55,24 +55,31 @@ function extractConst(src, name) {
   return src.slice(start, i + 1);
 }
 
-// Charge buildBalancePluCsvText() et ses dependances (BALANCE_COL_SPECS, rowsSortedByPlu())
-// directement depuis le HTML, dans un contexte vm ou `state` est fourni comme variable libre —
+// Charge buildBalancePluCsvText() et ses dependances (BALANCE_COL_SPECS, BIZCOL,
+// codeAfficheFor, eurosFromCents, rowsSortedByPlu, buildBalanceExportGroups) directement depuis
+// le HTML, dans un contexte vm ou `state` et `confirm` sont fournis comme variables libres —
 // exactement comme dans le fichier source, ou `state` est declare une fois en haut du script
-// principal.
-function loadRealFunctions(stateValue) {
+// principal et `confirm` est la fonction globale du navigateur (mockee ici : un test peut passer
+// sa propre implementation pour simuler l'acceptation/le refus de l'avertissement de prix
+// incoherent).
+function loadRealFunctions(stateValue, confirmFn) {
   const html = fs.readFileSync(HTML_PATH, 'utf8');
   const scripts = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)].map(m => m[1]);
   const mainScript = scripts.find(s => s.includes('function buildBalancePluCsvText'));
   if (!mainScript) throw new Error('Script principal (avec buildBalancePluCsvText) introuvable dans le HTML');
 
   const src = [
+    extractConst(mainScript, 'BIZCOL'),
     extractConst(mainScript, 'BALANCE_COL_SPECS'),
+    extractFunction(mainScript, 'codeAfficheFor'),
+    extractFunction(mainScript, 'eurosFromCents'),
     extractFunction(mainScript, 'rowsSortedByPlu'),
+    extractFunction(mainScript, 'buildBalanceExportGroups'),
     extractFunction(mainScript, 'buildBalancePluCsvText'),
-    '\nmodule.exports = { BALANCE_COL_SPECS, rowsSortedByPlu, buildBalancePluCsvText };'
+    '\nmodule.exports = { BIZCOL, BALANCE_COL_SPECS, codeAfficheFor, rowsSortedByPlu, buildBalanceExportGroups, buildBalancePluCsvText };'
   ].join('\n\n');
 
-  const sandbox = { state: stateValue, module: { exports: {} }, require };
+  const sandbox = { state: stateValue, confirm: confirmFn || (() => true), module: { exports: {} }, require };
   vm.createContext(sandbox);
   vm.runInContext(src, sandbox, { filename: 'buildBalancePluCsvText-extrait.js' });
   return sandbox.module.exports;
