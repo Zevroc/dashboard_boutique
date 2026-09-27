@@ -3546,11 +3546,12 @@
   }
 
   // Format réellement attendu par la balance HELMAC HSM Pro pour B_PLU.CSV, vérifié directement
-  // sur un export natif pris sur la balance : point-virgule (pas virgule) et PLU zero-paddé sur 4
-  // chiffres (ex. "0006", jamais dépaddé) — contrairement à buildCsvText() ci-dessus, conservée
-  // telle quelle pour l'export Excel (bouton "Export Excel", format volontairement différent pour
-  // un tableur). C'est cette fonction-ci qui doit alimenter tout ce qui part vers la balance
-  // physique (bouton "Exporter" et B_PLU.CSV de l'export ZIP).
+  // sur un export natif pris sur la balance : point-virgule (pas virgule), PLU zero-paddé sur 4
+  // chiffres (ex. "0006", jamais dépaddé), et casse du nom préservée telle que saisie (pas forcée
+  // en majuscules) — contrairement à buildCsvText() ci-dessus, conservée telle quelle pour l'export
+  // Excel (bouton "Export Excel", format volontairement différent pour un tableur). C'est cette
+  // fonction-ci qui doit alimenter tout ce qui part vers la balance physique (bouton "Exporter" et
+  // B_PLU.CSV de l'export ZIP).
   function buildBalancePluCsvText(){
     const lines = rowsSortedByPlu().map(row=>{
       const fields = row.slice(0,19).map((val,ci)=>{ // seules les 19 colonnes balance sont exportées (jamais la base articles)
@@ -3561,8 +3562,11 @@
           const n = parseInt((v||'').trim(),10);
           v = isNaN(n) ? (v||'').trim() : String(n).padStart(4,'0');
         } else if(ci===1){
-          // Nom : la balance l'écrit toujours en MAJUSCULES et paddé à 26 caractères.
-          v = (v||'').toUpperCase();
+          // Nom : paddé à 26 caractères, casse préservée telle que saisie — vérifié sur un
+          // export natif pris sur la balance (ex. "Cajou", "huile d'olive bio douce 50cl" :
+          // 137 des 468 lignes de la référence ne sont pas en majuscules), contrairement à
+          // l'hypothèse précédente qui forçait la majuscule.
+          v = (v||'');
           if(v.length < 26) v = v + ' '.repeat(26 - v.length);
         } else if(meta.fixed){
           if(v.length < meta.width) v = v + ' '.repeat(meta.width - v.length);

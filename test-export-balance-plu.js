@@ -5,6 +5,7 @@
 // par la balance HELMAC HSM Pro (verifie sur un export pris directement sur la balance) :
 //   - separateur POINT-VIRGULE (buildCsvText(), gardee pour l'export Excel, utilise la virgule)
 //   - PLU zero-paddé sur 4 chiffres (ex. "6" -> "0006"), jamais depaddé
+//   - casse du nom preservee telle que saisie (pas forcee en majuscules)
 //   - un champ vide traînant en fin de ligne, avant le retour a la ligne
 //
 // Ce test extrait la fonction reellement expediee dans editeur-csv-largeur-fixe.html (pas une
@@ -60,9 +61,11 @@ function assertEqual(actual, expected, label) {
 
 function run() {
   // Ligne minimale : 19 colonnes balance. PLU volontairement sur 1 chiffre ("6") pour verifier
-  // le zero-padding a 4 chiffres. Colonne 3 (Type) volontairement plus courte que sa largeur fixe
-  // pour verifier que le padding espace (droite) des autres colonnes n'a pas ete casse.
-  const row = ['6', 'divers alimentaire', '', 'P', '000150', '01', '0', '0', '0', '0', '0', '0', '0', '1', 'B000', 'P1', 'D0', 'O0', '0'];
+  // le zero-padding a 4 chiffres. Nom en casse mixte pour verifier qu'elle n'est plus forcee en
+  // majuscules (ex. reel dans le fichier de reference HELMAC : "Cajou", "huile d'olive bio douce
+  // 50cl"). Colonne 3 (Type) volontairement plus courte que sa largeur fixe pour verifier que le
+  // padding espace (droite) des autres colonnes n'a pas ete casse.
+  const row = ['6', "Divers d'alimentaire", '', 'P', '000150', '01', '0', '0', '0', '0', '0', '0', '0', '1', 'B000', 'P1', 'D0', 'O0', '0'];
   while (row.length < 19) row.push('');
 
   const state = {
@@ -82,7 +85,7 @@ function run() {
   const fields = lines[0].split(';');
   assertEqual(fields.length, 20, 'Nombre de champs par ligne (19 colonnes balance + 1 champ vide traînant)');
   assertEqual(fields[0], '0006', 'PLU zero-paddé sur 4 chiffres (bug corrige : ne doit plus etre depaddé en "6")');
-  assertEqual(fields[1], 'DIVERS ALIMENTAIRE'.padEnd(26, ' '), 'Nom en majuscules, paddé a 26 caracteres');
+  assertEqual(fields[1], "Divers d'alimentaire".padEnd(26, ' '), 'Nom paddé a 26 caracteres, casse preservee (bug corrige : ne doit plus etre force en majuscules)');
   assertEqual(fields[3], 'P'.padEnd(5, ' '), 'Colonne a largeur fixe toujours paddée a droite avec des espaces');
   assertEqual(fields[19], '', 'Champ vide traînant en fin de ligne (avant le retour a la ligne)');
   if (lines[0].includes(',')) throw new Error('Le point-virgule attendu a ete remplace par une virgule quelque part');
