@@ -129,7 +129,7 @@ async function run() {
     assert(lines[0].startsWith('0031;'), 'Scénario 3 : la ligne exportée utilise le PLU propre "0031"');
   }
 
-  // ---------- Scénario 4 : catégorie WooCommerce -> exclu étiquettes + catalogue ----------
+  // ---------- Scénario 4 : catégorie WooCommerce -> exclu étiquettes + catalogue + export balance ----------
   {
     const rowH = makeRow(bizcol, totalCols, { plu: '0041', nom: 'Produit web', prix: 999, woo: true });
     const rowI = makeRow(bizcol, totalCols, { plu: '0042', nom: 'Produit boutique', prix: 999 });
@@ -152,6 +152,12 @@ async function run() {
     });
     assert(checkboxState['0041'] && checkboxState['0041'].disabled === true, 'Scénario 4 : case à cocher étiquette désactivée pour l\'article WooCommerce');
     assert(checkboxState['0042'] && checkboxState['0042'].disabled === false, 'Scénario 4 : case à cocher étiquette active pour l\'article boutique normal');
+
+    // L'article WooCommerce ne doit pas non plus être envoyé à la balance (B_PLU.CSV).
+    const csv = await page.evaluate(() => window.__opevBuildBalancePluCsvTextForTest());
+    const lines = csv.split('\r\n').filter(l => l !== '');
+    assert(!lines.some(l => l.startsWith('0041;')), 'Scénario 4 : l\'article WooCommerce est absent de l\'export balance');
+    assert(lines.some(l => l.startsWith('0042;')), 'Scénario 4 : l\'article boutique normal reste dans l\'export balance');
   }
 
   // ---------- Scénario 5 : import Dolibarr réel — colonne "Code balance" au nom variable
