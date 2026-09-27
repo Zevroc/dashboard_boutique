@@ -1849,7 +1849,7 @@
 (function(){
   // Version affichée en haut à droite de la page — à mettre à jour à chaque modification
   // poussée sur GitHub, pour que l'utilisateur puisse vérifier qu'il a bien la dernière version.
-  const APP_VERSION = 'v20260927_1';
+  const APP_VERSION = 'v20260927_2';
   const versionBadge = document.getElementById('appVersionBadge');
   if(versionBadge) versionBadge.textContent = `Version du ${APP_VERSION}`;
 
@@ -2690,17 +2690,23 @@
     state.rows.forEach((row,ri)=>{
       row.forEach((rawVal,ci)=>{
         const val = rawVal==null ? '' : rawVal; // defense : une cellule ne doit jamais etre undefined/null, mais une ancienne ligne migree depuis un format plus court peut en laisser une
-        const meta = state.colMeta[ci];
-        if(!meta) return;
-        if(meta.fixed && val.length > meta.width){
-          problems.push(`Ligne ${ri+1}, colonne ${ci+1} : "${escapeHtml(val.trim())}" dépasse la largeur fixe (${val.length}/${meta.width} caractères)`);
+        // Colonnes balance (0-18) : largeur REELLE (BALANCE_COL_SPECS, verifiee sur un export
+        // natif de la balance), pas colMeta qui se trompe des qu'une colonne technique ne
+        // contient que des "0" par defaut. Au-dela (colonnes metier, jamais envoyees a la
+        // balance) : detection auto colMeta, inchangee.
+        const spec = ci < 19 ? BALANCE_COL_SPECS[ci] : null;
+        const width = spec ? spec.width : (state.colMeta[ci] ? state.colMeta[ci].width : null);
+        const isFixed = spec ? true : (state.colMeta[ci] ? state.colMeta[ci].fixed : false);
+        if(isFixed && width!=null && val.length > width){
+          problems.push(`Ligne ${ri+1}, colonne ${ci+1} : "${escapeHtml(val.trim())}" dépasse la largeur fixe (${val.length}/${width} caractères) — sera tronqué à l'export balance et décalera les colonnes suivantes`);
         }
-        // La virgule n'est un problème que sur les 19 colonnes réellement exportées vers
-        // la balance (voir buildCsvText, row.slice(0,19)) — au-delà, ce sont des colonnes
-        // métier (Sous-catégorie, Emplacement...) qui peuvent légitimement en contenir
-        // (ex. plusieurs sous-catégories concaténées) sans jamais être envoyées à la balance.
-        if(ci < 19 && val.includes(',')){
-          problems.push(`Ligne ${ri+1}, colonne ${ci+1} : contient une virgule — l'export l'entoure automatiquement de guillemets (comme le fait la balance elle-même), à vérifier si tu réimportes ailleurs.`);
+        // Le point-virgule est le délimiteur du fichier balance (pas de guillemets
+        // d'échappement dans ce format, voir buildBalancePluCsvText) : un ';' égaré dans une
+        // valeur y est silencieusement remplacé par un espace à l'export. Au-delà des 19
+        // colonnes balance, l'export base articles utilise csvField() qui échappe
+        // correctement le ';' — pas un problème là-bas.
+        if(ci < 19 && val.includes(';')){
+          problems.push(`Ligne ${ri+1}, colonne ${ci+1} : contient un point-virgule — remplacé par un espace à l'export balance (pas de guillemets d'échappement dans ce format).`);
         }
       });
     });
@@ -3545,32 +3551,73 @@
     return out;
   }
 
+  // Largeur et type de padding REELS des 19 colonnes du fichier balance (B_PLU.CSV), verifies
+  // octet pour octet sur un export natif pris directement sur la balance HELMAC HSM Pro (468
+  // lignes). La detection automatique (state.colMeta, basee sur la largeur majoritaire des
+  // valeurs deja chargees) se trompe des qu'une colonne technique ne contient que des "0" par
+  // defaut : elle detecte une largeur de 1 caractere au lieu de la vraie largeur fixe, ce qui
+  // decale toutes les colonnes suivantes de la ligne et corrompt l'import sur la balance — d'ou
+  // ces largeurs codees en dur plutot que reprises de colMeta. numeric:true = zero-paddage a
+  // gauche (ex. "1" -> "01"), numeric:false = texte paddé/tronqué a droite avec des espaces.
+  const BALANCE_COL_SPECS = [
+    { width:4,  numeric:true  }, // 0  PLU
+    { width:26, numeric:false }, // 1  Nom
+    { width:26, numeric:false }, // 2  Champ 3 (vide)
+    { width:1,  numeric:false }, // 3  Type (P/C)
+    { width:6,  numeric:true  }, // 4  Prix de vente
+    { width:2,  numeric:true  }, // 5  Categorie
+    { width:3,  numeric:true  }, // 6  Champ 7
+    { width:3,  numeric:true  }, // 7  Champ 8
+    { width:4,  numeric:true  }, // 8  Champ 9
+    { width:6,  numeric:true  }, // 9  Champ 10
+    { width:4,  numeric:true  }, // 10 Champ 11
+    { width:1,  numeric:true  }, // 11 Champ 12
+    { width:4,  numeric:false }, // 12 Code (B000)
+    { width:2,  numeric:false }, // 13 Statut (P1/P0)
+    { width:2,  numeric:false }, // 14 Departement (D0)
+    { width:37, numeric:false }, // 15 Code long (O0...0)
+    { width:2,  numeric:true  }, // 16 Champ 17
+    { width:13, numeric:false }, // 17 Champ 18 (vide)
+    { width:2,  numeric:false }  // 18 Departement final (D0)
+  ];
+
   // Format réellement attendu par la balance HELMAC HSM Pro pour B_PLU.CSV, vérifié directement
-  // sur un export natif pris sur la balance : point-virgule (pas virgule), PLU zero-paddé sur 4
-  // chiffres (ex. "0006", jamais dépaddé), et casse du nom préservée telle que saisie (pas forcée
-  // en majuscules) — contrairement à buildCsvText() ci-dessus, conservée telle quelle pour l'export
-  // Excel (bouton "Export Excel", format volontairement différent pour un tableur). C'est cette
-  // fonction-ci qui doit alimenter tout ce qui part vers la balance physique (bouton "Exporter" et
-  // B_PLU.CSV de l'export ZIP).
+  // sur un export natif pris sur la balance : point-virgule (pas virgule), largeurs fixes exactes
+  // (BALANCE_COL_SPECS ci-dessus, pas colMeta), et casse du nom préservée telle que saisie (pas
+  // forcée en majuscules) — contrairement à buildCsvText() ci-dessus, conservée telle quelle pour
+  // l'export Excel (bouton "Export Excel", format volontairement différent pour un tableur).
+  // C'est cette fonction-ci qui doit alimenter tout ce qui part vers la balance physique (bouton
+  // "Exporter" et B_PLU.CSV de l'export ZIP).
   function buildBalancePluCsvText(){
     const lines = rowsSortedByPlu().map(row=>{
       const fields = row.slice(0,19).map((val,ci)=>{ // seules les 19 colonnes balance sont exportées (jamais la base articles)
-        const meta = state.colMeta[ci];
-        let v = val;
+        const spec = BALANCE_COL_SPECS[ci];
+        let v = (val||'');
         if(ci===0){
-          // PLU : zero-paddé sur 4 chiffres dans le fichier natif (ex. "0006"), jamais dépaddé.
-          const n = parseInt((v||'').trim(),10);
-          v = isNaN(n) ? (v||'').trim() : String(n).padStart(4,'0');
-        } else if(ci===1){
-          // Nom : paddé à 26 caractères, casse préservée telle que saisie — vérifié sur un
-          // export natif pris sur la balance (ex. "Cajou", "huile d'olive bio douce 50cl" :
-          // 137 des 468 lignes de la référence ne sont pas en majuscules), contrairement à
-          // l'hypothèse précédente qui forçait la majuscule.
-          v = (v||'');
-          if(v.length < 26) v = v + ' '.repeat(26 - v.length);
-        } else if(meta.fixed){
-          if(v.length < meta.width) v = v + ' '.repeat(meta.width - v.length);
-          // si dépassement : on exporte tel quel (pas de troncature silencieuse)
+          // PLU : zero-paddé à gauche (ex. "6" -> "0006"), jamais dépaddé. Contrairement aux
+          // autres colonnes numériques ci-dessous, un PLU vide/invalide n'est PAS remplacé par
+          // "0000" — ça créerait de faux doublons entre plusieurs lignes sans PLU valide. On
+          // exporte alors la valeur brute telle quelle (anomalie à corriger avant export, déjà
+          // visible dans la grille).
+          const n = parseInt(v.trim(),10);
+          v = isNaN(n) ? v.trim() : String(n).padStart(spec.width,'0');
+        } else if(spec.numeric){
+          // Colonnes numériques (Prix, Catégorie, compteurs internes...) : zero-paddées à
+          // gauche, comme observé sur le fichier de référence (ex. "1" -> "01", "1000" ->
+          // "001000"). Une valeur vide/non numérique (catégorie jamais renseignée...) est
+          // traitée comme 0 plutôt que laissée à largeur variable — sinon les colonnes
+          // suivantes de la ligne se décalent tout autant qu'avec l'ancien bug de padding.
+          // Pas de troncature si dépassement (ex. prix > 9999,99 €) : mieux vaut exporter une
+          // valeur trop longue que tronquer un nombre par la gauche et le fausser.
+          const n = parseInt(v.trim(),10);
+          v = String(isNaN(n) ? 0 : n).padStart(spec.width,'0');
+        } else {
+          // Colonnes texte (Nom, codes fixes...) : paddées à droite avec des espaces, et
+          // tronquées si elles dépassent — un champ trop long décalerait toutes les colonnes
+          // suivantes de la ligne et corromprait l'import sur la balance (l'avertissement
+          // correspondant est déjà remonté dans "Points à vérifier avant export").
+          if(v.length > spec.width) v = v.slice(0, spec.width);
+          else if(v.length < spec.width) v = v + ' '.repeat(spec.width - v.length);
         }
         // Le format natif n'a aucun mécanisme de guillemets/échappement (champs strictement à
         // largeur fixe) : un ';' ou un retour à la ligne égaré dans une valeur casserait le
