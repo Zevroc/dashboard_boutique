@@ -848,6 +848,11 @@
   #salesProfitTable .marge-neg{ color:var(--red); font-weight:600; }
   #salesProfitTable .cost-unknown{ color:var(--ink-soft); font-style:italic; }
 
+  #salesStockTable{ margin-top:8px; }
+  #salesStockTable .stock-ok{ color:var(--sage); font-weight:600; }
+  #salesStockTable .stock-warn{ color:var(--red); font-weight:600; }
+  #salesStockTable .stock-unknown{ color:var(--ink-soft); font-style:italic; }
+
   .sales-tabs{
     display:flex;
     gap:4px;
@@ -1276,6 +1281,7 @@
         <button class="sales-tab" data-tab="categories">Catégories</button>
         <button class="sales-tab" data-tab="quantites">Quantités / Poids</button>
         <button class="sales-tab" data-tab="rentabilite">Rentabilité</button>
+        <button class="sales-tab" data-tab="stocks">Stocks recommandés</button>
         <button class="sales-tab" data-tab="previsionnel">Prévisionnel</button>
       </div>
 
@@ -1496,6 +1502,29 @@
             </tr>
           </thead>
           <tbody id="salesProfitBody"></tbody>
+        </table>
+      </div>
+
+      <div class="sales-tab-panel" data-panel="stocks">
+        <p class="biz-title" style="margin-top:16px;">Stocks recommandés (sur la base des ventes)</p>
+        <p class="allergen-note">
+          Ventes moyennes par jour calculées sur tout l'historique de ventes importé (📊 Ventes), indépendamment des filtres Période/Comparaison ci-dessus — respecte en revanche les filtres Catégorie, Sous-catégorie et Recherche. Stock recommandé = ventes moyennes/jour × durée de couverture (7, 15 et 30 jours — mêmes durées que "Période de commande" dans la fiche produit). Articles sans aucune vente enregistrée : exclus (impossible à estimer).
+        </p>
+        <p id="salesStockSummary" class="allergen-note" style="margin-top:0;"></p>
+        <table class="renum-table" id="salesStockTable">
+          <thead>
+            <tr>
+              <th>PLU</th>
+              <th>Nom</th>
+              <th>Ventes moy./jour</th>
+              <th>Stock actuel</th>
+              <th>1 semaine (7j)</th>
+              <th>2 semaines (15j)</th>
+              <th>1 mois (30j)</th>
+              <th>Statut</th>
+            </tr>
+          </thead>
+          <tbody id="salesStockBody"></tbody>
         </table>
       </div>
 
@@ -1849,7 +1878,7 @@
 (function(){
   // Version affichée en haut à droite de la page — à mettre à jour à chaque modification
   // poussée sur GitHub, pour que l'utilisateur puisse vérifier qu'il a bien la dernière version.
-  const APP_VERSION = 'v20260927_4';
+  const APP_VERSION = 'v20260928_1';
   const versionBadge = document.getElementById('appVersionBadge');
   if(versionBadge) versionBadge.textContent = `Version du ${APP_VERSION}`;
 
@@ -4736,6 +4765,11 @@
   };
   window.__opevBuildBalancePluCsvTextForTest = buildBalancePluCsvText;
   window.__opevSelectForLabelsForTest = function(plu){ state.labelSelection.add(plu); };
+  window.__opevSetSalesHistoryForTest = function(history){
+    state.salesHistory = history;
+    renderSalesEmptyState();
+    renderSalesDashboard();
+  };
 
   // ---- Modal de configuration URL/clé API ----
   const dolibarrApiConfigOverlay = $('dolibarrApiConfigOverlay');
@@ -8220,6 +8254,106 @@
       }
       tr.appendChild(tdCost); tr.appendChild(tdMargin); tr.appendChild(tdRate);
       profitBody.appendChild(tr);
+    });
+
+    renderStockRecommendations(categoryFilterVal, subCategoryFilterVal, searchVal);
+  }
+
+  // ---- Stocks recommandés : ventes moyennes/jour (tout l'historique importé, indépendant du
+  // filtre Période) x durée de couverture (7/15/30j, mêmes durées que ORDER_PERIODS) — respecte
+  // en revanche les filtres Catégorie/Sous-catégorie/Recherche, comme les autres tableaux de ce
+  // tableau de bord. Un article sans aucune vente enregistrée est exclu (rien à estimer).
+  function renderStockRecommendations(categoryFilterVal, subCategoryFilterVal, searchVal){
+    const pluSet = new Set();
+    Object.values(state.salesHistory).forEach(dayPlus=>{
+      Object.keys(dayPlus).forEach(plu=> pluSet.add(plu));
+    });
+
+    const rows = Array.from(pluSet).map(plu=>{
+      const avg = computeAvgDailySales(plu);
+      if(!avg) return null;
+      const row = findRowByPlu(plu);
+      let nom = row ? (row[1]||'').trim() : '';
+      if(!nom){
+        // Repli sur le nom vu dans le journal de vente si l'article n'est plus dans la base chargée.
+        for(const dayPlus of Object.values(state.salesHistory)){
+          if(dayPlus[plu] && dayPlus[plu].nom){ nom = dayPlus[plu].nom; break; }
+        }
+      }
+      return { plu, nom, avg, row };
+    }).filter(Boolean);
+
+    const filtered = rows.filter(r=>{
+      if(categoryFilterVal!=='ALL'){
+        const cat = r.row ? (r.row[5]||'').trim() : '';
+        if(cat !== categoryFilterVal) return false;
+      }
+      if(subCategoryFilterVal!=='ALL'){
+        const subCats = r.row ? (r.row[BIZCOL.SUB_CATEGORY]||'').split(',').map(s=>s.trim()) : [];
+        if(!subCats.includes(subCategoryFilterVal)) return false;
+      }
+      return matchesSearch(r.plu, r.nom, searchVal);
+    });
+
+    const withReco = filtered.map(r=>{
+      const stockActuel = r.row ? parseFloat((r.row[BIZCOL.STOCK]||'').trim()) : NaN;
+      const reco = {
+        hebdo: r.avg.perDay * ORDER_PERIODS.hebdo.days,
+        quinzaine: r.avg.perDay * ORDER_PERIODS.quinzaine.days,
+        mensuel: r.avg.perDay * ORDER_PERIODS.mensuel.days
+      };
+      // null = stock actuel non renseigné (impossible de dire s'il manque) ; sinon vrai/faux
+      // selon que le stock actuel couvre au moins la recommandation à 1 semaine.
+      const manque = isNaN(stockActuel) ? null : stockActuel < reco.hebdo;
+      return { ...r, stockActuel, reco, manque };
+    });
+
+    // Priorise les articles à commander (sous le seuil 1 semaine), puis par ventes moy. décroissantes.
+    withReco.sort((a,b)=>{
+      if(a.manque !== b.manque) return a.manque ? -1 : 1;
+      return b.avg.perDay - a.avg.perDay;
+    });
+
+    const nbManque = withReco.filter(r=>r.manque===true).length;
+    $('salesStockSummary').textContent = withReco.length
+      ? `${withReco.length} article(s) avec historique de ventes exploitable` +
+        (nbManque ? ` — ${nbManque} sous le seuil d'1 semaine de stock, à commander en priorité.` : ' — tous au-dessus du seuil d\'1 semaine de stock.')
+      : "Aucun article avec un historique de ventes exploitable pour l'instant (importe des journaux via 📊 Ventes).";
+
+    const body = $('salesStockBody');
+    body.innerHTML = '';
+    withReco.slice(0,200).forEach(r=>{
+      const tr = document.createElement('tr');
+      const fmt = (v, isObserved)=> r.avg.unit==='kg'
+        ? v.toFixed(2).replace('.',',')+' kg'
+        : (isObserved ? Math.round(v) : Math.ceil(v)) + ' u.';
+      const cells = [
+        r.plu,
+        r.nom || '(nom inconnu)',
+        fmt(r.avg.perDay, true) + '/j',
+        isNaN(r.stockActuel) ? '—' : fmt(r.stockActuel, true),
+        fmt(r.reco.hebdo, false),
+        fmt(r.reco.quinzaine, false),
+        fmt(r.reco.mensuel, false)
+      ];
+      cells.forEach(c=>{
+        const td = document.createElement('td');
+        td.textContent = c;
+        tr.appendChild(td);
+      });
+      const tdStatus = document.createElement('td');
+      if(r.manque === null){
+        tdStatus.textContent = 'Stock actuel inconnu';
+        tdStatus.className = 'stock-unknown';
+      } else if(r.manque){
+        tdStatus.textContent = '⚠ À commander';
+        tdStatus.className = 'stock-warn';
+      } else {
+        tdStatus.textContent = 'OK';
+        tdStatus.className = 'stock-ok';
+      }
+      tr.appendChild(tdStatus);
+      body.appendChild(tr);
     });
   }
 
