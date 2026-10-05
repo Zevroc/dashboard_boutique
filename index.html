@@ -322,6 +322,28 @@
   .dropzone strong{ color:var(--brass-soft); }
   .dropzone.drag{ border-color:var(--brass); background:#242017; }
 
+  /* Bannière "reconnexion requise" : volontairement très visible (en haut de page, pas dans
+     le footer ni dans un menu déroulant) — sans elle, l'utilisateur ne se rend jamais compte
+     que le navigateur a besoin d'un clic explicite pour réautoriser l'écriture dans le
+     fichier lié (sauvegarde auto base articles / configuration), et croit que ses
+     modifications faites hors de l'appli ne sont pas prises en compte. */
+  .reconnect-banner{
+    max-width:1400px;
+    margin:0 auto 16px;
+    background:var(--brass-soft);
+    border:1.5px solid var(--brass);
+    border-radius:8px;
+    padding:12px 16px;
+    color:#3a2c0f;
+    font-size:13px;
+    font-family:'IBM Plex Mono',monospace;
+    display:flex;
+    align-items:center;
+    gap:14px;
+    flex-wrap:wrap;
+  }
+  .reconnect-banner span{ flex:1; min-width:220px; }
+
   .anomalies{
     max-width:1400px;
     margin:0 auto 16px;
@@ -458,6 +480,12 @@
     padding-right:8px;
     letter-spacing:1.5px;
     pointer-events:none;
+  }
+  .cat-inline-label{
+    color:var(--ink-soft);
+    font-size:10.5px;
+    pointer-events:none;
+    white-space:nowrap;
   }
   .overflow .cellval{ background:var(--red-bg); color:var(--red); }
   .overflow .padmark{ display:none; }
@@ -1173,6 +1201,11 @@
   <div class="status" id="status"></div>
     </div>
 
+    <div class="reconnect-banner" id="reconnectBanner" style="display:none;">
+      <span id="reconnectBannerText"></span>
+      <button class="btn primary" id="reconnectBannerBtn"></button>
+    </div>
+
     <div class="dropzone" id="dropzone">
       Aucune base articles chargée. Utilise <strong>Fichier ▾ → Importer/fusionner un CSV balance</strong> pour charger l'export B_PLU.CSV pris directement sur la balance.<br>
       Le fichier reste dans ton navigateur — rien n'est envoyé sur un serveur.
@@ -1842,7 +1875,7 @@
 (function(){
   // Version affichée en haut à droite de la page — à mettre à jour à chaque modification
   // poussée sur GitHub, pour que l'utilisateur puisse vérifier qu'il a bien la dernière version.
-  const APP_VERSION = 'v20261005_3';
+  const APP_VERSION = 'v20261005_4';
   const versionBadge = document.getElementById('appVersionBadge');
   if(versionBadge) versionBadge.textContent = `Version du ${APP_VERSION}`;
 
@@ -1895,9 +1928,6 @@
       logoStyle: 'icon' // 'icon' (pictogramme centré, historique) | 'band' (bandeau noir en haut avec le logo de marque complet, trame détaillée uniquement — ignoré en trame compacte)
     }
   };
-  // colonnes affichées par défaut en vue compacte (0-indexées) : PLU, Nom, Prix, Catégorie
-  const COMPACT_COLS = [0,1,4,5];
-
   const $ = (id)=>document.getElementById(id);
   // Échappement HTML pour toute donnée métier (nom, catégorie, sous-catégorie,
   // fournisseur, description...) provenant d'un import avant interpolation dans
@@ -1994,6 +2024,11 @@
   const BIZCOL = { FOURNISSEUR:19, ACHAT_HT:20, TVA:21, STOCK:22, STOCK_MINI:23, STOCK_MAXI:24, BIO:25, LOCAL:26, TEMPLATE:27, UNIT_DISPLAY:28, GROUP:29, PACK_SIZE:30, ORDER_PERIOD:31, DESC_LONGUE:32, SUB_CATEGORY:33, EMPLACEMENT:34, PAYS:35, POSITION_CAMION:36, CODE_BALANCE:37, WOOCOMMERCE:38 };
   const BIZ_COL_COUNT = 20;
   const BIZ_HEADERS = ['Fournisseur','Prix achat HT (centimes)','Taux TVA (%)','Stock actuel','Stock mini','Stock maxi','Bio (1/0)','Local (1/0)','Trame étiquette','Affichage prix (kg/100g)','Groupe de variantes','Taille du lot (unités)','Période de commande','Description longue','Sous-catégorie (manuel, hors export balance)','Emplacement (manuel, tri des étiquettes)','Pays d\'origine (étiquette, si produit non local)','Position dans le camion (manuel, tri/filtre)','Code balance (regroupe plusieurs articles sous un meme PLU balance)','WooCommerce (1/0 — article du site web, exclu étiquettes/catalogue/export balance)'];
+
+  // Colonnes affichées par défaut en vue compacte (0-indexées) : PLU, Nom, Prix, Catégorie,
+  // Bio, Local — les champs les plus consultés au quotidien sans avoir à activer "Toutes les
+  // colonnes".
+  const COMPACT_COLS = [0,1,4,5,BIZCOL.BIO,BIZCOL.LOCAL];
 
   // Code réellement affiché/imprimé pour un article (étiquettes, catalogue, export balance) :
   // le "Code balance" (saisi manuellement dans la fiche produit) quand plusieurs articles
@@ -2094,12 +2129,12 @@
 
   // TVA fixée par catégorie : 5,5% Alimentaire, 20% pour tout le reste.
   function tvaForCategory(realCat){
-    return (realCat||'').trim() === '1' ? '5.5' : '20';
+    return categoryCodeKey(realCat) === '1' ? '5.5' : '20';
   }
 
   function classifyProduct(nom, realCat){
     const n = (nom||'').toLowerCase();
-    const c = (realCat||'').trim();
+    const c = categoryCodeKey(realCat);
     if(c==='1') return subclassAlimentaire(n);
     if(c==='2') return subclassCosmetique(n);
     if(c==='3') return subclassEntretien(n);
@@ -2265,6 +2300,25 @@
   }
 
   // ---------- Rendu ----------
+  // state.categoryLabels (et les codes historiques '1'-'5' de CATALOG_SECTIONS) utilisent des
+  // clés NON paddées ("1"), alors que la colonne catégorie (6) d'un export balance natif est
+  // zero-paddée sur 2 caractères ("01") — tout lookup/comparaison de catégorie doit donc
+  // passer par cette normalisation plutôt que comparer les chaînes brutes, sous peine de ne
+  // jamais faire correspondre un nom de catégorie à une vraie ligne importée.
+  function categoryCodeKey(raw){
+    const trimmed = (raw||'').trim();
+    if(!trimmed) return '';
+    const n = parseInt(trimmed,10);
+    return !isNaN(n) ? String(n) : trimmed;
+  }
+  function categoryLabelFor(raw){
+    const key = categoryCodeKey(raw);
+    return key ? (state.categoryLabels[key]||'') : '';
+  }
+  function categoryCodeMatches(raw, filterValue){
+    return categoryCodeKey(raw) === categoryCodeKey(filterValue);
+  }
+
   function updateCategoryOptions(){
     const CATCOL = 5; // colonne 6 (1-indexée)
     if(state.colMeta.length <= CATCOL){
@@ -2274,14 +2328,14 @@
     filterLabel.style.display = 'flex';
     const counts = {};
     state.rows.forEach(r=>{
-      const v = (r[CATCOL]||'').trim();
-      counts[v] = (counts[v]||0)+1;
+      const key = categoryCodeKey(r[CATCOL]);
+      counts[key] = (counts[key]||0)+1;
     });
     const values = Object.keys(counts).sort((a,b)=> a.localeCompare(b,'fr',{numeric:true}));
     const prev = state.categoryFilter;
     categoryFilter.innerHTML = '<option value="ALL">Toutes</option>' +
       values.map(v=>{
-        const label = v==='' ? '(vide)' : (state.categoryLabels[v] || v);
+        const label = v==='' ? '(vide)' : (state.categoryLabels[v] || `#${v}`);
         return `<option value="${escapeHtml(v)}">${escapeHtml(label)} (${counts[v]})</option>`;
       }).join('');
     if(prev!=='ALL' && !values.includes(prev)) state.categoryFilter = 'ALL';
@@ -2417,7 +2471,7 @@
     }
 
     const colgroup = $('gridColgroup');
-    colgroup.innerHTML = '<col style="width:80px">';
+    colgroup.innerHTML = '<col style="width:80px"><col style="width:120px">';
     const headRow = $('headRow');
     const selectAllTh = document.createElement('th');
     selectAllTh.className = 'actions';
@@ -2429,6 +2483,9 @@
     selectAllTh.appendChild(selectAllCb);
     headRow.innerHTML = '';
     headRow.appendChild(selectAllTh);
+    const allergensTh = document.createElement('th');
+    allergensTh.innerHTML = '<span class="colnum">Allergènes</span>';
+    headRow.appendChild(allergensTh);
     visibleCols.forEach(c=>{
       if(state.colWidths[c]===undefined) state.colWidths[c] = estimateColWidth(c);
       const col = document.createElement('col');
@@ -2479,7 +2536,7 @@
     const q = state.searchText.trim().toLowerCase();
     const visibleRows = state.rows
       .map((row, ri)=>({row, ri}))
-      .filter(x => state.categoryFilter==='ALL' || (x.row[CATCOL]||'').trim() === state.categoryFilter)
+      .filter(x => state.categoryFilter==='ALL' || categoryCodeMatches(x.row[CATCOL], state.categoryFilter))
       .filter(x => matchesSubCategoryFilter(x.row))
       .filter(x => matchesPositionCamionFilter(x.row))
       .filter(x => !q || (x.row[0]||'').toLowerCase().includes(q) || (x.row[1]||'').toLowerCase().includes(q));
@@ -2556,6 +2613,25 @@
       actionsTh.appendChild(actionsWrap);
       tr.appendChild(actionsTh);
 
+      // Colonne Allergènes : lue depuis state.allergens (par PLU), pas une colonne de `row`
+      // comme les autres — affichée par défaut (au même titre que Bio/Local, voir
+      // COMPACT_COLS) car c'est une information de sécurité alimentaire, pas un détail
+      // secondaire à masquer derrière "Toutes les colonnes".
+      const tdAllergens = document.createElement('td');
+      tdAllergens.style.fontSize = '11px';
+      tdAllergens.style.cursor = 'pointer';
+      tdAllergens.title = 'Cliquer pour ouvrir la fiche produit et revoir les allergènes';
+      const allergenCodes = state.allergens[plu];
+      if(allergenCodes && allergenCodes.length){
+        tdAllergens.textContent = allergenCodes.map(c=> ALLERGEN_LABEL[c] || `#${c}`).join(', ');
+        tdAllergens.style.color = 'var(--ink)';
+      } else {
+        tdAllergens.textContent = '—';
+        tdAllergens.style.color = 'var(--ink-soft)';
+      }
+      tdAllergens.addEventListener('click', ()=> openSheet(ri));
+      tr.appendChild(tdAllergens);
+
       visibleCols.forEach(c=>{
         const meta = state.colMeta[c];
         const raw = row[c]!==undefined ? row[c] : '';
@@ -2610,6 +2686,18 @@
             padSpan.textContent = '·'.repeat(Math.max(0, meta.width - trimmed.length));
           }
           wrap.appendChild(padSpan);
+        }
+        // Catégorie (colonne 6) : le nom reste purement informatif à côté du code modifiable
+        // (c'est ce code, pas le nom, qui est réellement envoyé à la balance) — sans lui, "01"
+        // ne veut rien dire pour qui n'a pas mémorisé les 5 codes par cœur.
+        if(c===5){
+          const label = categoryLabelFor(trimmed);
+          if(label){
+            const catLabelSpan = document.createElement('span');
+            catLabelSpan.className = 'cat-inline-label';
+            catLabelSpan.textContent = ` (${label})`;
+            wrap.appendChild(catLabelSpan);
+          }
         }
         td.appendChild(wrap);
         tr.appendChild(td);
@@ -2723,7 +2811,7 @@
     const CATCOL = 5;
     const q = state.searchText.trim().toLowerCase();
     const visibleCount = state.rows
-      .filter(r => state.categoryFilter==='ALL' || (r[CATCOL]||'').trim() === state.categoryFilter)
+      .filter(r => state.categoryFilter==='ALL' || categoryCodeMatches(r[CATCOL], state.categoryFilter))
       .filter(r => matchesSubCategoryFilter(r))
       .filter(r => matchesPositionCamionFilter(r))
       .filter(r => !q || (r[0]||'').toLowerCase().includes(q) || (r[1]||'').toLowerCase().includes(q))
@@ -2891,7 +2979,13 @@
       catWrap.innerHTML = `<div class="field-label"><span class="name">Catégorie</span></div>`;
       const catSelect = document.createElement('select');
       catSelect.id = 'bizCategorie';
-      const currentCat = (row[5]||'').trim();
+      // Normalisé (clé non paddée) : la colonne catégorie d'un export balance natif est
+      // zero-paddée ("01"), alors que les valeurs des options ci-dessous (et donc
+      // catSelect.value à la sauvegarde, voir saveSheet) sont les clés non paddées de
+      // categoryLabels ("1") — comparer les deux bruts ferait toujours échouer la
+      // présélection et resélectionnerait silencieusement la première catégorie de la liste
+      // à chaque sauvegarde de fiche, écrasant la vraie catégorie du produit.
+      const currentCat = categoryCodeKey(row[5]);
       Object.entries(state.categoryLabels).forEach(([val,label])=>{
         const opt = document.createElement('option');
         opt.value = val; opt.textContent = `${val} — ${label}`;
@@ -3237,7 +3331,7 @@
 
     // ---- Allergènes potentiels (uniquement pour les produits alimentaires) ----
     const realCat = (row[5]||'').trim();
-    if(realCat === '1'){
+    if(categoryCodeKey(realCat) === '1'){
       const plu = (row[0]||'').trim();
       const nom = (row[1]||'').trim();
       if(state.allergens[plu] === undefined){
@@ -4030,6 +4124,36 @@
     renderSalesDashboard();
   };
 
+  // ---- Bannière "reconnexion requise" (très visible, en haut de page) ----
+  // Le navigateur exige un clic explicite pour redonner l'autorisation d'écriture sur un
+  // fichier lié après un redémarrage (la permission ne survit pas à la fermeture de tous les
+  // onglets de la page, c'est une contrainte de sécurité du navigateur, pas un bug corrigible
+  // ici) — sans cette bannière bien visible, ce clic nécessaire passe inaperçu (le footer est
+  // tout en bas de page, le bouton "Reconnecter" est caché dans un menu déroulant), et
+  // l'utilisateur croit alors que ses modifications ne sont pas prises en compte.
+  const reconnectBanner = $('reconnectBanner');
+  const reconnectBannerText = $('reconnectBannerText');
+  const reconnectBannerBtn = $('reconnectBannerBtn');
+  let pendingReconnects = []; // { key, message, buttonLabel, action }
+
+  function refreshReconnectBanner(){
+    if(pendingReconnects.length===0){ reconnectBanner.style.display = 'none'; return; }
+    const next = pendingReconnects[0];
+    reconnectBanner.style.display = 'flex';
+    reconnectBannerText.textContent = next.message;
+    reconnectBannerBtn.textContent = next.buttonLabel;
+    reconnectBannerBtn.onclick = next.action;
+  }
+  function addPendingReconnect(key, message, buttonLabel, action){
+    pendingReconnects = pendingReconnects.filter(p=>p.key!==key);
+    pendingReconnects.push({ key, message, buttonLabel, action });
+    refreshReconnectBanner();
+  }
+  function removePendingReconnect(key){
+    pendingReconnects = pendingReconnects.filter(p=>p.key!==key);
+    refreshReconnectBanner();
+  }
+
   let masterDbFileHandle = null; // lien vers le fichier cible (File System Access API), si le navigateur le permet
   const btnResetMasterDbLink = $('btnResetMasterDbLink');
   const btnConnectDataFile = $('btnConnectDataFile');
@@ -4231,6 +4355,16 @@
   // utilisateur (contrainte du navigateur) : si elle n'est pas déjà accordée pour cette page,
   // on affiche un bouton de reconnexion en un clic plutôt que de rester silencieusement
   // déconnecté sans que l'utilisateur comprenne pourquoi la sauvegarde auto ne marche plus.
+  async function reconnectMasterDbFile(){
+    if(!masterDbFileHandle) return;
+    try{
+      const perm = await masterDbFileHandle.requestPermission({ mode:'readwrite' });
+      if(perm !== 'granted') return;
+      await readAndLinkDataFile(masterDbFileHandle);
+      removePendingReconnect('masterDb');
+    } catch(err){ console.error('Reconnexion au fichier de données échouée :', err); }
+  }
+
   async function tryReconnectLinkedFile(){
     if(!window.showSaveFilePicker) return;
     const handle = await loadHandleFromIndexedDb(OPEV_FS_KEY_MASTER_DB);
@@ -4249,18 +4383,14 @@
     btnReconnectDataFile.style.display = 'block';
     btnReconnectDataFile.textContent = `🔗 Reconnecter "${handle.name}"`;
     footerNote.textContent = `Un fichier de données était lié ("${handle.name}") — Base articles ▾ → Reconnecter pour réactiver la sauvegarde automatique.`;
+    addPendingReconnect('masterDb',
+      `⚠ Fichier de données lié ("${handle.name}") en attente de reconnexion — tant que ce n'est pas fait, ni tes modifications dans ce fichier ni celles faites dans l'appli ne sont sauvegardées dedans.`,
+      `🔗 Reconnecter "${handle.name}"`,
+      reconnectMasterDbFile
+    );
   }
 
-  btnReconnectDataFile.addEventListener('click', async ()=>{
-    if(!masterDbFileHandle) return;
-    try{
-      const perm = await masterDbFileHandle.requestPermission({ mode:'readwrite' });
-      if(perm !== 'granted') return;
-      await readAndLinkDataFile(masterDbFileHandle);
-    } catch(err){ console.error('Reconnexion au fichier de données échouée :', err); }
-  });
-
-  tryReconnectLinkedFile();
+  btnReconnectDataFile.addEventListener('click', reconnectMasterDbFile);
 
   // Hooks de test (voir window.__opev* ailleurs dans ce fichier) pour la persistance autonome.
   window.__opevBuildMasterDbCsvTextForTest = buildMasterDbCsvText;
@@ -4391,6 +4521,16 @@
     footerNote.textContent = 'Lien vers le fichier de configuration réinitialisé — le prochain enregistrement te demandera de choisir un fichier.';
   });
 
+  async function reconnectConfigFile(){
+    if(!configFileHandle) return;
+    try{
+      const perm = await configFileHandle.requestPermission({ mode:'readwrite' });
+      if(perm !== 'granted') return;
+      await readAndLinkConfigFile(configFileHandle);
+      removePendingReconnect('config');
+    } catch(err){ console.error('Reconnexion au fichier de configuration échouée :', err); }
+  }
+
   async function tryReconnectLinkedConfigFile(){
     if(!window.showSaveFilePicker) return;
     const handle = await loadHandleFromIndexedDb(OPEV_FS_KEY_CONFIG);
@@ -4409,18 +4549,14 @@
     btnReconnectConfigFile.style.display = 'block';
     btnReconnectConfigFile.textContent = `🔗 Reconnecter "${handle.name}"`;
     footerNote.textContent = `Un fichier de configuration était lié ("${handle.name}") — Système ▾ → Reconnecter pour réactiver la sauvegarde automatique.`;
+    addPendingReconnect('config',
+      `⚠ Fichier de configuration lié ("${handle.name}") en attente de reconnexion — tant que ce n'est pas fait, ni tes modifications dans ce fichier ni celles faites dans l'appli ne sont sauvegardées dedans.`,
+      `🔗 Reconnecter "${handle.name}"`,
+      reconnectConfigFile
+    );
   }
 
-  btnReconnectConfigFile.addEventListener('click', async ()=>{
-    if(!configFileHandle) return;
-    try{
-      const perm = await configFileHandle.requestPermission({ mode:'readwrite' });
-      if(perm !== 'granted') return;
-      await readAndLinkConfigFile(configFileHandle);
-    } catch(err){ console.error('Reconnexion au fichier de configuration échouée :', err); }
-  });
-
-  tryReconnectLinkedConfigFile();
+  btnReconnectConfigFile.addEventListener('click', reconnectConfigFile);
 
   window.__opevBuildSystemConfigJsonTextForTest = buildSystemConfigJsonText;
   window.__opevApplySystemConfigFromLinkedFileForTest = applySystemConfigFromLinkedFile;
@@ -4512,7 +4648,7 @@
 
       const tdRealCat = document.createElement('td');
       const realCat = (row[5]||'').trim();
-      tdRealCat.textContent = state.categoryLabels[realCat] || (realCat===''? '(vide)' : `#${realCat} (inconnu)`);
+      tdRealCat.textContent = categoryLabelFor(realCat) || (realCat===''? '(vide)' : `#${realCat} (inconnu)`);
       tdRealCat.style.color = 'var(--ink-soft)';
       tdRealCat.style.fontSize = '11px';
       tr.appendChild(tdRealCat);
@@ -4565,7 +4701,7 @@
       const p = plan[ri];
       const nom = (row[1]||'').trim().replace(/;/g,',');
       const realCat = (row[5]||'').trim();
-      const realCatLabel = state.categoryLabels[realCat] || (realCat===''?'(vide)':`#${realCat}`);
+      const realCatLabel = categoryLabelFor(realCat) || (realCat===''?'(vide)':`#${realCat}`);
       lines.push(`${(row[0]||'').trim()};${p.overflow?'SURCHARGE':p.newPlu};${nom};${realCatLabel};${CATLABEL[p.key]}`);
     });
     const blob = new Blob(['\uFEFF'+lines.join('\r\n')], {type:'text/csv'});
@@ -7207,7 +7343,7 @@
         if(categoryFilterVal!=='ALL'){
           const row = findRowByPlu(plu);
           const cat = row ? (row[5]||'').trim() : '';
-          if(cat !== categoryFilterVal) return;
+          if(!categoryCodeMatches(cat, categoryFilterVal)) return;
         }
         amount += d.amount; count += d.count;
         refundCount += d.refundCount||0; refundAmount += d.refundAmount||0;
@@ -7230,7 +7366,7 @@
         if(categoryFilterVal!=='ALL'){
           const row = findRowByPlu(plu);
           const cat = row ? (row[5]||'').trim() : '';
-          if(cat !== categoryFilterVal) return;
+          if(!categoryCodeMatches(cat, categoryFilterVal)) return;
         }
         amt += d.amount;
       });
@@ -7302,7 +7438,7 @@
         if(categoryFilterVal!=='ALL'){
           const row = findRowByPlu(plu);
           const cat = row ? (row[5]||'').trim() : '';
-          if(cat !== categoryFilterVal) return;
+          if(!categoryCodeMatches(cat, categoryFilterVal)) return;
         }
         if(subCategoryFilterVal!=='ALL'){
           const row = findRowByPlu(plu);
@@ -7518,7 +7654,7 @@
     Object.entries(byArticle).forEach(([plu,d])=>{
       const row = findRowByPlu(plu);
       const cat = row ? (row[5]||'').trim() : '';
-      const label = cat && state.categoryLabels[cat] ? state.categoryLabels[cat] : 'Catégorie inconnue';
+      const label = categoryLabelFor(cat) || 'Catégorie inconnue';
       if(!byCategory[label]) byCategory[label] = { code:cat, amount:0, count:0, cost:0, margin:0, hasCost:0 };
       byCategory[label].amount += d.amount;
       byCategory[label].count += d.count;
@@ -7543,13 +7679,13 @@
           const row = findRowByPlu(plu);
           if(categoryFilterVal === 'ALL'){
             const cat = row ? (row[5]||'').trim() : '';
-            const label = cat && state.categoryLabels[cat] ? state.categoryLabels[cat] : 'Catégorie inconnue';
+            const label = categoryLabelFor(cat) || 'Catégorie inconnue';
             if(!groups[label]) groups[label] = { amount:0, count:0 };
             groups[label].amount += d.amount; groups[label].count += d.count;
           } else {
             if(!row) return;
             const cat = (row[5]||'').trim();
-            if(cat !== categoryFilterVal) return;
+            if(!categoryCodeMatches(cat, categoryFilterVal)) return;
             const subCatsRaw = (row[BIZCOL.SUB_CATEGORY]||'').trim();
             const subCats = subCatsRaw ? subCatsRaw.split(',').map(s=>s.trim()).filter(Boolean) : ['(sans sous-catégorie)'];
             subCats.forEach(sc=>{
@@ -7826,7 +7962,7 @@
     const filtered = rows.filter(r=>{
       if(categoryFilterVal!=='ALL'){
         const cat = r.row ? (r.row[5]||'').trim() : '';
-        if(cat !== categoryFilterVal) return false;
+        if(!categoryCodeMatches(cat, categoryFilterVal)) return false;
       }
       if(subCategoryFilterVal!=='ALL'){
         const subCats = r.row ? (r.row[BIZCOL.SUB_CATEGORY]||'').split(',').map(s=>s.trim()) : [];
@@ -8372,7 +8508,7 @@
     return state.rows
       .filter(r => (r[1]||'').trim() && (r[1]||'').trim()!=='NON UTILISE')
       .filter(r => (r[BIZCOL.WOOCOMMERCE]||'')!=='1')
-      .filter(r => state.categoryFilter==='ALL' || (r[CATCOL]||'').trim() === state.categoryFilter)
+      .filter(r => state.categoryFilter==='ALL' || categoryCodeMatches(r[CATCOL], state.categoryFilter))
       .filter(r => matchesSubCategoryFilter(r))
       .filter(r => matchesPositionCamionFilter(r))
       .filter(r => !q || (r[0]||'').toLowerCase().includes(q) || (r[1]||'').toLowerCase().includes(q));
@@ -8404,7 +8540,7 @@
     CATALOG_SECTIONS.forEach(sectionDef=>{
       const section = { cat: sectionDef.cat, title: state.categoryLabels[sectionDef.cat] || sectionDef.title };
       const items = filtered
-        .filter(r => (r[CATCOL]||'').trim() === section.cat)
+        .filter(r => categoryCodeMatches(r[CATCOL], section.cat))
         .sort((a,b)=> (a[1]||'').toLowerCase().localeCompare((b[1]||'').toLowerCase(),'fr'));
       if(items.length === 0) return;
 
@@ -8503,8 +8639,19 @@
     doc.save('catalogue_prix_on_part_en_vrac.pdf');
   });
 
-  // ---- Restauration automatique de la dernière session au lancement ----
-  restoreSession();
+  // ---- Démarrage : restauration de session puis reconnexion des fichiers liés ----
+  // Ordre impératif : restoreSession() d'abord, pour que state.rows/categoryLabels/etc.
+  // soient déjà en place quand les fichiers liés tentent de s'appliquer par-dessus — sinon
+  // la reconnexion automatique (quand la permission est encore valide) s'exécuterait sur un
+  // état encore vide (bascule silencieusement en "rien à appliquer") et les données du
+  // fichier lié resteraient orphelines, jamais réappliquées après coup : c'est exactement ce
+  // qui faisait croire que des modifications faites dans le fichier lié n'étaient pas prises
+  // en compte.
+  (async function bootstrapAutoSavedData(){
+    await restoreSession();
+    await tryReconnectLinkedFile();
+    await tryReconnectLinkedConfigFile();
+  })();
 
 })();
 </script>
