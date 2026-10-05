@@ -1120,6 +1120,7 @@
   </details>
 
   <button class="btn ghost" id="btnLabels" disabled>🏷 Étiquettes</button>
+  <button class="btn ghost" id="btnDeleteSelected" disabled>🗑 Supprimer la sélection</button>
   <button class="btn ghost" id="btnEditMode" disabled>🔒 Verrouillé (lecture seule)</button>
 
 
@@ -1131,6 +1132,10 @@
       <input type="file" id="systemFileInput" accept=".csv,.CSV,text/csv" multiple>
       <button class="menu-item" id="btnEditSystem">✎ Catégories, identité boutique, messages…</button>
       <button class="menu-item" id="btnLabelSettings">✎ Personnaliser les trames d'étiquettes</button>
+      <button class="menu-item" id="btnConnectConfigFile">📂 Connecter mon fichier de configuration (sauvegarde auto)</button>
+      <button class="menu-item" id="btnReconnectConfigFile" style="display:none;">🔗 Reconnecter mon fichier de configuration</button>
+      <button class="menu-item" id="btnExportSystemConfig">⇩ Enregistrer la configuration (JSON)</button>
+      <button class="menu-item" id="btnResetConfigFileLink" disabled style="display:none;">🔄 Changer le fichier cible (config)</button>
       <button class="menu-item" id="btnExportSystemZip">⇩ Exporter l'export complet (ZIP)</button>
     </div>
   </details>
@@ -1835,7 +1840,7 @@
 (function(){
   // Version affichée en haut à droite de la page — à mettre à jour à chaque modification
   // poussée sur GitHub, pour que l'utilisateur puisse vérifier qu'il a bien la dernière version.
-  const APP_VERSION = 'v20261005_1';
+  const APP_VERSION = 'v20261005_2';
   const versionBadge = document.getElementById('appVersionBadge');
   if(versionBadge) versionBadge.textContent = `Version du ${APP_VERSION}`;
 
@@ -1923,6 +1928,7 @@
   const btnRenumber = $('btnRenumber');
   const btnCatalog = $('btnCatalog');
   const btnLabels = $('btnLabels');
+  const btnDeleteSelected = $('btnDeleteSelected');
   const btnEditMode = $('btnEditMode');
   const btnImportAllergens = $('btnImportAllergens');
   const allergensFileInput = $('allergensFileInput');
@@ -2211,6 +2217,7 @@
     refreshSuppliersList();
     analyzeColumns();
     render();
+    persistSession();
   }
 
   function analyzeColumns(){
@@ -2348,6 +2355,7 @@
     btnLabels.disabled = false;
     btnEditMode.disabled = false;
     updateLabelsButtonCount();
+    updateDeleteSelectedButtonCount();
     btnImportAllergens.disabled = false;
     btnExportAllergens.disabled = false;
     btnIdentifyAllergens.disabled = false;
@@ -2516,6 +2524,7 @@
           if(labelCb.checked) state.labelSelection.add(currentPlu);
           else state.labelSelection.delete(currentPlu);
           updateLabelsButtonCount();
+          updateDeleteSelectedButtonCount();
         });
       }
       actionsWrap.appendChild(labelCb);
@@ -2537,6 +2546,7 @@
           state.labelSelection.delete(p);
           state.rows.splice(ri,1);
           render();
+          persistSession();
         }
       });
       actionsWrap.appendChild(delBtn);
@@ -3380,6 +3390,7 @@
 
     closeSheet();
     render();
+    persistSession();
   }
 
   $('sheetClose').addEventListener('click', closeSheet);
@@ -3464,6 +3475,7 @@
       /* autre erreur de stockage : on continue sans bloquer l'outil */
     }
     autoSaveLinkedFileNow();
+    autoSaveLinkedConfigFileNow();
   }
 
   async function persistSession(){
@@ -3821,6 +3833,7 @@
       });
       alert(`${imported} fiche(s) allergènes importée(s).`);
       allergensFileInput.value = '';
+      persistSession();
     };
     reader.readAsArrayBuffer(f);
   });
@@ -3839,6 +3852,7 @@
     });
     alert(`Analyse terminée sur ${total} produits alimentaires.\n${newCount} nouvelle(s) fiche(s) allergènes suggérée(s) (les fiches déjà revues ne sont jamais écrasées).\n\nOuvre chaque produit pour vérifier/corriger avant utilisation.`);
     render();
+    persistSession();
   });
 
   // ---------- Normaliser la casse des descriptions ----------
@@ -3856,6 +3870,7 @@
       if(newVal !== trimmed){ row[1] = newVal; changed++; }
     });
     render();
+    persistSession();
     alert(`${changed} nom(s) de produit normalisé(s).`);
   });
 
@@ -3868,6 +3883,7 @@
       if(row[BIZCOL.TVA] !== newTva){ row[BIZCOL.TVA] = newTva; changed++; }
     });
     render();
+    persistSession();
     alert(`${changed} taux de TVA mis à jour.`);
   });
 
@@ -3976,7 +3992,11 @@
     return {
       rowCount: state.rows.length,
       sampleByPlu: Object.fromEntries(state.rows.filter(r=>['0524','0523','0900'].includes(r[0])).map(r=>[r[0], r])),
-      allergens: state.allergens
+      allergens: state.allergens,
+      categoryLabels: state.categoryLabels,
+      storeInfo: state.storeInfo,
+      adMessages: state.adMessages,
+      labelSettings: state.labelSettings
     };
   };
   // Hooks de test dédiés au code balance / WooCommerce : permettent d'injecter des lignes
@@ -4017,11 +4037,15 @@
   // Le fichier "base articles complète" (19 colonnes balance + colonnes métier) sert à la
   // fois de sauvegarde manuelle et, une fois lié, de stockage autonome des colonnes métier
   // (bio, local, sous-catégorie, emplacement, position camion, code balance...) qui ne
-  // viennent plus d'un système externe dans cette version — voir CLAUDE.md. Le
-  // FileSystemFileHandle est conservé dans IndexedDB pour retrouver le fichier aux sessions
-  // suivantes ; la permission d'écriture, elle, doit être redemandée par un clic explicite
-  // (Chrome ne permet pas de la redemander silencieusement au chargement de la page).
-  const OPEV_FS_DB_NAME = 'opev_fs_handles', OPEV_FS_STORE = 'handles', OPEV_FS_KEY = 'masterDb';
+  // viennent plus d'un système externe dans cette version — voir CLAUDE.md. Un second
+  // fichier (configuration boutique : catégories, identité, messages, allergènes, trames
+  // d'étiquettes — voir plus bas) réutilise exactement le même mécanisme, sous une clé
+  // IndexedDB différente. Les FileSystemFileHandle sont conservés dans IndexedDB pour
+  // retrouver les fichiers aux sessions suivantes ; la permission d'écriture, elle, doit
+  // être redemandée par un clic explicite (Chrome ne permet pas de la redemander
+  // silencieusement au chargement de la page).
+  const OPEV_FS_DB_NAME = 'opev_fs_handles', OPEV_FS_STORE = 'handles';
+  const OPEV_FS_KEY_MASTER_DB = 'masterDb', OPEV_FS_KEY_CONFIG = 'systemConfig';
 
   function openHandleDb(){
     return new Promise((resolve,reject)=>{
@@ -4031,32 +4055,32 @@
       req.onerror = ()=> reject(req.error);
     });
   }
-  async function saveHandleToIndexedDb(handle){
+  async function saveHandleToIndexedDb(key, handle){
     try{
       const db = await openHandleDb();
       await new Promise((resolve,reject)=>{
         const tx = db.transaction(OPEV_FS_STORE,'readwrite');
-        tx.objectStore(OPEV_FS_STORE).put(handle, OPEV_FS_KEY);
+        tx.objectStore(OPEV_FS_STORE).put(handle, key);
         tx.oncomplete = resolve; tx.onerror = ()=> reject(tx.error);
       });
     } catch(e){ /* IndexedDB indisponible : pas de reconnexion auto au prochain chargement */ }
   }
-  async function loadHandleFromIndexedDb(){
+  async function loadHandleFromIndexedDb(key){
     try{
       const db = await openHandleDb();
       return await new Promise((resolve,reject)=>{
         const tx = db.transaction(OPEV_FS_STORE,'readonly');
-        const req = tx.objectStore(OPEV_FS_STORE).get(OPEV_FS_KEY);
+        const req = tx.objectStore(OPEV_FS_STORE).get(key);
         req.onsuccess = ()=> resolve(req.result || null);
         req.onerror = ()=> reject(req.error);
       });
     } catch(e){ return null; }
   }
-  async function clearHandleFromIndexedDb(){
+  async function clearHandleFromIndexedDb(key){
     try{
       const db = await openHandleDb();
       const tx = db.transaction(OPEV_FS_STORE,'readwrite');
-      tx.objectStore(OPEV_FS_STORE).delete(OPEV_FS_KEY);
+      tx.objectStore(OPEV_FS_STORE).delete(key);
     } catch(e){ /* rien a nettoyer */ }
   }
 
@@ -4117,7 +4141,7 @@
     btnResetMasterDbLink.style.display = 'block';
     btnResetMasterDbLink.disabled = false;
     btnReconnectDataFile.style.display = 'none';
-    await saveHandleToIndexedDb(handle);
+    await saveHandleToIndexedDb(OPEV_FS_KEY_MASTER_DB, handle);
     if(state.rows.length){
       const applied = applyExtraDataFromLinkedFile(byPlu);
       analyzeColumns(); render(); persistSessionToLocalStorageNow();
@@ -4153,7 +4177,7 @@
           });
           btnResetMasterDbLink.style.display = 'block';
           btnResetMasterDbLink.disabled = false;
-          await saveHandleToIndexedDb(masterDbFileHandle);
+          await saveHandleToIndexedDb(OPEV_FS_KEY_MASTER_DB, masterDbFileHandle);
         }
         const writable = await masterDbFileHandle.createWritable();
         await writable.write(text);
@@ -4195,7 +4219,7 @@
   btnResetMasterDbLink.addEventListener('click', async ()=>{
     masterDbFileHandle = null;
     linkedExtraDataByPlu = null;
-    await clearHandleFromIndexedDb();
+    await clearHandleFromIndexedDb(OPEV_FS_KEY_MASTER_DB);
     btnResetMasterDbLink.style.display = 'none';
     footerNote.textContent = 'Lien vers le fichier base articles réinitialisé — le prochain enregistrement te demandera de choisir un fichier.';
   });
@@ -4207,7 +4231,7 @@
   // déconnecté sans que l'utilisateur comprenne pourquoi la sauvegarde auto ne marche plus.
   async function tryReconnectLinkedFile(){
     if(!window.showSaveFilePicker) return;
-    const handle = await loadHandleFromIndexedDb();
+    const handle = await loadHandleFromIndexedDb(OPEV_FS_KEY_MASTER_DB);
     if(!handle) return;
     let already;
     try{ already = await handle.queryPermission({ mode:'readwrite' }); }
@@ -4240,6 +4264,164 @@
   window.__opevBuildMasterDbCsvTextForTest = buildMasterDbCsvText;
   window.__opevParseMasterDbCsvTextForTest = parseMasterDbCsvText;
   window.__opevApplyExtraDataFromLinkedFileForTest = applyExtraDataFromLinkedFile;
+
+  // ---- Persistance autonome de la configuration boutique (File System Access) ----
+  // Second fichier lié, distinct de la base articles : les réglages globaux à la boutique
+  // (pas propres à un article) — noms de catégories, identité boutique, messages
+  // publicitaires, allergènes détectés par PLU, trames d'étiquettes personnalisées. Même
+  // mécanique exactement que le fichier base articles ci-dessus (lien IndexedDB, sauvegarde
+  // auto à chaque modification, reconnexion en un clic), mais au format JSON (plus naturel
+  // que du CSV pour des réglages imbriqués plutôt qu'un tableau de lignes).
+  let configFileHandle = null;
+  const btnConnectConfigFile = $('btnConnectConfigFile');
+  const btnReconnectConfigFile = $('btnReconnectConfigFile');
+  const btnExportSystemConfig = $('btnExportSystemConfig');
+  const btnResetConfigFileLink = $('btnResetConfigFileLink');
+
+  function buildSystemConfigJsonText(){
+    return JSON.stringify({
+      formatVersion: 1,
+      categoryLabels: state.categoryLabels,
+      storeInfo: state.storeInfo,
+      adMessages: state.adMessages,
+      allergens: state.allergens,
+      labelSettings: state.labelSettings
+    }, null, 2);
+  }
+
+  // Applique un objet de configuration lu depuis le fichier lié (ou importé manuellement) à
+  // l'état courant. Fusionné champ par champ (pas un remplacement brut de state.*) pour rester
+  // robuste à un fichier de configuration partiel ou plus ancien (nouveau champ absent).
+  function applySystemConfigFromLinkedFile(config){
+    if(!config || typeof config !== 'object') return false;
+    if(config.categoryLabels) state.categoryLabels = { ...state.categoryLabels, ...config.categoryLabels };
+    if(config.storeInfo) state.storeInfo = { ...state.storeInfo, ...config.storeInfo };
+    if(Array.isArray(config.adMessages)) state.adMessages = config.adMessages;
+    if(config.allergens) state.allergens = config.allergens;
+    if(config.labelSettings) state.labelSettings = { ...LABEL_SETTINGS_DEFAULTS, ...config.labelSettings };
+    return true;
+  }
+
+  async function readAndLinkConfigFile(handle, { silent } = {}){
+    const file = await handle.getFile();
+    const text = await file.text(); // JSON, encodage UTF-8 standard
+    let parsed;
+    try{ parsed = JSON.parse(text); }
+    catch(e){
+      if(!silent) alert('Le fichier choisi ne semble pas être un fichier de configuration valide (JSON illisible).');
+      return;
+    }
+    applySystemConfigFromLinkedFile(parsed);
+    configFileHandle = handle;
+    btnResetConfigFileLink.style.display = 'block';
+    btnResetConfigFileLink.disabled = false;
+    btnReconnectConfigFile.style.display = 'none';
+    await saveHandleToIndexedDb(OPEV_FS_KEY_CONFIG, handle);
+    render();
+    persistSessionToLocalStorageNow();
+    if(!silent) footerNote.textContent = `Fichier de configuration connecté : "${handle.name}" — catégories, identité boutique, messages, allergènes et trames d'étiquettes appliqués. Sauvegarde automatique activée.`;
+  }
+
+  btnConnectConfigFile.addEventListener('click', async ()=>{
+    if(!window.showOpenFilePicker){
+      alert("Ton navigateur ne permet pas de connecter un fichier directement (fonctionnalité Chrome/Edge uniquement). Utilise plutôt \"Enregistrer la configuration (JSON)\" puis réimporte-la manuellement si besoin.");
+      return;
+    }
+    try{
+      const [handle] = await window.showOpenFilePicker({
+        types: [{ description:'JSON', accept:{ 'application/json':['.json'] } }]
+      });
+      await handle.requestPermission({ mode:'readwrite' });
+      await readAndLinkConfigFile(handle);
+    } catch(err){
+      if(err.name !== 'AbortError') console.error('Connexion au fichier de configuration échouée :', err);
+    }
+  });
+
+  async function saveConfigBlob(text){
+    if(window.showSaveFilePicker){
+      try{
+        if(!configFileHandle){
+          configFileHandle = await window.showSaveFilePicker({
+            suggestedName: 'configuration_boutique.json',
+            types: [{ description:'JSON', accept:{ 'application/json':['.json'] } }]
+          });
+          btnResetConfigFileLink.style.display = 'block';
+          btnResetConfigFileLink.disabled = false;
+          await saveHandleToIndexedDb(OPEV_FS_KEY_CONFIG, configFileHandle);
+        }
+        const writable = await configFileHandle.createWritable();
+        await writable.write(text);
+        await writable.close();
+        footerNote.textContent = `Configuration enregistrée directement dans "${configFileHandle.name}" (fichier écrasé, pas de nouvelle copie) — sauvegardée automatiquement à chaque modification désormais.`;
+        return;
+      } catch(err){
+        if(err.name === 'AbortError') return;
+        configFileHandle = null;
+      }
+    }
+    const blob = new Blob([text], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'configuration_boutique.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  btnExportSystemConfig.addEventListener('click', ()=> saveConfigBlob(buildSystemConfigJsonText()));
+
+  async function autoSaveLinkedConfigFileNow(){
+    if(!configFileHandle) return;
+    try{
+      const writable = await configFileHandle.createWritable();
+      await writable.write(buildSystemConfigJsonText());
+      await writable.close();
+    } catch(e){
+      // Ecriture impossible (permission perdue, fichier déplacé/supprimé...) : on ne bloque
+      // jamais l'utilisateur pour ça — le prochain clic sur "Enregistrer" redemandera.
+    }
+  }
+
+  btnResetConfigFileLink.addEventListener('click', async ()=>{
+    configFileHandle = null;
+    await clearHandleFromIndexedDb(OPEV_FS_KEY_CONFIG);
+    btnResetConfigFileLink.style.display = 'none';
+    footerNote.textContent = 'Lien vers le fichier de configuration réinitialisé — le prochain enregistrement te demandera de choisir un fichier.';
+  });
+
+  async function tryReconnectLinkedConfigFile(){
+    if(!window.showSaveFilePicker) return;
+    const handle = await loadHandleFromIndexedDb(OPEV_FS_KEY_CONFIG);
+    if(!handle) return;
+    let already;
+    try{ already = await handle.queryPermission({ mode:'readwrite' }); }
+    catch(e){ return; } // handle périmé (fichier déplacé/supprimé) : on l'ignore
+    if(already === 'granted'){
+      await readAndLinkConfigFile(handle, { silent:true });
+      footerNote.textContent = `Fichier de configuration retrouvé automatiquement : "${handle.name}".`;
+      return;
+    }
+    configFileHandle = handle;
+    btnResetConfigFileLink.style.display = 'block';
+    btnResetConfigFileLink.disabled = false;
+    btnReconnectConfigFile.style.display = 'block';
+    btnReconnectConfigFile.textContent = `🔗 Reconnecter "${handle.name}"`;
+    footerNote.textContent = `Un fichier de configuration était lié ("${handle.name}") — Système ▾ → Reconnecter pour réactiver la sauvegarde automatique.`;
+  }
+
+  btnReconnectConfigFile.addEventListener('click', async ()=>{
+    if(!configFileHandle) return;
+    try{
+      const perm = await configFileHandle.requestPermission({ mode:'readwrite' });
+      if(perm !== 'granted') return;
+      await readAndLinkConfigFile(configFileHandle);
+    } catch(err){ console.error('Reconnexion au fichier de configuration échouée :', err); }
+  });
+
+  tryReconnectLinkedConfigFile();
+
+  window.__opevBuildSystemConfigJsonTextForTest = buildSystemConfigJsonText;
+  window.__opevApplySystemConfigFromLinkedFileForTest = applySystemConfigFromLinkedFile;
 
   // Ferme le menu déroulant après avoir cliqué sur une action à l'intérieur
   document.querySelectorAll('.menu-panel').forEach(panel=>{
@@ -4414,6 +4596,7 @@
     state.labelSelection = newLabelSelection;
     closeRenumModal();
     render();
+    persistSession();
   });
 
   // ---------- Catalogue PDF ----------
@@ -4667,6 +4850,32 @@
     const n = state.labelSelection.size;
     btnLabels.textContent = n>0 ? `🏷 Étiquettes (${n})` : '🏷 Étiquettes';
   }
+
+  function updateDeleteSelectedButtonCount(){
+    const n = state.labelSelection.size;
+    btnDeleteSelected.textContent = n>0 ? `🗑 Supprimer la sélection (${n})` : '🗑 Supprimer la sélection';
+    btnDeleteSelected.disabled = n===0;
+  }
+
+  // Suppression groupée des lignes cochées (même case que la sélection pour l'impression
+  // d'étiquettes — pas de mécanisme de sélection séparé). Double validation obligatoire
+  // (deux confirm() successifs, le second rappelant le nombre exact) pour une action
+  // destructrice et irréversible qui peut porter sur un grand nombre de lignes à la fois.
+  btnDeleteSelected.addEventListener('click', ()=>{
+    const selectedPlus = new Set(state.labelSelection);
+    if(selectedPlus.size===0) return;
+    const noms = state.rows
+      .filter(r=> selectedPlus.has((r[0]||'').trim()))
+      .map(r=> (r[1]||'').trim() || `PLU ${(r[0]||'').trim()}`);
+    const n = noms.length;
+    const apercu = noms.slice(0,10).join('\n') + (n>10 ? `\n… et ${n-10} autre(s)` : '');
+    if(!confirm(`Supprimer ${n} article(s) sélectionné(s) ?\n\n${apercu}`)) return;
+    if(!confirm(`Confirme bien la suppression définitive de ces ${n} article(s) — cette action est irréversible.`)) return;
+    state.rows = state.rows.filter(r=> !selectedPlus.has((r[0]||'').trim()));
+    state.labelSelection.clear();
+    render();
+    persistSession();
+  });
 
   function sortSelectedForLabels(rows, sortBy){
     const collator = (a,b)=> a.localeCompare(b,'fr',{numeric:true});
@@ -7947,6 +8156,7 @@
     state.adMessages = state.adMessages.filter(a=>a.text);
     closeSystemModal();
     render();
+    persistSession();
   });
 
   // ---------- Reconstruction des fichiers système pour l'export complet ----------
