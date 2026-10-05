@@ -1130,6 +1130,8 @@
     <div class="menu-panel">
       <button class="menu-item" id="btnImportSystem">⇪ Importer les fichiers système</button>
       <input type="file" id="systemFileInput" accept=".csv,.CSV,text/csv" multiple>
+      <button class="menu-item" id="btnImportDolibarrLegacy">⇪ Récupérer les anciennes données Dolibarr (catégories/bio/local/allergènes, xlsx)</button>
+      <input type="file" id="dolibarrLegacyFileInput" accept=".xlsx">
       <button class="menu-item" id="btnEditSystem">✎ Catégories, identité boutique, messages…</button>
       <button class="menu-item" id="btnLabelSettings">✎ Personnaliser les trames d'étiquettes</button>
       <button class="menu-item" id="btnConnectConfigFile">📂 Connecter mon fichier de configuration (sauvegarde auto)</button>
@@ -1840,7 +1842,7 @@
 (function(){
   // Version affichée en haut à droite de la page — à mettre à jour à chaque modification
   // poussée sur GitHub, pour que l'utilisateur puisse vérifier qu'il a bien la dernière version.
-  const APP_VERSION = 'v20261005_2';
+  const APP_VERSION = 'v20261005_3';
   const versionBadge = document.getElementById('appVersionBadge');
   if(versionBadge) versionBadge.textContent = `Version du ${APP_VERSION}`;
 
@@ -8073,6 +8075,145 @@
       reader.readAsArrayBuffer(f);
     });
   });
+
+  // ---------- Récupération ponctuelle des anciennes données Dolibarr (catégories/bio/local/
+  // allergènes/affichage prix) ----------
+  // Depuis le retrait de l'import Dolibarr (voir en tête de fichier), ces champs n'ont plus
+  // aucune source automatique : saisis à la main un par un, ils seraient perdus pour tous les
+  // produits déjà catégorisés par le passé dans Dolibarr. Cet import ponctuel lit directement
+  // l'export "Produits par tag/catégorie" de Dolibarr (xlsx, une ligne par couple
+  // produit/tag — un produit a plusieurs lignes : sa catégorie, ses labels Bio/Local, ses
+  // allergènes...) et comble UNIQUEMENT les champs encore vides par PLU (Réf.), sans jamais
+  // écraser une donnée déjà saisie ou revue depuis dans cette appli.
+  const dolibarrLegacyFileInput = $('dolibarrLegacyFileInput');
+
+  // Parmi les tags "sous-catégorie" d'un même produit, ne garde que les plus spécifiques
+  // (un produit peut être tagué à la fois sur une sous-catégorie et sur son propre parent,
+  // ex. "Riz" ET "Pâtes, Riz & Cie" — on ne veut que "Riz") : un tag est écarté s'il est lui-
+  // même le parent déclaré d'un autre tag candidat du même produit.
+  function mostSpecificSubCategoryTags(candidateRows){
+    const labels = candidateRows.map(r=> r.tagLabel);
+    const parents = new Set(candidateRows.map(r=> r.parentLabel));
+    const kept = candidateRows.filter(r=> !parents.has(r.tagLabel));
+    const unique = Array.from(new Set(kept.map(r=> r.tagLabel)));
+    return unique.length ? unique : Array.from(new Set(labels));
+  }
+
+  // Lit les lignes brutes de l'export (tableau de tableaux, en-tête compris) et renvoie, par
+  // PLU, les champs reconstruits à partir des lignes tag/produit qui le concernent.
+  function parseDolibarrLegacyRows(aoa){
+    const headers = aoa[0] || [];
+    const idxTagLabel = headers.indexOf('Libellé');
+    const idxParentLabel = headers.indexOf('Libellé du tag/catégorie parent');
+    const idxRef = headers.indexOf('Réf.');
+    const idxBio = headers.indexOf('Produit Bio');
+    const idxLocal = headers.indexOf('Produit Local');
+    const idxAffichage = headers.indexOf('Affichage Prix');
+    // Le second "Libellé" (nom du produit, pas du tag) suit toujours immédiatement "Réf."
+    // dans ce rapport Dolibarr — les en-têtes dupliqués empêchent de le retrouver par son nom.
+    const idxProductLabel = idxRef>=0 ? idxRef+1 : -1;
+    if(idxRef<0 || idxTagLabel<0 || idxParentLabel<0){
+      return null; // format inattendu : pas le bon export
+    }
+
+    const byPlu = {};
+    aoa.slice(1).forEach(row=>{
+      const plu = String(row[idxRef]!==undefined && row[idxRef]!==null ? row[idxRef] : '').trim();
+      if(!plu) return;
+      if(!byPlu[plu]) byPlu[plu] = {
+        nom: idxProductLabel>=0 ? String(row[idxProductLabel]||'').trim() : '',
+        bio:false, local:false, subCategoryRows:[], allergens:[], affichage:''
+      };
+      const entry = byPlu[plu];
+      const tagLabel = String(row[idxTagLabel]||'').trim();
+      const parentLabel = String(row[idxParentLabel]||'').trim();
+      // Les colonnes dédiées "Produit Bio"/"Produit Local" sont renseignées de façon
+      // incohérente dans cet export (parfois vides alors que le tag Bio/Local est bien
+      // assigné) : le tag lui-même (parentLabel "Label") est le signal fiable, la colonne
+      // n'est gardée qu'en renfort (jamais contradictoire dans l'autre sens en pratique).
+      if(parentLabel==='Label' && tagLabel==='Bio') entry.bio = true;
+      if(parentLabel==='Label' && tagLabel==='Local') entry.local = true;
+      if(row[idxBio]!==undefined && row[idxBio]!==null && String(row[idxBio]).trim()==='1') entry.bio = true;
+      if(row[idxLocal]!==undefined && row[idxLocal]!==null && String(row[idxLocal]).trim()==='1') entry.local = true;
+      if(idxAffichage>=0){
+        const aff = String(row[idxAffichage]!==undefined && row[idxAffichage]!==null ? row[idxAffichage] : '').trim();
+        if(['100g','250g','500g'].includes(aff)) entry.affichage = aff;
+      }
+      if(parentLabel === 'Allergènes'){
+        const m = tagLabel.match(/^(\d+)/);
+        if(m) entry.allergens.push(parseInt(m[1],10));
+      } else if(parentLabel && parentLabel !== 'Produits' && parentLabel !== 'Label' && tagLabel){
+        entry.subCategoryRows.push({ tagLabel, parentLabel });
+      }
+    });
+
+    Object.values(byPlu).forEach(entry=>{
+      entry.subCategory = mostSpecificSubCategoryTags(entry.subCategoryRows).join(', ');
+      entry.allergens = Array.from(new Set(entry.allergens)).sort((a,b)=>a-b);
+      delete entry.subCategoryRows;
+    });
+    return byPlu;
+  }
+
+  // Applique les données récupérées aux lignes déjà chargées, sans jamais écraser un champ
+  // déjà renseigné (Bio/Local cochés, sous-catégorie saisie, allergènes déjà revus).
+  function applyDolibarrLegacyData(byPlu){
+    const stats = { matched:0, bio:0, local:0, subCategory:0, affichage:0, allergens:0 };
+    state.rows.forEach(row=>{
+      const plu = (row[0]||'').trim();
+      const data = byPlu[plu];
+      if(!data) return;
+      stats.matched++;
+      if(data.bio && (row[BIZCOL.BIO]||'').trim()!=='1'){ row[BIZCOL.BIO] = '1'; stats.bio++; }
+      if(data.local && (row[BIZCOL.LOCAL]||'').trim()!=='1'){ row[BIZCOL.LOCAL] = '1'; stats.local++; }
+      if(data.subCategory && !(row[BIZCOL.SUB_CATEGORY]||'').trim()){ row[BIZCOL.SUB_CATEGORY] = data.subCategory; stats.subCategory++; }
+      if(data.affichage && !(row[BIZCOL.UNIT_DISPLAY]||'').trim()){ row[BIZCOL.UNIT_DISPLAY] = data.affichage; stats.affichage++; }
+      if(data.allergens.length && state.allergens[plu]===undefined){ state.allergens[plu] = data.allergens; stats.allergens++; }
+    });
+    return stats;
+  }
+
+  $('btnImportDolibarrLegacy').addEventListener('click', ()=>{
+    if(state.rows.length===0){
+      alert('Charge d\'abord une base articles ou un CSV balance : les données récupérées sont associées par PLU aux produits déjà chargés.');
+      return;
+    }
+    if(!window.XLSX){
+      alert("La librairie de lecture Excel n'a pas pu se charger (pas de connexion internet ?). Réessaie une fois en ligne.");
+      return;
+    }
+    dolibarrLegacyFileInput.click();
+  });
+  dolibarrLegacyFileInput.addEventListener('change', (e)=>{
+    const f = e.target.files[0];
+    if(!f) return;
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      try{
+        const wb = XLSX.read(reader.result, { type:'array' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const aoa = XLSX.utils.sheet_to_json(ws, { header:1, defval:'' });
+        const byPlu = parseDolibarrLegacyRows(aoa);
+        if(!byPlu){
+          alert('Ce fichier ne ressemble pas à un export Dolibarr "Produits par tag/catégorie" (colonnes attendues introuvables).');
+          return;
+        }
+        const stats = applyDolibarrLegacyData(byPlu);
+        render();
+        persistSession();
+        alert(`Import terminé — ${stats.matched} produit(s) retrouvé(s) par PLU dans le fichier.\n\nChamps complétés (jamais écrasés s'ils étaient déjà renseignés) :\n• Bio : ${stats.bio}\n• Local : ${stats.local}\n• Sous-catégorie : ${stats.subCategory}\n• Affichage prix au poids : ${stats.affichage}\n• Allergènes : ${stats.allergens}`);
+      } catch(err){
+        console.error('Import des anciennes données Dolibarr échoué :', err);
+        alert("Lecture du fichier impossible — vérifie qu'il s'agit bien d'un export .xlsx Dolibarr valide.");
+      } finally {
+        dolibarrLegacyFileInput.value = '';
+      }
+    };
+    reader.readAsArrayBuffer(f);
+  });
+
+  window.__opevParseDolibarrLegacyRowsForTest = parseDolibarrLegacyRows;
+  window.__opevApplyDolibarrLegacyDataForTest = applyDolibarrLegacyData;
 
   function renderSystemModal(){
     const catFieldsDiv = $('sysCategoriesFields');
