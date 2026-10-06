@@ -1112,6 +1112,8 @@
     <div class="menu-panel">
       <button class="menu-item" id="btnImportBalance">⇪ Importer/fusionner un CSV balance</button>
       <input type="file" id="balanceFileInput" accept=".csv,.CSV,text/csv">
+      <button class="menu-item" id="btnLoadMasterDb">⇪ Charger une base complète (CSV)</button>
+      <input type="file" id="masterDbFileInput" accept=".csv,.CSV,text/csv">
       <button class="menu-item" id="btnExport" disabled>⇩ Exporter le CSV corrigé (balance)</button>
       <button class="menu-item" id="btnExportExcel" disabled title="Ajoute la ligne sep=, en tête pour un affichage correct dans Excel — ne pas recharger cette copie dans la balance">⇩ Copie pour Excel (sep=,)</button>
     </div>
@@ -1875,7 +1877,7 @@
 (function(){
   // Version affichée en haut à droite de la page — à mettre à jour à chaque modification
   // poussée sur GitHub, pour que l'utilisateur puisse vérifier qu'il a bien la dernière version.
-  const APP_VERSION = 'v20261005_4';
+  const APP_VERSION = 'v20261006_1';
   const versionBadge = document.getElementById('appVersionBadge');
   if(versionBadge) versionBadge.textContent = `Version du ${APP_VERSION}`;
 
@@ -2220,18 +2222,18 @@
     return field;
   }
 
-  function parseFile(text){
+  // Découpe un export balance natif (point-virgule, jamais de guillemets d'échappement — un
+  // ';' égaré dans une valeur est de toute façon neutralisé à l'export, voir
+  // buildBalancePluCsvText) en lignes de champs, SANS les tronquer à 19 colonnes — pour
+  // pouvoir détecter un fichier au mauvais format (trop/pas assez de colonnes) avant de
+  // committer quoi que ce soit dans state.rows. Partagé entre le chargement initial et la
+  // fusion (mergeOrLoadBalanceCsv).
+  function parseNativeBalanceLines(text){
     const usesCRLF = (text.match(/\r\n/g)||[]).length >= (text.split('\n').length - 1) * 0.5;
-    state.lineEnding = usesCRLF ? '\r\n' : '\n';
     let lines = text.split(/\r\n|\n/);
-    state.trailingNewline = lines[lines.length-1] === '';
-    if(state.trailingNewline) lines = lines.slice(0,-1);
-
-    state.rows = lines.map(line=>{
-      // Format natif de la balance : point-virgule (jamais de guillemets d'échappement —
-      // un ';' égaré dans une valeur est de toute façon neutralisé à l'export, voir
-      // buildBalancePluCsvText), avec un champ vide traînant en fin de ligne (20e champ)
-      // qu'on ignore ici (slice(0,19) ci-dessous).
+    const trailingNewline = lines[lines.length-1] === '';
+    if(trailingNewline) lines = lines.slice(0,-1);
+    const parsed = lines.map(line=>{
       const out = [];
       let cur = '';
       let inQuotes = false;
@@ -2242,8 +2244,57 @@
         cur += c;
       }
       out.push(stripQuotes(cur));
-      return out.slice(0,19);
+      return out;
     });
+    return { parsed, usesCRLF, trailingNewline };
+  }
+
+  // Contrôles de cohérence avant d'importer/fusionner un CSV balance : sans eux, charger le
+  // mauvais fichier ici (ex. la "base articles complète" avec en-têtes, ou un CSV réenregistré
+  // avec un autre séparateur) importait silencieusement des données décalées ou vides plutôt
+  // que d'avertir. `fatal` bloque l'import ; `warnings` demande juste une confirmation.
+  function validateNativeBalanceLines(parsed){
+    const dataLines = parsed.filter(out => (out[0]||'').trim());
+    if(dataLines.length === 0){
+      return { fatal: "Le fichier semble vide (aucune ligne avec un PLU en première colonne)." };
+    }
+    // Détection spécifique : la "base articles complète" a toujours "Col1" comme tout premier
+    // champ de sa ligne d'en-têtes (voir buildMasterDbCsvText) — avec beaucoup de lignes de
+    // données, un seul en-tête rendrait le ratio générique ci-dessous bien trop permissif
+    // pour le détecter (ex. 1 en-tête sur 500 lignes passerait largement sous le seuil).
+    if((parsed[0][0]||'').trim().startsWith('Col1')){
+      return { fatal: `Ce fichier est une "base articles complète" (avec en-têtes), pas un export natif de la balance. Utilise "Charger une base complète (CSV)" ci-dessus à la place.` };
+    }
+    const headerLike = dataLines.filter(out => isNaN(parseInt((out[0]||'').trim(),10)));
+    if(headerLike.length / dataLines.length > 0.5){
+      return { fatal: `Ce fichier ne ressemble pas à un export balance natif : la première colonne devrait être un numéro de PLU, pas "${dataLines[0][0]}". S'il s'agit d'une "base articles complète" (avec en-têtes), utilise plutôt "Charger une base complète (CSV)" ci-dessus.` };
+    }
+    const warnings = [];
+    const shortLines = dataLines.filter(out => out.length < 19);
+    if(shortLines.length / dataLines.length > 0.1){
+      warnings.push(`${shortLines.length} ligne(s) sur ${dataLines.length} ont moins de 19 colonnes — ce fichier semble tronqué ou mal réenregistré (ex. par un tableur qui supprime les colonnes vides de fin de ligne).`);
+    }
+    const longLines = dataLines.filter(out => out.length > 25);
+    if(longLines.length / dataLines.length > 0.3){
+      warnings.push(`${longLines.length} ligne(s) sur ${dataLines.length} ont bien plus de colonnes que prévu (19 attendues côté balance) — vérifie qu'il s'agit bien du séparateur point-virgule natif de la balance, et pas d'un autre fichier (ex. la "base articles complète").`);
+    }
+    return { warnings };
+  }
+
+  function parseFile(text){
+    const { parsed, usesCRLF, trailingNewline } = parseNativeBalanceLines(text);
+    const validation = validateNativeBalanceLines(parsed);
+    if(validation.fatal){
+      alert(`Import annulé — ${validation.fatal}`);
+      return;
+    }
+    if(validation.warnings.length && !confirm(`${validation.warnings.join('\n\n')}\n\nCharger quand même ?`)){
+      return;
+    }
+    state.lineEnding = usesCRLF ? '\r\n' : '\n';
+    state.trailingNewline = trailingNewline;
+    // champ vide traînant en fin de ligne (20e champ natif) : ignoré ici (slice(0,19))
+    state.rows = parsed.map(out => out.slice(0,19));
 
     // garantit toujours les colonnes métier (19+), même absentes du fichier balance brut
     const TOTAL_COLS = 19 + BIZ_COL_COUNT;
@@ -4016,36 +4067,14 @@
       parseFile(text);
       return;
     }
-    const usesCRLF = (text.match(/\r\n/g)||[]).length >= (text.split('\n').length - 1) * 0.5;
-    let lines = text.split(/\r\n|\n/);
-    if(lines[lines.length-1] === '') lines = lines.slice(0,-1);
-
-    const parseLine = (line)=>{
-      // Format natif de la balance : point-virgule (voir parseFile) — un champ vide
-      // traînant en fin de ligne est inoffensif ici, les boucles ci-dessous s'arrêtent
-      // toutes à 19 colonnes.
-      const out = []; let cur=''; let inQuotes=false;
-      for(let i=0;i<line.length;i++){
-        const c = line[i];
-        if(c==='"'){ inQuotes=!inQuotes; cur+=c; continue; }
-        if(c===';' && !inQuotes){ out.push(stripQuotes(cur)); cur=''; continue; }
-        cur += c;
-      }
-      out.push(stripQuotes(cur));
-      return out;
-    };
-    const parsedLines = lines.map(parseLine);
-
-    // Pré-analyse : une balance/un tableur qui tronque les colonnes vides de fin de
-    // ligne produit des lignes avec moins de 19 champs. Si une proportion significative
-    // du fichier est concernée, le fichier est probablement corrompu ou mal réexporté —
-    // on avertit avant d'appliquer quoi que ce soit plutôt que d'écraser silencieusement
-    // des colonnes existantes.
-    const dataLines = parsedLines.filter(out => (out[0]||'').trim());
-    const shortLines = dataLines.filter(out => out.length < 19);
-    if(dataLines.length>0 && shortLines.length / dataLines.length > 0.1){
-      const ok = confirm(`Attention : ${shortLines.length} ligne(s) sur ${dataLines.length} ont moins de 19 colonnes — ce fichier semble tronqué ou mal réenregistré (ex. par un tableur qui supprime les colonnes vides de fin de ligne).\n\nFusionner quand même ? Les colonnes manquantes des produits déjà en base seront laissées inchangées (pas effacées), mais vérifie le résultat après la fusion.`);
-      if(!ok) return;
+    const { parsed: parsedLines } = parseNativeBalanceLines(text);
+    const validation = validateNativeBalanceLines(parsedLines);
+    if(validation.fatal){
+      alert(`Fusion annulée — ${validation.fatal}`);
+      return;
+    }
+    if(validation.warnings.length && !confirm(`${validation.warnings.join('\n\n')}\n\nFusionner quand même ? Les colonnes manquantes des produits déjà en base seront laissées inchangées (pas effacées), mais vérifie le résultat après la fusion.`)){
+      return;
     }
 
     let updated=0, added=0;
@@ -4224,10 +4253,16 @@
 
   // Lit un fichier "base articles complète" (avec en-têtes, encodage UTF-8 — voir
   // buildMasterDbCsvText, écrit par un Blob texte classique, pas encodeWin1252) et renvoie
-  // ses colonnes par PLU.
+  // ses colonnes par PLU, ou null si le fichier ne ressemble pas du tout au bon format (ex.
+  // un export balance natif chargé ici par erreur, qui n'a pas de ligne d'en-têtes) — permet
+  // à l'appelant d'avertir clairement plutôt que d'importer silencieusement 0 ligne ou des
+  // données décalées.
   function parseMasterDbCsvText(text){
     const body = text.charCodeAt(0)===0xFEFF ? text.slice(1) : text;
     let lines = body.split(/\r\n|\n/).filter(l=>l!=='');
+    if(lines.length===0) return null;
+    const headerLine = lines[0];
+    if(!headerLine.trim().startsWith('Col1')) return null; // voir buildMasterDbCsvText
     lines = lines.slice(1); // ignore la ligne d'en-têtes
     const byPlu = {};
     lines.forEach(line=>{
@@ -4237,6 +4272,63 @@
     });
     return byPlu;
   }
+
+  // ---- Chargement direct d'une "base articles complète" (menu Fichier) ----
+  // Contrairement au fichier lié de "Base articles ▾" (File System Access, Chrome/Edge
+  // uniquement, et qui ne complète que les colonnes métier par-dessus une base balance déjà
+  // chargée), ce bouton charge le fichier via un simple <input type="file"> — disponible sur
+  // tout navigateur — et charge TOUT (colonnes balance + métier), en remplacement complet de
+  // la base actuelle. Pensé pour reprendre une sauvegarde complète sans dépendre de l'API
+  // File System Access ni d'avoir déjà chargé un export balance au préalable.
+  const btnLoadMasterDb = $('btnLoadMasterDb');
+  const masterDbFileInput = $('masterDbFileInput');
+
+  function loadMasterDbCsvAsCompleteBase(text, fileName){
+    const byPlu = parseMasterDbCsvText(text);
+    if(byPlu === null){
+      alert(`"${fileName}" ne ressemble pas à une "base articles complète" valide (en-têtes manquants ou format inattendu).\n\nS'il s'agit plutôt d'un export natif de la balance (B_PLU.CSV, sans en-têtes), utilise "Importer/fusionner un CSV balance" ci-dessus à la place.`);
+      return;
+    }
+    const rows = Object.values(byPlu);
+    if(rows.length === 0){
+      alert(`"${fileName}" ne contient aucune ligne de produit exploitable.`);
+      return;
+    }
+    if(state.rows.length > 0){
+      const ok = confirm(`Une base est déjà chargée (${state.rows.length} produits). La charger complète depuis "${fileName}" (${rows.length} produits) va REMPLACER entièrement la base actuelle — pense à l'exporter avant si tu veux pouvoir revenir en arrière.\n\nContinuer ?`);
+      if(!ok) return;
+    }
+    const EXPECTED_COLS = 19 + BIZ_COL_COUNT;
+    rows.forEach(r=>{ while(r.length < EXPECTED_COLS) r.push(''); });
+    rows.sort((a,b)=>{
+      const na = parseInt(a[0],10), nb = parseInt(b[0],10);
+      return (!isNaN(na) && !isNaN(nb)) ? na-nb : (a[0]||'').localeCompare(b[0]||'','fr',{numeric:true});
+    });
+    state.rows = rows;
+    state.fileName = fileName;
+    refreshSuppliersList();
+    analyzeColumns();
+    render();
+    persistSession();
+    footerNote.textContent = `Base complète chargée : "${fileName}" · ${rows.length} produits (colonnes balance + métier).`;
+  }
+
+  btnLoadMasterDb.addEventListener('click', ()=> masterDbFileInput.click());
+  masterDbFileInput.addEventListener('change', (e)=>{
+    const f = e.target.files[0];
+    if(!f) return;
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      // Encodage UTF-8 standard (pas Win-1252) : ce fichier est produit par un Blob texte
+      // classique (voir buildMasterDbCsvText), pas par encodeWin1252 comme l'export balance.
+      const text = new TextDecoder('utf-8').decode(reader.result);
+      loadMasterDbCsvAsCompleteBase(text, f.name);
+      masterDbFileInput.value = '';
+    };
+    reader.readAsArrayBuffer(f);
+  });
+
+  window.__opevLoadMasterDbCsvAsCompleteBaseForTest = loadMasterDbCsvAsCompleteBase;
 
   // Fusionne les colonnes métier (19+) du fichier de données lié dans state.rows, par PLU —
   // jamais les colonnes balance (0-18), qui restent toujours celles du dernier export balance
@@ -4262,6 +4354,10 @@
     const file = await handle.getFile();
     const text = await file.text(); // encodage UTF-8 standard (pas Win-1252, voir buildMasterDbCsvText)
     const byPlu = parseMasterDbCsvText(text);
+    if(byPlu === null){
+      alert(`"${handle.name}" ne ressemble pas à une "base articles complète" valide (en-têtes manquants ou format inattendu). Le fichier n'a pas été lié — vérifie que tu as bien choisi le bon fichier.`);
+      return;
+    }
     linkedExtraDataByPlu = byPlu;
     masterDbFileHandle = handle;
     btnResetMasterDbLink.style.display = 'block';
