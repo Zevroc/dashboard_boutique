@@ -2004,7 +2004,7 @@
 (function(){
   // Version affichée en haut à droite de la page — à mettre à jour à chaque modification
   // poussée sur GitHub, pour que l'utilisateur puisse vérifier qu'il a bien la dernière version.
-  const APP_VERSION = 'v20261008_11';
+  const APP_VERSION = 'v20261008_12';
   const versionBadge = document.getElementById('appVersionBadge');
   if(versionBadge) versionBadge.textContent = `Version du ${APP_VERSION}`;
 
@@ -7043,6 +7043,17 @@
     const scale = lsComputeScale(w, h);
     const mm = (v)=> (v*scale)+'px';
     const pt = (v)=> (v*0.3528*scale)+'px';
+    // IMPORTANT : la règle CSS globale `.ls-label *{ position:absolute; ... }` force TOUT
+    // descendant de .ls-label en position absolue (voir <style>, utilisée par les deux autres
+    // trames) — un enfant sans top/left explicites retombe alors sur son emplacement "statique"
+    // par défaut (en haut à gauche), d'où le chevauchement observé quand cette fonction utilisait
+    // encore une mise en page flex/normale. Chaque élément ci-dessous a donc un top/left (ou
+    // left:50%+transform pour centrer) explicite, mêmes formules (mm) que drawLabelDetailDesign.
+    const centerX = (el, topMm)=>{
+      el.style.left = '50%';
+      el.style.transform = 'translateX(-50%)';
+      el.style.top = mm(topMm);
+    };
 
     const label = document.createElement('div');
     label.className = 'ls-label';
@@ -7051,66 +7062,65 @@
     label.style.background = '#fafbf6';
     label.style.borderRadius = mm(Math.min(w,h)*0.07);
     label.style.overflow = 'hidden';
-    label.style.display = 'flex';
-    label.style.flexDirection = 'column';
 
     const headerH = h*0.20;
     const header = document.createElement('div');
-    header.style.position = 'relative';
+    header.style.top = '0px'; header.style.left = '0px';
+    header.style.width = mm(w);
     header.style.height = mm(headerH);
-    header.style.flexShrink = '0';
     header.style.background = '#073D2C';
     header.style.borderRadius = `0 0 ${mm(w*0.3)} ${mm(w*0.3)}`; // courbe approximée (border-radius plutôt que l'ellipse en chevauchement du PDF)
-    header.style.display = 'flex';
-    header.style.flexDirection = 'column';
-    header.style.alignItems = 'center';
-    header.style.justifyContent = 'center';
+    label.appendChild(header);
 
+    const iconSize = headerH*0.34;
     const icon = document.createElement('img');
     icon.src = LOGO_ICON_URI;
-    icon.style.width = mm(headerH*0.34);
-    header.appendChild(icon);
+    icon.style.width = mm(iconSize);
+    centerX(icon, headerH*0.08);
+    label.appendChild(icon);
 
     const brand = document.createElement('div');
     brand.textContent = 'ON PART & EN VRAC';
     brand.style.color = '#fff';
     brand.style.fontWeight = '700';
     brand.style.fontSize = pt(Math.max(5, Math.min(11, w*0.16)));
-    brand.style.marginTop = mm(headerH*0.08);
-    header.appendChild(brand);
+    centerX(brand, headerH*0.5);
+    label.appendChild(brand);
 
     const subtitle = document.createElement('div');
     subtitle.textContent = 'ÉPICERIE DURABLE';
     subtitle.style.color = '#fff';
     subtitle.style.fontSize = pt(Math.max(3.5, Math.min(6, w*0.08)));
-    subtitle.style.marginTop = mm(headerH*0.05);
-    header.appendChild(subtitle);
-    label.appendChild(header);
+    centerX(subtitle, headerH*0.72);
+    label.appendChild(subtitle);
 
-    const content = document.createElement('div');
-    content.style.flex = '1';
-    content.style.minHeight = '0';
-    content.style.display = 'flex';
-    content.style.flexDirection = 'column';
-    content.style.alignItems = 'center';
-    content.style.padding = `${mm(h*0.02)} ${mm(w*0.1)} 0`;
+    const pad = w*0.1;
+    let cursorY = headerH + headerH*0.22;
 
     const codeEl = document.createElement('div');
     codeEl.textContent = codeAfficheFor(r);
-    codeEl.style.alignSelf = 'flex-start';
+    codeEl.style.left = mm(pad);
+    codeEl.style.top = mm(cursorY);
     codeEl.style.color = '#5F7769';
     codeEl.style.fontWeight = '700';
     codeEl.style.fontSize = pt(Math.max(5, Math.min(8, w*0.07)));
-    codeEl.style.marginBottom = mm(h*0.02);
-    content.appendChild(codeEl);
+    label.appendChild(codeEl);
+    cursorY += headerH*0.42;
 
     const nameEl = document.createElement('div');
+    nameEl.className = 'ls-wrap';
     nameEl.textContent = (r[1]||'').trim();
+    nameEl.style.width = mm(w-2*pad);
     nameEl.style.textAlign = 'center';
     nameEl.style.fontWeight = '800';
     nameEl.style.lineHeight = '1.05';
-    nameEl.style.fontSize = pt(Math.max(9, Math.min(18, w*0.19)));
-    content.appendChild(nameEl);
+    nameEl.style.color = '#101713'; // miroir de doc.setTextColor(16,23,19) dans drawLabelDetailDesign
+    const nameFontPt = Math.max(9, Math.min(18, w*0.19));
+    nameEl.style.fontSize = pt(nameFontPt);
+    centerX(nameEl, cursorY);
+    label.appendChild(nameEl);
+    const nameLinesApprox = lsWrapLineCount((r[1]||'').trim(), nameFontPt, true, w-2*pad, 3) || 1;
+    cursorY += nameLinesApprox*nameFontPt*0.42*1.15 + headerH*0.3;
 
     const nomLower = (r[1]||'').toLowerCase();
     const bioStored = (r[BIZCOL.BIO]||'').trim();
@@ -7119,125 +7129,144 @@
     const isLocal = localStored!=='' ? localStored==='1' : nomLower.includes('local');
 
     if(isBio || isLocal){
-      const sep = document.createElement('div');
-      sep.style.display = 'flex';
-      sep.style.alignItems = 'center';
-      sep.style.justifyContent = 'center';
-      sep.style.gap = mm(w*0.12);
-      sep.style.margin = `${mm(h*0.04)} 0 ${mm(h*0.02)}`;
-      sep.style.width = '100%';
-      [0,1].forEach(()=>{
+      const lineY = cursorY;
+      [[0.16,0.38],[0.62,0.84]].forEach(([a,b])=>{
         const l = document.createElement('div');
-        l.style.width = mm(w*0.2);
+        l.style.left = mm(w*a);
+        l.style.top = mm(lineY);
+        l.style.width = mm(w*(b-a));
         l.style.height = '1px';
         l.style.background = '#62A82E';
-        sep.appendChild(l);
+        label.appendChild(l);
       });
-      content.appendChild(sep);
-
       const circleR = Math.min(w*0.19, h*0.09);
+      const circleTopY = lineY + h*0.015;
       const badgeColor = isBio ? '#62A82E' : '#5F7769';
       const circle = document.createElement('div');
       circle.style.width = mm(circleR*2);
       circle.style.height = mm(circleR*2);
       circle.style.borderRadius = '50%';
       circle.style.background = badgeColor;
-      circle.style.display = 'flex';
-      circle.style.alignItems = 'center';
-      circle.style.justifyContent = 'center';
       circle.style.color = '#fff';
       circle.style.fontWeight = '700';
+      circle.style.textAlign = 'center';
+      circle.style.lineHeight = mm(circleR*2);
       circle.style.fontSize = pt(Math.max(6, Math.min(12, circleR*0.6)));
       circle.textContent = isBio ? 'BIO' : 'LOCAL';
-      content.appendChild(circle);
+      centerX(circle, circleTopY);
+      label.appendChild(circle);
 
       const badgeLabel = document.createElement('div');
       badgeLabel.textContent = isBio ? 'BIO' : 'LOCAL';
       badgeLabel.style.color = badgeColor;
       badgeLabel.style.fontWeight = '700';
       badgeLabel.style.fontSize = pt(Math.max(6, Math.min(9, w*0.08)));
-      badgeLabel.style.marginTop = mm(h*0.012);
-      content.appendChild(badgeLabel);
+      centerX(badgeLabel, circleTopY+circleR*2+h*0.015);
+      label.appendChild(badgeLabel);
+
+      cursorY = circleTopY+circleR*2+h*0.015+h*0.03+h*0.03;
     }
 
     const pu = priceAndUnitFor(r);
-    const priceBox = document.createElement('div');
-    priceBox.style.marginTop = 'auto';
-    priceBox.style.width = '88%';
-    priceBox.style.background = '#EEF5E5';
-    priceBox.style.borderRadius = mm(w*0.1);
-    priceBox.style.padding = `${mm(h*0.025)} 0`;
-    priceBox.style.textAlign = 'center';
-    priceBox.style.marginBottom = mm(h*0.03);
+    const boxPad = w*0.06;
+    const priceFontPt = Math.max(13, Math.min(26, w*0.26));
+    const unitFontPt = Math.max(6, Math.min(10, w*0.09));
+    const kgFontPt = Math.max(5, Math.min(8, w*0.07));
+    let boxH = priceFontPt*0.42*1.4 + boxPad*2;
+    if(pu.unitLabel) boxH += unitFontPt*0.42*1.6;
+    if(pu.showKgSecondary) boxH += kgFontPt*0.42*1.6;
+    const boxBottomMargin = h*0.14; // laisse la place aux vignettes + pied de page
+    const boxY = Math.max(cursorY, h-boxBottomMargin-boxH);
+    const box = document.createElement('div');
+    box.style.left = mm(w*0.06);
+    box.style.top = mm(boxY);
+    box.style.width = mm(w*0.88);
+    box.style.height = mm(boxH);
+    box.style.background = '#EEF5E5';
+    box.style.borderRadius = mm(Math.min(w*0.88,boxH)*0.18);
+    label.appendChild(box);
 
+    let py = boxY+boxPad;
     const priceEl = document.createElement('div');
     priceEl.textContent = pu.priceStr;
     priceEl.style.fontWeight = '800';
     priceEl.style.color = '#073D2C';
-    priceEl.style.fontSize = pt(Math.max(13, Math.min(26, w*0.26)));
-    priceBox.appendChild(priceEl);
+    priceEl.style.fontSize = pt(priceFontPt);
+    centerX(priceEl, py);
+    label.appendChild(priceEl);
+    py += priceFontPt*0.42*1.3;
     if(pu.unitLabel){
       const u = document.createElement('div');
       u.textContent = pu.unitLabel;
       u.style.color = '#527060';
       u.style.fontWeight = '600';
-      u.style.fontSize = pt(Math.max(6, Math.min(10, w*0.09)));
-      priceBox.appendChild(u);
+      u.style.fontSize = pt(unitFontPt);
+      centerX(u, py);
+      label.appendChild(u);
+      py += unitFontPt*0.42*1.6;
     }
     if(pu.showKgSecondary){
       const kg = document.createElement('div');
       kg.textContent = `soit ${pu.priceKgStr}/kg`;
       kg.style.color = '#527060';
-      kg.style.fontSize = pt(Math.max(5, Math.min(8, w*0.07)));
-      priceBox.appendChild(kg);
+      kg.style.fontSize = pt(kgFontPt);
+      centerX(kg, py);
+      label.appendChild(kg);
     }
-    content.appendChild(priceBox);
 
     // Vignettes "atouts" : informations réelles (Bio/Local), jamais d'allégation générique non
     // vérifiée — sautées si l'étiquette est trop petite pour les accueillir proprement.
-    if(h*scale > 140){
+    const benefitsY = boxY+boxH+h*0.05;
+    const footerH = h*0.09;
+    if(benefitsY + h*0.1 < h-footerH){
       const labels = [isBio?'BIO':'VRAC', isLocal?'LOCAL':'SANS EMBALLAGE', 'ZÉRO DÉCHET'];
-      const row = document.createElement('div');
-      row.style.display = 'flex';
-      row.style.width = '95%';
-      row.style.marginBottom = mm(h*0.02);
+      const colW = w/3;
       labels.forEach((lbl,i)=>{
         const col = document.createElement('div');
-        col.style.flex = '1';
+        col.textContent = lbl;
+        col.className = 'ls-wrap';
+        col.style.left = mm(colW*i);
+        col.style.top = mm(benefitsY);
+        col.style.width = mm(colW*0.82);
+        col.style.marginLeft = mm(colW*0.09);
         col.style.textAlign = 'center';
         col.style.fontWeight = '700';
+        col.style.color = '#101713';
         col.style.fontSize = pt(Math.max(4, Math.min(6, w*0.055)));
-        if(i<2) col.style.borderRight = '0.5px solid #9ab88a';
-        col.textContent = lbl;
-        row.appendChild(col);
+        label.appendChild(col);
+        if(i<2){
+          const sep = document.createElement('div');
+          sep.style.left = mm(colW*(i+1));
+          sep.style.top = mm(benefitsY-h*0.025);
+          sep.style.width = '0.5px';
+          sep.style.height = mm(h*0.045);
+          sep.style.background = '#9ab88a';
+          label.appendChild(sep);
+        }
       });
-      content.appendChild(row);
     }
 
-    label.appendChild(content);
-
-    const footerH = h*0.09;
     const footer = document.createElement('div');
+    footer.style.left = '0px';
+    footer.style.top = mm(h-footerH);
+    footer.style.width = mm(w);
     footer.style.height = mm(footerH);
-    footer.style.flexShrink = '0';
     footer.style.background = '#073D2C';
-    footer.style.display = 'flex';
-    footer.style.alignItems = 'center';
-    footer.style.justifyContent = 'flex-end';
-    footer.style.padding = `0 ${mm(w*0.06)}`;
+    label.appendChild(footer);
     if(categoryCodeKey(r[5]) === '1'){
       const plu = (r[0]||'').trim();
       const codes = state.allergens[plu] !== undefined ? state.allergens[plu] : detectAllergens((r[1]||''));
       if(codes.length){
         const al = document.createElement('div');
         al.textContent = 'Allerg. '+codes.join(',');
+        al.style.right = mm(w*0.06);
+        al.style.top = mm(h-footerH/2-h*0.02);
         al.style.color = '#fff';
         al.style.fontWeight = '700';
         al.style.fontSize = pt(Math.max(4, Math.min(6, w*0.055)));
-        footer.appendChild(al);
+        label.appendChild(al);
       }
     }
-    label.appendChild(footer);
 
     container.innerHTML = '';
     container.appendChild(label);
