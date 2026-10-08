@@ -1977,7 +1977,7 @@
 (function(){
   // Version affichée en haut à droite de la page — à mettre à jour à chaque modification
   // poussée sur GitHub, pour que l'utilisateur puisse vérifier qu'il a bien la dernière version.
-  const APP_VERSION = 'v20261008_7';
+  const APP_VERSION = 'v20261008_8';
   const versionBadge = document.getElementById('appVersionBadge');
   if(versionBadge) versionBadge.textContent = `Version du ${APP_VERSION}`;
 
@@ -2617,6 +2617,28 @@
     const raw = (row[BIZCOL.POSITION_CAMION]||'').trim();
     if(!raw) return false;
     return raw === state.positionCamionFilter;
+  }
+
+  // Reprend exactement les mêmes critères que la construction de visibleRows dans render() —
+  // utilisé pour détecter qu'un article qu'on vient de créer/modifier (fiche produit) serait
+  // masqué par un filtre encore actif (recherche, catégorie...), ce qui donnait l'impression
+  // que "le produit n'apparaît pas" après l'avoir enregistré.
+  function rowMatchesCurrentFilters(row){
+    const q = state.searchText.trim().toLowerCase();
+    return (state.categoryFilter==='ALL' || categoryCodeMatches(row[5], state.categoryFilter))
+      && matchesSubCategoryFilter(row)
+      && matchesPositionCamionFilter(row)
+      && (!q || (row[0]||'').toLowerCase().includes(q) || (row[1]||'').toLowerCase().includes(q));
+  }
+  // Remet à zéro les filtres qui masqueraient cette ligne, pour que l'article qu'on vient de
+  // créer/modifier reste visible immédiatement après l'enregistrement — plutôt que de laisser
+  // l'utilisateur chercher pourquoi "son produit n'apparaît pas" alors qu'il a bien été créé.
+  function clearFiltersHiding(row){
+    if(rowMatchesCurrentFilters(row)) return;
+    if(state.searchText){ state.searchText = ''; searchInput.value = ''; }
+    state.categoryFilter = 'ALL';
+    state.subCategoryFilter = 'ALL';
+    state.positionCamionFilter = 'ALL';
   }
 
   function render(){
@@ -3851,6 +3873,11 @@
       state.labelSelection.add(newPlu);
     }
 
+    // Si un filtre encore actif (recherche, catégorie...) masquerait l'article qu'on vient
+    // d'enregistrer, on le lève — sinon le produit vient d'être créé/modifié mais semble ne
+    // jamais apparaître dans la grille.
+    clearFiltersHiding(state.rows[sheetRow]);
+
     closeSheet();
     render();
     persistSession();
@@ -4030,8 +4057,14 @@
     BALANCE_CONST_DEFAULTS.forEach((v,i)=>{ newRow[2+i] = v; });
     if(cols > 0) newRow[0] = nextPluNumber();
     state.rows.push(newRow);
+    // Catégorie vide tant que la fiche n'est pas remplie : un filtre catégorie/recherche encore
+    // actif masquerait sinon ce nouvel article dès sa création.
+    clearFiltersHiding(newRow);
     render();
-    openSheet(state.rows.length - 1);
+    // render() trie éventuellement state.rows (si un tri par colonne est actif) : la nouvelle
+    // ligne, vide, n'est pas forcément restée en dernière position — on la retrouve par
+    // référence plutôt que de supposer state.rows.length-1.
+    openSheet(state.rows.indexOf(newRow));
   });
 
   allColsToggle.addEventListener('change', ()=>{
