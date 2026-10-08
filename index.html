@@ -2004,7 +2004,7 @@
 (function(){
   // Version affichée en haut à droite de la page — à mettre à jour à chaque modification
   // poussée sur GitHub, pour que l'utilisateur puisse vérifier qu'il a bien la dernière version.
-  const APP_VERSION = 'v20261008_13';
+  const APP_VERSION = 'v20261008_14';
   const versionBadge = document.getElementById('appVersionBadge');
   if(versionBadge) versionBadge.textContent = `Version du ${APP_VERSION}`;
 
@@ -3699,23 +3699,107 @@
       labelsWrap.appendChild(paysWrap);
 
       // Classement manuel (sous-catégorie, emplacement, position camion) : purement
-      // informatif/filtrage, jamais envoyé à la balance. Saisi entièrement à la main
-      // (aucune source automatique dans cette version autonome).
+      // informatif/filtrage, jamais envoyé à la balance. Listes sélectionnables déduites
+      // des valeurs déjà saisies sur les autres fiches (pas de liste séparée à maintenir),
+      // avec une option "+ Ajouter…" pour créer une nouvelle valeur — même principe que le
+      // champ Fournisseur plus haut.
+      const collectKnownValues = (col, multi)=>{
+        const set = new Set();
+        state.rows.forEach(r=>{
+          const raw = (r[col]||'').trim();
+          if(!raw) return;
+          if(multi){
+            raw.split(',').map(s=>s.trim()).filter(Boolean).forEach(v=> set.add(v));
+          } else {
+            set.add(raw);
+          }
+        });
+        return Array.from(set).sort((a,b)=> a.localeCompare(b,'fr'));
+      };
+
+      // Sous-catégorie : plusieurs valeurs possibles -> puces à cocher (même style que
+      // Bio/Local/WooCommerce ci-dessus), avec une puce "+ Ajouter…" pour créer une valeur
+      // absente de la liste.
+      const subCatWrap = document.createElement('div');
+      subCatWrap.className = 'field';
+      subCatWrap.style.marginTop = '10px';
+      subCatWrap.innerHTML = `<div class="field-label"><span class="name">Sous-catégorie</span><span class="meta">plusieurs possibles</span></div>`;
+      const subCatGrid = document.createElement('div');
+      subCatGrid.id = 'bizSubCategoryGrid';
+      subCatGrid.className = 'catalog-chip-grid';
+      const currentSubCats = (row[BIZCOL.SUB_CATEGORY]||'').split(',').map(s=>s.trim()).filter(Boolean);
+      const knownSubCats = collectKnownValues(BIZCOL.SUB_CATEGORY, true);
+      currentSubCats.forEach(v=>{ if(!knownSubCats.includes(v)) knownSubCats.push(v); });
+      knownSubCats.sort((a,b)=> a.localeCompare(b,'fr'));
+      const mkSubCatChip = (val, checked)=>{
+        const chip = mkChip('subcat_'+Math.random().toString(36).slice(2), val, checked);
+        chip.querySelector('input').dataset.val = val;
+        return chip;
+      };
+      knownSubCats.forEach(v=> subCatGrid.appendChild(mkSubCatChip(v, currentSubCats.includes(v))));
+      subCatWrap.appendChild(subCatGrid);
+      const addSubCatBtn = document.createElement('button');
+      addSubCatBtn.type = 'button';
+      addSubCatBtn.textContent = '+ Ajouter une sous-catégorie…';
+      addSubCatBtn.style.cssText = "margin-top:7px; font-family:'IBM Plex Mono',monospace; font-size:12px; background:#fff; border:1px dashed var(--paper-line); border-radius:6px; padding:6px 10px; cursor:pointer; color:var(--ink-soft);";
+      addSubCatBtn.addEventListener('click', ()=>{
+        const name = prompt('Nom de la nouvelle sous-catégorie :');
+        if(!name || !name.trim()) return;
+        const v = name.trim();
+        const existing = Array.from(subCatGrid.querySelectorAll('input')).find(cb=> cb.dataset.val === v);
+        if(existing){ existing.checked = true; return; }
+        subCatGrid.appendChild(mkSubCatChip(v, true));
+      });
+      subCatWrap.appendChild(addSubCatBtn);
+      labelsWrap.appendChild(subCatWrap);
+
+      // Emplacement / Position camion : une seule valeur -> liste déroulante (même pattern
+      // que le champ Fournisseur).
+      const mkKnownValueSelect = (label, id, col, addLabel)=>{
+        const w = document.createElement('div');
+        w.innerHTML = `<div class="field-label"><span class="name">${label}</span></div>`;
+        const sel = document.createElement('select');
+        sel.id = id;
+        const current = (row[col]||'').trim();
+        const noneOpt = document.createElement('option');
+        noneOpt.value = ''; noneOpt.textContent = '(non renseigné)';
+        sel.appendChild(noneOpt);
+        const known = collectKnownValues(col, false);
+        known.forEach(v=>{
+          const opt = document.createElement('option');
+          opt.value = v; opt.textContent = v;
+          if(v === current) opt.selected = true;
+          sel.appendChild(opt);
+        });
+        const addOpt = document.createElement('option');
+        addOpt.value = '__new__'; addOpt.textContent = addLabel;
+        sel.appendChild(addOpt);
+        if(current && !known.includes(current)){
+          const opt = document.createElement('option');
+          opt.value = current; opt.textContent = current; opt.selected = true;
+          sel.insertBefore(opt, addOpt);
+        }
+        sel.addEventListener('change', ()=>{
+          if(sel.value === '__new__'){
+            const name = prompt(`Nouvelle valeur pour "${label}" :`);
+            if(name && name.trim()){
+              const opt = document.createElement('option');
+              opt.value = name.trim(); opt.textContent = name.trim(); opt.selected = true;
+              sel.insertBefore(opt, addOpt);
+            } else {
+              sel.value = current;
+            }
+          }
+        });
+        w.appendChild(sel);
+        return w;
+      };
       const classementRow = document.createElement('div');
       classementRow.className = 'biz-row3';
       classementRow.style.marginTop = '10px';
-      const mkTextField = (label, id, val, placeholder, meta)=>{
-        const w = document.createElement('div');
-        w.innerHTML = `<div class="field-label"><span class="name">${label}</span>${meta?`<span class="meta">${meta}</span>`:''}</div>`;
-        const inp = document.createElement('input');
-        inp.type = 'text'; inp.id = id; inp.value = (val||'').trim();
-        if(placeholder) inp.placeholder = placeholder;
-        w.appendChild(inp);
-        return w;
-      };
-      classementRow.appendChild(mkTextField('Sous-catégorie', 'bizSubCategory', row[BIZCOL.SUB_CATEGORY], 'ex. Apéro, Thé Vert'));
-      classementRow.appendChild(mkTextField('Emplacement', 'bizEmplacement', row[BIZCOL.EMPLACEMENT], 'ex. Rayon A'));
-      classementRow.appendChild(mkTextField('Position camion', 'bizPositionCamion', row[BIZCOL.POSITION_CAMION], 'ex. Panneau arrière'));
+      classementRow.style.gridTemplateColumns = '1fr 1fr';
+      classementRow.appendChild(mkKnownValueSelect('Emplacement', 'bizEmplacement', BIZCOL.EMPLACEMENT, '+ Ajouter un nouvel emplacement…'));
+      classementRow.appendChild(mkKnownValueSelect('Position camion', 'bizPositionCamion', BIZCOL.POSITION_CAMION, '+ Ajouter une nouvelle position camion…'));
       labelsWrap.appendChild(classementRow);
 
       // Code balance : regroupe plusieurs articles distincts sous un même code imprimé
@@ -3857,12 +3941,15 @@
     if(localEl) state.rows[sheetRow][BIZCOL.LOCAL] = localEl.checked ? '1' : '0';
     const wooEl = document.getElementById('bizWoo');
     if(wooEl) state.rows[sheetRow][BIZCOL.WOOCOMMERCE] = wooEl.checked ? '1' : '0';
-    const subCategoryEl = document.getElementById('bizSubCategory');
-    if(subCategoryEl) state.rows[sheetRow][BIZCOL.SUB_CATEGORY] = subCategoryEl.value.trim();
+    const subCategoryGrid = document.getElementById('bizSubCategoryGrid');
+    if(subCategoryGrid){
+      const vals = Array.from(subCategoryGrid.querySelectorAll('input:checked')).map(cb=> cb.dataset.val).filter(Boolean);
+      state.rows[sheetRow][BIZCOL.SUB_CATEGORY] = vals.join(', ');
+    }
     const emplacementEl = document.getElementById('bizEmplacement');
-    if(emplacementEl) state.rows[sheetRow][BIZCOL.EMPLACEMENT] = emplacementEl.value.trim();
+    if(emplacementEl) state.rows[sheetRow][BIZCOL.EMPLACEMENT] = emplacementEl.value === '__new__' ? '' : emplacementEl.value.trim();
     const positionCamionEl = document.getElementById('bizPositionCamion');
-    if(positionCamionEl) state.rows[sheetRow][BIZCOL.POSITION_CAMION] = positionCamionEl.value.trim();
+    if(positionCamionEl) state.rows[sheetRow][BIZCOL.POSITION_CAMION] = positionCamionEl.value === '__new__' ? '' : positionCamionEl.value.trim();
     const codeBalanceEl = document.getElementById('bizCodeBalance');
     if(codeBalanceEl){
       // Normalise un code purement numérique sur 4 chiffres (ex. "100" -> "0100"), comme
