@@ -1877,7 +1877,7 @@
 (function(){
   // Version affichée en haut à droite de la page — à mettre à jour à chaque modification
   // poussée sur GitHub, pour que l'utilisateur puisse vérifier qu'il a bien la dernière version.
-  const APP_VERSION = 'v20261008_2';
+  const APP_VERSION = 'v20261008_3';
   const versionBadge = document.getElementById('appVersionBadge');
   if(versionBadge) versionBadge.textContent = `Version du ${APP_VERSION}`;
 
@@ -2030,7 +2030,7 @@
   // Colonnes affichées par défaut en vue compacte (0-indexées) : PLU, Nom, Prix, Catégorie,
   // Bio, Local — les champs les plus consultés au quotidien sans avoir à activer "Toutes les
   // colonnes".
-  const COMPACT_COLS = [0,1,4,5,BIZCOL.BIO,BIZCOL.LOCAL];
+  const COMPACT_COLS = [0,1,4,5,BIZCOL.BIO,BIZCOL.LOCAL,BIZCOL.CODE_BALANCE];
 
   // Code réellement affiché/imprimé pour un article (étiquettes, catalogue, export balance) :
   // le "Code balance" (saisi manuellement dans la fiche produit) quand plusieurs articles
@@ -2500,6 +2500,16 @@
       ? [...baseCols.filter(c=>c!==achatCol)]
       : baseCols;
     if(achatCol < maxCols) visibleCols.splice(visibleCols.indexOf(4)+1, 0, achatCol);
+
+    // Code balance (colonne métier) affiché juste après le PLU plutôt qu'à sa position
+    // naturelle (loin à droite, à côté de WooCommerce) : c'est le premier repère à vérifier
+    // pour savoir si un article est une variante d'un autre (voir buildBalanceExportGroups).
+    const codeBalanceCol = BIZCOL.CODE_BALANCE;
+    if(codeBalanceCol < maxCols){
+      const idx = visibleCols.indexOf(codeBalanceCol);
+      if(idx !== -1) visibleCols.splice(idx, 1);
+      visibleCols.splice(visibleCols.indexOf(0)+1, 0, codeBalanceCol);
+    }
 
     // tri alphabétique/numérique sur PLU (col 0) ou Description (col 1)
     if(state.sortCol !== null){
