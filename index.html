@@ -1809,7 +1809,7 @@
           </label>
 
           <p class="biz-title" style="margin-top:18px;">Personnalisation fine par élément (position, couleur, gras)</p>
-          <p class="renum-intro" style="margin:4px 0 10px;">Le décalage (mm) s'ajoute à la position déjà calculée par la trame — à 0, le rendu reste identique aux réglages ci-dessus. S'applique aux deux trames (détaillée et compacte) sauf la mention allergènes, affichée uniquement en trame détaillée.</p>
+          <p class="renum-intro" style="margin:4px 0 10px;">Pour le code/PLU, le nom, le prix et la mention allergènes (trame détaillée) : alignement horizontal et vertical, plus un décalage fin (mm) qui s'ajoute par-dessus. Avec l'alignement "par défaut" (coché par défaut), l'élément garde sa position habituelle dans la mise en page ; choisir un autre alignement le libère pour le positionner n'importe où sur l'étiquette. Le décalage n'est jamais limité par une valeur fixe : il est automatiquement réduit si besoin pour que le texte ne sorte jamais de l'étiquette, quelle que soit sa longueur.</p>
 
           <p class="allergen-note" style="margin:10px 0 4px; font-weight:600;">Code / PLU affiché</p>
           <div class="field-grid">
@@ -1819,32 +1819,35 @@
               <input type="number" id="lsCompactCodeFont" min="5" max="10" step="0.5"></div>
             <div class="field"><div class="field-label"><span class="name">Couleur</span></div>
               <input type="color" id="lsCodeColor"></div>
+          </div>
+          <div class="field-grid" style="margin-top:6px;">
+            <div class="field"><div class="field-label"><span class="name">Alignement horizontal (trame détaillée)</span></div>
+              <select id="lsCodeHAlign"><option value="left">Gauche (défaut)</option><option value="center">Centré</option><option value="right">Droite</option></select></div>
+            <div class="field"><div class="field-label"><span class="name">Alignement vertical (trame détaillée)</span></div>
+              <select id="lsCodeVAlign"><option value="top">Haut (défaut)</option><option value="center">Centre</option><option value="bottom">Bas</option></select></div>
             <div class="field"><div class="field-label"><span class="name">Décalage X (mm)</span></div>
-              <input type="number" id="lsCodeOffsetX" min="-20" max="20" step="0.5"></div>
+              <input type="number" id="lsCodeOffsetX" min="-100" max="100" step="0.5"></div>
             <div class="field"><div class="field-label"><span class="name">Décalage Y (mm)</span></div>
-              <input type="number" id="lsCodeOffsetY" min="-20" max="20" step="0.5"></div>
+              <input type="number" id="lsCodeOffsetY" min="-100" max="100" step="0.5"></div>
           </div>
           <label class="toggleLabel" style="margin:8px 0;">
             <input type="checkbox" id="lsCodeBold">
             <span class="toggleSwitch"></span>
             Gras
           </label>
-          <div class="field" style="max-width:420px; margin-top:6px;">
-            <div class="field-label"><span class="name">Emplacement (trame détaillée)</span></div>
-            <select id="lsCodePosition">
-              <option value="top">En haut (repère habituel, à côté du nom)</option>
-              <option value="bottom">En bas (le bloc prix remonte pour lui laisser la place, sans jamais chevaucher les allergènes)</option>
-            </select>
-          </div>
 
           <p class="allergen-note" style="margin:14px 0 4px; font-weight:600;">Nom du produit</p>
           <div class="field-grid">
             <div class="field"><div class="field-label"><span class="name">Couleur</span></div>
               <input type="color" id="lsNameColor"></div>
+            <div class="field"><div class="field-label"><span class="name">Alignement horizontal</span></div>
+              <select id="lsNameHAlign"><option value="left">Gauche</option><option value="center">Centré (défaut)</option><option value="right">Droite</option></select></div>
+            <div class="field"><div class="field-label"><span class="name">Alignement vertical</span></div>
+              <select id="lsNameVAlign"><option value="top">Haut (défaut)</option><option value="center">Centre</option><option value="bottom">Bas</option></select></div>
             <div class="field"><div class="field-label"><span class="name">Décalage X (mm)</span></div>
-              <input type="number" id="lsNameOffsetX" min="-20" max="20" step="0.5"></div>
+              <input type="number" id="lsNameOffsetX" min="-100" max="100" step="0.5"></div>
             <div class="field"><div class="field-label"><span class="name">Décalage Y (mm)</span></div>
-              <input type="number" id="lsNameOffsetY" min="-20" max="20" step="0.5"></div>
+              <input type="number" id="lsNameOffsetY" min="-100" max="100" step="0.5"></div>
           </div>
           <label class="toggleLabel" style="margin:8px 0;">
             <input type="checkbox" id="lsNameBold">
@@ -1856,23 +1859,28 @@
           <div class="field-grid">
             <div class="field"><div class="field-label"><span class="name">Couleur</span></div>
               <input type="color" id="lsPriceColor"></div>
+            <div class="field"><div class="field-label"><span class="name">Alignement horizontal</span></div>
+              <select id="lsPriceHAlign"><option value="left">Gauche</option><option value="center">Centré (défaut)</option><option value="right">Droite</option></select></div>
+            <div class="field"><div class="field-label"><span class="name">Alignement vertical</span></div>
+              <select id="lsPriceVAlign"><option value="top">Haut</option><option value="center">Centre</option><option value="bottom">Bas (défaut)</option></select></div>
             <div class="field"><div class="field-label"><span class="name">Décalage X (mm)</span></div>
-              <input type="number" id="lsPriceOffsetX" min="-20" max="20" step="0.5"></div>
+              <input type="number" id="lsPriceOffsetX" min="-100" max="100" step="0.5"></div>
             <div class="field"><div class="field-label"><span class="name">Décalage Y (mm)</span></div>
-              <input type="number" id="lsPriceOffsetY" min="-20" max="20" step="0.5"></div>
+              <input type="number" id="lsPriceOffsetY" min="-100" max="100" step="0.5"></div>
           </div>
+          <p class="renum-intro" style="margin:2px 0 8px;">L'alignement/décalage du prix s'applique aussi à "soit X €/kg" et à l'unité (ex. "par 100 g"), qui le suivent toujours.</p>
           <label class="toggleLabel" style="margin:8px 0;">
             <input type="checkbox" id="lsPriceBold">
             <span class="toggleSwitch"></span>
             Gras
           </label>
 
-          <p class="allergen-note" style="margin:14px 0 4px; font-weight:600;">Badge Bio (couleur/taille déjà réglables plus haut)</p>
+          <p class="allergen-note" style="margin:14px 0 4px; font-weight:600;">Badge Bio (couleur/taille déjà réglables plus haut — décalage seulement, pas d'alignement libre : ce badge reste toujours centré et empilé avec le badge Local)</p>
           <div class="field-grid">
             <div class="field"><div class="field-label"><span class="name">Décalage X (mm)</span></div>
-              <input type="number" id="lsBioOffsetX" min="-20" max="20" step="0.5"></div>
+              <input type="number" id="lsBioOffsetX" min="-100" max="100" step="0.5"></div>
             <div class="field"><div class="field-label"><span class="name">Décalage Y (mm)</span></div>
-              <input type="number" id="lsBioOffsetY" min="-20" max="20" step="0.5"></div>
+              <input type="number" id="lsBioOffsetY" min="-100" max="100" step="0.5"></div>
           </div>
           <label class="toggleLabel" style="margin:8px 0;">
             <input type="checkbox" id="lsBioBold">
@@ -1880,12 +1888,12 @@
             Gras
           </label>
 
-          <p class="allergen-note" style="margin:14px 0 4px; font-weight:600;">Badge Local (couleur/taille déjà réglables plus haut)</p>
+          <p class="allergen-note" style="margin:14px 0 4px; font-weight:600;">Badge Local (couleur/taille déjà réglables plus haut — décalage seulement, même principe que le badge Bio)</p>
           <div class="field-grid">
             <div class="field"><div class="field-label"><span class="name">Décalage X (mm)</span></div>
-              <input type="number" id="lsLocalOffsetX" min="-20" max="20" step="0.5"></div>
+              <input type="number" id="lsLocalOffsetX" min="-100" max="100" step="0.5"></div>
             <div class="field"><div class="field-label"><span class="name">Décalage Y (mm)</span></div>
-              <input type="number" id="lsLocalOffsetY" min="-20" max="20" step="0.5"></div>
+              <input type="number" id="lsLocalOffsetY" min="-100" max="100" step="0.5"></div>
           </div>
           <label class="toggleLabel" style="margin:8px 0;">
             <input type="checkbox" id="lsLocalBold">
@@ -1897,10 +1905,14 @@
           <div class="field-grid">
             <div class="field"><div class="field-label"><span class="name">Couleur</span></div>
               <input type="color" id="lsAllergenColor"></div>
+            <div class="field"><div class="field-label"><span class="name">Alignement horizontal</span></div>
+              <select id="lsAllergenHAlign"><option value="left">Gauche</option><option value="center">Centré</option><option value="right">Droite (défaut)</option></select></div>
+            <div class="field"><div class="field-label"><span class="name">Alignement vertical</span></div>
+              <select id="lsAllergenVAlign"><option value="top">Haut</option><option value="center">Centre</option><option value="bottom">Bas (défaut)</option></select></div>
             <div class="field"><div class="field-label"><span class="name">Décalage X (mm)</span></div>
-              <input type="number" id="lsAllergenOffsetX" min="-20" max="20" step="0.5"></div>
+              <input type="number" id="lsAllergenOffsetX" min="-100" max="100" step="0.5"></div>
             <div class="field"><div class="field-label"><span class="name">Décalage Y (mm)</span></div>
-              <input type="number" id="lsAllergenOffsetY" min="-20" max="20" step="0.5"></div>
+              <input type="number" id="lsAllergenOffsetY" min="-100" max="100" step="0.5"></div>
           </div>
           <label class="toggleLabel" style="margin:8px 0;">
             <input type="checkbox" id="lsAllergenBold">
@@ -1991,7 +2003,7 @@
 (function(){
   // Version affichée en haut à droite de la page — à mettre à jour à chaque modification
   // poussée sur GitHub, pour que l'utilisateur puisse vérifier qu'il a bien la dernière version.
-  const APP_VERSION = 'v20261008_9';
+  const APP_VERSION = 'v20261008_10';
   const versionBadge = document.getElementById('appVersionBadge');
   if(versionBadge) versionBadge.textContent = `Version du ${APP_VERSION}`;
 
@@ -2044,16 +2056,15 @@
       showLogo: true, // afficher le logo OPEV au centre de l'étiquette (trames détaillée et compacte) ; le désactiver libère de l'espace vertical pour des polices plus grandes
       logoStyle: 'icon', // 'icon' (pictogramme centré, historique) | 'band' (bandeau noir avec le logo de marque complet, trame détaillée uniquement — ignoré en trame compacte)
       bandPosition: 'top', // 'top' | 'bottom' — emplacement du bandeau (style 'band'), trame détaillée uniquement
-      codePosition: 'top', // 'top' | 'bottom' — emplacement du code balance/PLU, trame détaillée uniquement
-      // Personnalisation fine par élément (position/couleur/gras) — voir LABEL_SETTINGS_DEFAULTS
-      // pour le détail ; valeurs par défaut = rendu actuel codé en dur (décalages à 0).
+      // Personnalisation fine par élément (position/couleur/gras/alignement) — voir
+      // LABEL_SETTINGS_DEFAULTS pour le détail ; valeurs par défaut = rendu actuel codé en dur.
       compactCodeFont: 6.5, detailCodeFont: 8,
-      codeColor: '#2A2420', codeBold: false, codeOffsetX: 0, codeOffsetY: 0,
-      nameColor: '#2A2420', nameBold: true, nameOffsetX: 0, nameOffsetY: 0,
-      priceColor: '#0A0A0A', priceBold: true, priceOffsetX: 0, priceOffsetY: 0,
+      codeColor: '#2A2420', codeBold: false, codeOffsetX: 0, codeOffsetY: 0, codeHAlign: 'left', codeVAlign: 'top',
+      nameColor: '#2A2420', nameBold: true, nameOffsetX: 0, nameOffsetY: 0, nameHAlign: 'center', nameVAlign: 'top',
+      priceColor: '#0A0A0A', priceBold: true, priceOffsetX: 0, priceOffsetY: 0, priceHAlign: 'center', priceVAlign: 'bottom',
       bioBold: true, bioOffsetX: 0, bioOffsetY: 0,
       localBold: true, localOffsetX: 0, localOffsetY: 0,
-      allergenColor: '#787878', allergenBold: false, allergenOffsetX: 0, allergenOffsetY: 0
+      allergenColor: '#787878', allergenBold: false, allergenOffsetX: 0, allergenOffsetY: 0, allergenHAlign: 'right', allergenVAlign: 'bottom'
     }
   };
   const $ = (id)=>document.getElementById(id);
@@ -5575,23 +5586,31 @@
     showLogo: true,
     logoStyle: 'icon',
     bandPosition: 'top', // 'top' | 'bottom' — emplacement du bandeau noir (style logo 'band'), trame détaillée uniquement
-    codePosition: 'top', // 'top' | 'bottom' — emplacement du code balance/PLU, trame détaillée uniquement
     // ---- Personnalisation fine par élément (position/couleur/gras) ----
-    // Chaque "Offset" est un simple décalage (mm) ajouté par-dessus la position déjà calculée
-    // par drawLabelCompact/drawLabelDetail — à 0 (valeur par défaut), le rendu reste strictement
-    // identique à l'existant. Couleur/gras par défaut = valeurs codées en dur actuelles.
-    // Code/PLU : taille de police scindée par trame (comme les autres polices), le reste
-    // (couleur, gras, décalage) est partagé — la couleur/le gras actuels sont déjà identiques
-    // sur les deux trames, seule la taille diffère (6.5 vs 8 pt, déjà codée en dur ainsi).
+    // Chaque élément (code/PLU, nom, prix, allergènes — trame détaillée) a son propre alignement
+    // horizontal ('left'|'center'|'right') ET vertical ('top'|'center'|'bottom'), plus un décalage
+    // (mm) fin. Tant qu'un élément garde son alignement par défaut (ci-dessous), sa position suit
+    // la mise en page existante (empilement des badges, bloc prix...) — le décalage s'applique
+    // alors par-dessus cette position. Dès qu'on choisit un AUTRE alignement, l'élément se
+    // positionne librement sur l'étiquette selon cet ancrage. Dans tous les cas, le décalage n'est
+    // jamais limité par une valeur fixe : il est automatiquement borné au moment du rendu pour que
+    // le texte ne sorte jamais de l'étiquette (voir clampOffsetXForBounds/clampOffsetYForBounds).
+    // Couleur/gras par défaut = valeurs codées en dur actuelles.
+    // Code/PLU : taille de police scindée par trame (comme les autres polices), couleur/gras
+    // partagés (déjà identiques sur les deux trames, seule la taille diffère).
     compactCodeFont: 6.5, detailCodeFont: 8,
     codeColor: '#2A2420', codeBold: false, codeOffsetX: 0, codeOffsetY: 0,
+    codeHAlign: 'left', codeVAlign: 'top',
     nameColor: '#2A2420', nameBold: true, nameOffsetX: 0, nameOffsetY: 0,
+    nameHAlign: 'center', nameVAlign: 'top',
     priceColor: '#0A0A0A', priceBold: true, priceOffsetX: 0, priceOffsetY: 0,
+    priceHAlign: 'center', priceVAlign: 'bottom',
     bioBold: true, bioOffsetX: 0, bioOffsetY: 0,
     localBold: true, localOffsetX: 0, localOffsetY: 0,
     // Allergènes : uniquement affichés sur la trame détaillée (la trame compacte n'en a jamais
     // affiché, ça reste vrai avec ces nouveaux réglages).
-    allergenColor: '#787878', allergenBold: false, allergenOffsetX: 0, allergenOffsetY: 0
+    allergenColor: '#787878', allergenBold: false, allergenOffsetX: 0, allergenOffsetY: 0,
+    allergenHAlign: 'right', allergenVAlign: 'bottom'
   };
   // Plafonds de sécurité pour les tailles de police personnalisables (revue-graphiste
   // #2) : au-delà, le texte se chevauche dans les cellules aux dimensions par défaut
@@ -5616,10 +5635,43 @@
     compactCodeFont: { min:5, max:10 },
     detailCodeFont: { min:6, max:14 }
   };
-  // Plafond des décalages (mm) de position par élément — large mais borné, pour éviter qu'une
-  // valeur extrême ne pousse totalement un élément hors de l'étiquette.
-  const LABEL_OFFSET_CAP = 20;
+  // Garde-fou de saisie uniquement (valeur absurde/NaN) — la vraie contrainte "le texte reste
+  // sur l'étiquette" est appliquée dynamiquement au moment du rendu, selon la taille réelle du
+  // texte et de l'étiquette (voir clampOffsetXForBounds/clampOffsetYForBounds), pas ici par une
+  // limite fixe arbitraire.
+  const LABEL_OFFSET_CAP = 300;
   const clampLabelOffset = (v)=> Math.max(-LABEL_OFFSET_CAP, Math.min(LABEL_OFFSET_CAP, v));
+  // ---- Bornage dynamique des décalages (mm) : le texte doit toujours rester sur l'étiquette ----
+  // anchorMm : position (mm) de l'ancre avant décalage ; offsetMm : décalage demandé ; textWMm :
+  // largeur mesurée du texte à sa police/graisse réelles ; hAlign : alignement du texte autour de
+  // l'ancre ; minMm/maxMm : bornes utilisables de l'étiquette (bord intérieur des marges).
+  // Si le texte est plus large que la place disponible, aucun décalage n'est possible : on
+  // renvoie 0 plutôt qu'une valeur qui sortirait quand même de l'étiquette.
+  function clampOffsetXForBounds(anchorMm, offsetMm, textWMm, hAlign, minMm, maxMm){
+    let lo, hi;
+    if(hAlign==='left'){ lo = minMm-anchorMm; hi = maxMm-textWMm-anchorMm; }
+    else if(hAlign==='right'){ lo = minMm+textWMm-anchorMm; hi = maxMm-anchorMm; }
+    else { lo = minMm+textWMm/2-anchorMm; hi = maxMm-textWMm/2-anchorMm; }
+    if(lo > hi) return 0;
+    return Math.max(lo, Math.min(hi, offsetMm));
+  }
+  // ascentMm/descentMm : hauteur approximative du texte au-dessus/au-dessous de sa ligne de base
+  // (jsPDF positionne le texte par sa ligne de base) — approximation cohérente avec le facteur
+  // 0.42 déjà utilisé partout ailleurs dans ce fichier pour une hauteur de ligne en mm.
+  function clampOffsetYForBounds(anchorMm, offsetMm, ascentMm, descentMm, minMm, maxMm){
+    const lo = minMm+ascentMm-anchorMm;
+    const hi = maxMm-descentMm-anchorMm;
+    if(lo > hi) return 0;
+    return Math.max(lo, Math.min(hi, offsetMm));
+  }
+  // Ancre générique (mm) pour un élément repositionné librement (alignement non par défaut) :
+  // X selon hAlign à l'intérieur des marges, Y selon vAlign (haut/centre/bas de l'étiquette).
+  function anchorXForAlign(hAlign, x, w, pad){
+    return hAlign==='left' ? x+pad : hAlign==='right' ? x+w-pad : x+w/2;
+  }
+  function anchorYForAlign(vAlign, y, h, pad, ascentMm){
+    return vAlign==='top' ? y+pad+ascentMm : vAlign==='bottom' ? y+h-pad : y+h/2;
+  }
   const clampLabelFont = (key, v)=>{
     const c = LABEL_FONT_CAPS[key];
     return Math.max(c.min, Math.min(c.max, v));
@@ -5653,21 +5705,30 @@
     $('lsShowLogo').checked = s.showLogo !== false; // défaut affiché si réglage absent (compat anciens réglages)
     $('lsLogoStyle').value = s.logoStyle === 'band' ? 'band' : 'icon';
     $('lsBandPosition').value = s.bandPosition === 'bottom' ? 'bottom' : 'top';
-    $('lsCodePosition').value = s.codePosition === 'bottom' ? 'bottom' : 'top';
     $('lsCompactCodeFont').value = s.compactCodeFont ?? LABEL_SETTINGS_DEFAULTS.compactCodeFont;
     $('lsDetailCodeFont').value = s.detailCodeFont ?? LABEL_SETTINGS_DEFAULTS.detailCodeFont;
     $('lsCodeColor').value = s.codeColor || LABEL_SETTINGS_DEFAULTS.codeColor;
     $('lsCodeBold').checked = !!s.codeBold;
     $('lsCodeOffsetX').value = s.codeOffsetX ?? 0;
     $('lsCodeOffsetY').value = s.codeOffsetY ?? 0;
+    $('lsCodeHAlign').value = s.codeHAlign || 'left';
+    // Compat réglages enregistrés avant l'alignement libre : l'ancien "codePosition" devient le
+    // point de départ de codeVAlign s'il n'a encore jamais été choisi explicitement.
+    $('lsCodeVAlign').value = s.codeVAlign || (s.codePosition === 'bottom' ? 'bottom' : 'top');
     $('lsNameColor').value = s.nameColor || LABEL_SETTINGS_DEFAULTS.nameColor;
     $('lsNameBold').checked = s.nameBold !== false;
     $('lsNameOffsetX').value = s.nameOffsetX ?? 0;
     $('lsNameOffsetY').value = s.nameOffsetY ?? 0;
+    // Compat : l'ancien réglage global detailAlign devient le point de départ de l'alignement
+    // horizontal du nom/prix s'ils n'ont encore jamais été choisis indépendamment.
+    $('lsNameHAlign').value = s.nameHAlign || s.detailAlign || 'center';
+    $('lsNameVAlign').value = s.nameVAlign || 'top';
     $('lsPriceColor').value = s.priceColor || LABEL_SETTINGS_DEFAULTS.priceColor;
     $('lsPriceBold').checked = s.priceBold !== false;
     $('lsPriceOffsetX').value = s.priceOffsetX ?? 0;
     $('lsPriceOffsetY').value = s.priceOffsetY ?? 0;
+    $('lsPriceHAlign').value = s.priceHAlign || s.detailAlign || 'center';
+    $('lsPriceVAlign').value = s.priceVAlign || 'bottom';
     $('lsBioBold').checked = s.bioBold !== false;
     $('lsBioOffsetX').value = s.bioOffsetX ?? 0;
     $('lsBioOffsetY').value = s.bioOffsetY ?? 0;
@@ -5678,6 +5739,8 @@
     $('lsAllergenBold').checked = !!s.allergenBold;
     $('lsAllergenOffsetX').value = s.allergenOffsetX ?? 0;
     $('lsAllergenOffsetY').value = s.allergenOffsetY ?? 0;
+    $('lsAllergenHAlign').value = s.allergenHAlign || 'right';
+    $('lsAllergenVAlign').value = s.allergenVAlign || 'bottom';
     updateLogoStyleVisibility();
     updateBandPositionVisibility();
     updateLabelPreview(); // reflète immédiatement les réglages courants dans l'aperçu à l'ouverture du panneau
@@ -5729,7 +5792,6 @@
       showLogo: $('lsShowLogo').checked,
       logoStyle: $('lsLogoStyle').value === 'band' ? 'band' : 'icon',
       bandPosition: $('lsBandPosition').value === 'bottom' ? 'bottom' : 'top',
-      codePosition: $('lsCodePosition').value === 'bottom' ? 'bottom' : 'top',
       // ---- Personnalisation fine par élément ----
       compactCodeFont: clampLabelFont('compactCodeFont', num('lsCompactCodeFont', LABEL_SETTINGS_DEFAULTS.compactCodeFont)),
       detailCodeFont: clampLabelFont('detailCodeFont', num('lsDetailCodeFont', LABEL_SETTINGS_DEFAULTS.detailCodeFont)),
@@ -5737,14 +5799,20 @@
       codeBold: $('lsCodeBold').checked,
       codeOffsetX: clampLabelOffset(num('lsCodeOffsetX', 0)),
       codeOffsetY: clampLabelOffset(num('lsCodeOffsetY', 0)),
+      codeHAlign: $('lsCodeHAlign').value || 'left',
+      codeVAlign: $('lsCodeVAlign').value || 'top',
       nameColor: $('lsNameColor').value || LABEL_SETTINGS_DEFAULTS.nameColor,
       nameBold: $('lsNameBold').checked,
       nameOffsetX: clampLabelOffset(num('lsNameOffsetX', 0)),
       nameOffsetY: clampLabelOffset(num('lsNameOffsetY', 0)),
+      nameHAlign: $('lsNameHAlign').value || 'center',
+      nameVAlign: $('lsNameVAlign').value || 'top',
       priceColor: $('lsPriceColor').value || LABEL_SETTINGS_DEFAULTS.priceColor,
       priceBold: $('lsPriceBold').checked,
       priceOffsetX: clampLabelOffset(num('lsPriceOffsetX', 0)),
       priceOffsetY: clampLabelOffset(num('lsPriceOffsetY', 0)),
+      priceHAlign: $('lsPriceHAlign').value || 'center',
+      priceVAlign: $('lsPriceVAlign').value || 'bottom',
       bioBold: $('lsBioBold').checked,
       bioOffsetX: clampLabelOffset(num('lsBioOffsetX', 0)),
       bioOffsetY: clampLabelOffset(num('lsBioOffsetY', 0)),
@@ -5754,7 +5822,9 @@
       allergenColor: $('lsAllergenColor').value || LABEL_SETTINGS_DEFAULTS.allergenColor,
       allergenBold: $('lsAllergenBold').checked,
       allergenOffsetX: clampLabelOffset(num('lsAllergenOffsetX', 0)),
-      allergenOffsetY: clampLabelOffset(num('lsAllergenOffsetY', 0))
+      allergenOffsetY: clampLabelOffset(num('lsAllergenOffsetY', 0)),
+      allergenHAlign: $('lsAllergenHAlign').value || 'right',
+      allergenVAlign: $('lsAllergenVAlign').value || 'bottom'
     };
   }
   $('btnLabelSettings').addEventListener('click', ()=>{
@@ -5791,7 +5861,9 @@
   [
     'lsDetailAlign','lsBioAsText','lsShowSupplier','lsShowDescription','lsShowLogo','lsLogoStyle',
     'lsCodeBold','lsNameBold','lsPriceBold','lsBioBold','lsLocalBold','lsAllergenBold',
-    'lsBandPosition','lsCodePosition'
+    'lsBandPosition',
+    'lsCodeHAlign','lsCodeVAlign','lsNameHAlign','lsNameVAlign','lsPriceHAlign','lsPriceVAlign',
+    'lsAllergenHAlign','lsAllergenVAlign'
   ].forEach(id=> $(id).addEventListener('change', updateLabelPreview));
   $('lsShowLogo').addEventListener('change', updateLogoStyleVisibility);
   $('lsShowLogo').addEventListener('change', updateBandPositionVisibility);
@@ -5995,22 +6067,26 @@
       doc.addImage(LOGO_BRAND_URI, 'PNG', cx-bm.logoW/2, bandY+bm.padV, bm.logoW, bm.logoH);
     }
 
-    // Emplacement du code/PLU (trame détaillée) : en haut (historique, repère constant à côté du
-    // nom) ou en bas, empilé juste au-dessus de la ligne allergènes (jamais la même ligne : voir
-    // la pile du bas plus loin) — pour laisser le bloc prix remonter et libérer la place demandée.
-    const codeAtBottom = s.codePosition === 'bottom';
-    // pluY sert aussi d'ancre de flux pour le nom (style bandeau) : on ne lui applique jamais le
-    // décalage du code, uniquement à sa position de dessin ci-dessous, pour que ce décalage reste
-    // une simple retouche visuelle du code sans déplacer les éléments qui s'enchaînent après lui.
-    // Le bandeau ne repousse cette ancre que s'il occupe lui-même le haut de l'étiquette.
+    // Alignement horizontal/vertical propre à chaque élément texte (code/PLU, nom, prix,
+    // allergènes) — remplace l'ancien réglage global detailAlign pour ces éléments précis
+    // (toujours utilisé ci-dessous pour le fournisseur/la description, inchangés). Avec
+    // l'alignement par défaut, l'élément garde sa position dans la mise en page existante ;
+    // un autre choix le positionne librement (voir anchorXForAlign/anchorYForAlign). Compat
+    // réglages enregistrés avant cette évolution : repli sur codePosition/detailAlign.
+    const codeHAlign = s.codeHAlign || 'left';
+    const codeVAlign = s.codeVAlign || (s.codePosition === 'bottom' ? 'bottom' : 'top');
+    const nameHAlign = s.nameHAlign || s.detailAlign || 'center';
+    const nameVAlign = s.nameVAlign || 'top';
+    const priceHAlign = s.priceHAlign || s.detailAlign || 'center';
+    const priceVAlign = s.priceVAlign || 'bottom';
+    const allergenHAlign = s.allergenHAlign || 'right';
+    const allergenVAlign = s.allergenVAlign || 'bottom';
+
+    // pluY/nomY restent les ancres de flux historiques (position "en haut"), toujours calculées
+    // car badges et bloc bandeau s'y raccrochent — seule la position de DESSIN du code/nom en
+    // tient compte quand leur alignement vertical vaut 'top'. Le dessin du code est différé après
+    // le calcul de la pile du bas (codeLineY), nécessaire quand codeVAlign==='bottom'.
     const pluY = bandAtTop ? y+bandH+5 : y+7;
-    if(!codeAtBottom){
-      doc.setTextColor(...hexToRgbArray(s.codeColor, [42,36,32]));
-      doc.setFont('helvetica', s.codeBold ? 'bold' : 'normal');
-      doc.setFontSize(s.detailCodeFont);
-      // Code balance si renseigné, sinon PLU propre — voir codeAfficheFor.
-      doc.text(codeAfficheFor(r), x+pad+(s.codeOffsetX||0), pluY+(s.codeOffsetY||0));
-    }
 
     doc.setFont('helvetica', s.nameBold===false ? 'normal' : 'bold');
     doc.setFontSize(s.detailNameFont);
@@ -6018,9 +6094,16 @@
     const nomLines = doc.splitTextToSize((r[1]||'').trim(), w-2*pad);
     const nomLinesShown = ellipsizeLines(nomLines, 4); // ellipse si le nom dépasse 4 lignes
     // nomY est aussi l'ancre de flux des badges Bio/Local en style bandeau (flowY ci-dessous) —
-    // comme pour pluY, le décalage nameOffset ne s'applique qu'au dessin ci-dessous.
+    // toujours calculée avec cette formule, quel que soit nameVAlign.
     const nomY = useBand ? pluY+6 : y+16;
-    doc.text(nomLinesShown, tx+(s.nameOffsetX||0), nomY+(s.nameOffsetY||0), opt);
+    const nameAnchorX = anchorXForAlign(nameHAlign, x, w, pad);
+    const nameAscentMm = s.detailNameFont*0.3528*0.8;
+    const nameAnchorY = nameVAlign==='top' ? nomY : nameVAlign==='bottom' ? y+h-pad : y+h/2;
+    const nameTextWMm = Math.max(...nomLinesShown.map(line=> doc.getTextWidth(line)));
+    const nameDescentMm = s.detailNameFont*0.3528*0.3 + (nomLinesShown.length-1)*s.detailNameFont*0.3528*1.15;
+    const nameOffX = clampOffsetXForBounds(nameAnchorX, s.nameOffsetX||0, nameTextWMm, nameHAlign, x+pad, x+w-pad);
+    const nameOffY = clampOffsetYForBounds(nameAnchorY, s.nameOffsetY||0, nameAscentMm, nameDescentMm, y+pad, y+h-pad);
+    doc.text(nomLinesShown, nameAnchorX+nameOffX, nameAnchorY+nameOffY, { align: nameHAlign });
     doc.setTextColor(42,36,32); // remet la couleur d'encre standard (badges/prix gèrent la leur explicitement)
 
     // Repères bio / local (détection depuis les données) — calculés avant le logo/bandeau car
@@ -6191,42 +6274,65 @@
     const codeLineH = s.detailCodeFont*0.42 + 1.6; // même principe que allergenLineH, pour la ligne code balance quand elle est en bas
     const bottomBandReserve = bandAtBottom ? bandH + 1.5 : 0; // ne chevauche jamais le bandeau bas
     const allergenLineY = y+h-marginBottomD-bottomBandReserve;
-    const codeLineY = allergenLineY - allergenLineH; // juste au-dessus des allergènes, jamais la même ligne
-    // Emplacements fixes, réservés qu'ils soient utilisés ou non : le prix (ligne principale)
-    // reste toujours à la même hauteur, que l'article ait ou non une ligne "soit X €/kg" ou une
-    // unité affichée — ces lignes optionnelles poussaient auparavant le prix vers le haut selon
-    // les cas (demande client : prix toujours au même endroit sur toutes les étiquettes d'une
-    // planche, avec ou sans prix au kg / allergènes). Remonte d'autant plus haut que le code
-    // balance occupe lui-même une ligne réservée en bas (codeAtBottom).
-    const kgLineY = allergenLineY - allergenLineH - (codeAtBottom ? codeLineH : 0);
-    const unitLineY = kgLineY - (s.detailKgFont*0.42 + 1.8);
-    const priceY = unitLineY - (detailUnitFont*0.42 + 1.8);
-    // Le décalage du prix (priceOffsetX/Y) s'applique aussi à "soit X €/kg" et à l'unité (ex.
-    // "par 100 g") : ce sont les informations associées au prix, elles doivent le suivre quand
-    // on le déplace, plutôt que de rester plantées à leur position d'origine.
-    const priceOffX = s.priceOffsetX||0, priceOffY = s.priceOffsetY||0;
+    const codeLineY = allergenLineY - allergenLineH; // juste au-dessus des allergènes, jamais la même ligne (ancre "bas" du code)
+
+    // Bloc prix + "soit X €/kg" + unité : empilés ensemble (même ordre relatif) autour d'une
+    // ancre qui dépend de priceVAlign — 'bottom' réutilise la pile du bas existante (remonte
+    // d'autant si le code balance y occupe lui-même une ligne réservée), 'top'/'center' empilent
+    // la même trilogie ailleurs sur l'étiquette. Le décalage/alignement du prix s'applique aussi
+    // à "soit X €/kg" et à l'unité (ex. "par 100 g") : ce sont des informations associées au
+    // prix, elles doivent le suivre partout où on le place.
+    const gapKg = s.detailKgFont*0.42 + 1.8, gapUnit = detailUnitFont*0.42 + 1.8;
+    let kgLineY, unitLineY, priceY;
+    if(priceVAlign === 'bottom'){
+      kgLineY = allergenLineY - allergenLineH - (codeVAlign==='bottom' ? codeLineH : 0);
+      unitLineY = kgLineY - gapKg;
+      priceY = unitLineY - gapUnit;
+    } else {
+      const priceAscentMm = s.detailPriceFont*0.3528*0.8;
+      priceY = priceVAlign==='top' ? y+pad+priceAscentMm : y+h/2;
+      unitLineY = priceY + gapUnit;
+      kgLineY = unitLineY + gapKg;
+    }
+    const priceAnchorX = anchorXForAlign(priceHAlign, x, w, pad);
+    const priceOpt = { align: priceHAlign };
+    doc.setFont('helvetica', s.priceBold===false ? 'normal' : 'bold');
+    doc.setFontSize(s.detailPriceFont);
+    const priceTextWMm = doc.getTextWidth(pu.priceStr);
+    const priceAscentMm = s.detailPriceFont*0.3528*0.8, priceDescentMm = s.detailPriceFont*0.3528*0.3;
+    const priceOffX = clampOffsetXForBounds(priceAnchorX, s.priceOffsetX||0, priceTextWMm, priceHAlign, x+pad, x+w-pad);
+    const priceOffY = clampOffsetYForBounds(priceY, s.priceOffsetY||0, priceAscentMm, priceDescentMm, y+pad, y+h-pad);
     if(pu.showKgSecondary){
       doc.setFont('helvetica','normal');
       doc.setFontSize(s.detailKgFont);
       doc.setTextColor(150,150,150);
-      doc.text(`soit ${pu.priceKgStr}/kg`, tx+priceOffX, kgLineY+priceOffY, opt);
+      doc.text(`soit ${pu.priceKgStr}/kg`, priceAnchorX+priceOffX, kgLineY+priceOffY, priceOpt);
     }
     if(pu.unitLabel){
       doc.setFont('helvetica','normal');
       doc.setFontSize(detailUnitFont);
       doc.setTextColor(110,102,92);
-      doc.text(pu.unitLabel, tx+priceOffX, unitLineY+priceOffY, opt);
+      doc.text(pu.unitLabel, priceAnchorX+priceOffX, unitLineY+priceOffY, priceOpt);
     }
     doc.setFont('helvetica', s.priceBold===false ? 'normal' : 'bold');
     doc.setFontSize(s.detailPriceFont);
     doc.setTextColor(...hexToRgbArray(s.priceColor, BRAND_COLOR));
-    doc.text(pu.priceStr, tx+priceOffX, priceY+priceOffY, opt);
+    doc.text(pu.priceStr, priceAnchorX+priceOffX, priceY+priceOffY, priceOpt);
 
-    if(codeAtBottom){
-      doc.setTextColor(...hexToRgbArray(s.codeColor, [42,36,32]));
+    // Code/PLU : dessiné ici (après le calcul de codeLineY) pour pouvoir utiliser l'ancre "bas"
+    // comme l'ancre "haut" (pluY) selon codeVAlign.
+    {
+      const codeAnchorX = anchorXForAlign(codeHAlign, x, w, pad);
+      const codeAscentMm = s.detailCodeFont*0.3528*0.8, codeDescentMm = s.detailCodeFont*0.3528*0.3;
+      const codeAnchorY = codeVAlign==='top' ? pluY : codeVAlign==='bottom' ? codeLineY : y+h/2;
       doc.setFont('helvetica', s.codeBold ? 'bold' : 'normal');
       doc.setFontSize(s.detailCodeFont);
-      doc.text(codeAfficheFor(r), x+pad+(s.codeOffsetX||0), codeLineY+(s.codeOffsetY||0));
+      const codeStr = codeAfficheFor(r);
+      const codeTextWMm = doc.getTextWidth(codeStr);
+      const codeOffX = clampOffsetXForBounds(codeAnchorX, s.codeOffsetX||0, codeTextWMm, codeHAlign, x+pad, x+w-pad);
+      const codeOffY = clampOffsetYForBounds(codeAnchorY, s.codeOffsetY||0, codeAscentMm, codeDescentMm, y+pad, y+h-pad);
+      doc.setTextColor(...hexToRgbArray(s.codeColor, [42,36,32]));
+      doc.text(codeStr, codeAnchorX+codeOffX, codeAnchorY+codeOffY, { align: codeHAlign });
     }
 
     // categoryCodeKey() : la catégorie réelle de la balance est zero-paddée ("01"-"05"), pas "1"-"5".
@@ -6236,8 +6342,15 @@
       if(codes.length){
         doc.setFont('helvetica', s.allergenBold ? 'bold' : 'normal');
         doc.setFontSize(s.allergenFontSize);
+        const allergenStr = 'Allerg. '+codes.join(',');
+        const allergenAnchorX = anchorXForAlign(allergenHAlign, x, w, pad);
+        const allergenAscentMm = s.allergenFontSize*0.3528*0.8, allergenDescentMm = s.allergenFontSize*0.3528*0.3;
+        const allergenAnchorY = allergenVAlign==='bottom' ? allergenLineY : allergenVAlign==='top' ? y+pad+allergenAscentMm : y+h/2;
+        const allergenTextWMm = doc.getTextWidth(allergenStr);
+        const allergenOffX = clampOffsetXForBounds(allergenAnchorX, s.allergenOffsetX||0, allergenTextWMm, allergenHAlign, x+pad, x+w-pad);
+        const allergenOffY = clampOffsetYForBounds(allergenAnchorY, s.allergenOffsetY||0, allergenAscentMm, allergenDescentMm, y+pad, y+h-pad);
         doc.setTextColor(...hexToRgbArray(s.allergenColor, [120,120,120]));
-        doc.text('Allerg. '+codes.join(','), x+w-pad+(s.allergenOffsetX||0), allergenLineY+(s.allergenOffsetY||0), { align:'right' }); // >= 3-4 mm avant le repère de découpe (revue-graphiste #5), sur sa propre ligne réservée (ne chevauche plus le prix au kg)
+        doc.text(allergenStr, allergenAnchorX+allergenOffX, allergenAnchorY+allergenOffY, { align: allergenHAlign }); // >= 3-4 mm avant le repère de découpe (revue-graphiste #5), sur sa propre ligne réservée par défaut (ne chevauche plus le prix au kg ni le code balance)
       }
     }
   }
@@ -6399,21 +6512,20 @@
       label.appendChild(bandLogo);
     }
 
-    // Emplacement du code/PLU (trame détaillée) : en haut (historique) ou en bas, empilé avec le
-    // bloc prix/allergènes — voir plus bas. pluTopMm sert aussi d'ancre de flux pour le nom (style
-    // bandeau), uniquement repoussée par le bandeau quand il occupe lui-même le haut.
-    const codeAtBottom = s.codePosition === 'bottom';
+    // Alignement horizontal/vertical propre à chaque élément — miroir de drawLabelDetail.
+    const codeHAlign = s.codeHAlign || 'left';
+    const codeVAlign = s.codeVAlign || (s.codePosition === 'bottom' ? 'bottom' : 'top');
+    const nameHAlign = s.nameHAlign || s.detailAlign || 'center';
+    const nameVAlign = s.nameVAlign || 'top';
+    const priceHAlign = s.priceHAlign || s.detailAlign || 'center';
+    const priceVAlign = s.priceVAlign || 'bottom';
+    const allergenHAlign = s.allergenHAlign || 'right';
+    const allergenVAlign = s.allergenVAlign || 'bottom';
+
+    // pluTopMm sert aussi d'ancre de flux pour le nom (style bandeau), uniquement repoussée par
+    // le bandeau quand il occupe lui-même le haut — toujours calculée, le dessin du code est
+    // différé après le calcul de la pile du bas (codeVAlign peut valoir 'bottom').
     const pluTopMm = bandAtTop ? bandH+3 : 3;
-    if(!codeAtBottom){
-      const pluEl = document.createElement('div');
-      pluEl.textContent = codeAfficheFor(r);
-      pluEl.style.left = ((pad+(s.codeOffsetX||0))*scale)+'px';
-      pluEl.style.top = ((pluTopMm+(s.codeOffsetY||0))*scale)+'px';
-      pluEl.style.fontSize = ((s.detailCodeFont||8)*0.3528*scale)+'px';
-      pluEl.style.fontWeight = s.codeBold ? '700' : '400';
-      pluEl.style.color = s.codeColor || '#2A2420';
-      label.appendChild(pluEl);
-    }
 
     // Nom du produit
     const nom = (r[1]||'').trim();
@@ -6421,11 +6533,19 @@
     const nomEl = document.createElement('div');
     nomEl.className = 'ls-wrap';
     nomEl.textContent = nom;
-    nomEl.style.top = ((nomTopMm+(s.nameOffsetY||0))*scale)+'px';
     nomEl.style.fontWeight = s.nameBold===false ? '400' : '700';
     nomEl.style.fontSize = (s.detailNameFont*0.3528*scale)+'px';
     nomEl.style.color = s.nameColor || '#2A2420';
-    lsApplyAlignX(nomEl, align, w, pad, scale, s.nameOffsetX);
+    {
+      const anchorYmm = nameVAlign==='top' ? nomTopMm : nameVAlign==='bottom' ? h-pad : h/2;
+      const ascentMm = s.detailNameFont*0.3528*0.8, descentMm = s.detailNameFont*0.3528*0.3;
+      const offY = clampOffsetYForBounds(anchorYmm, s.nameOffsetY||0, ascentMm, descentMm, pad, h-pad);
+      nomEl.style.top = ((anchorYmm+offY)*scale)+'px';
+      const anchorXmm = anchorXForAlign(nameHAlign, 0, w, pad);
+      const textWmm = lsMeasureTextWidthMm(nom, s.detailNameFont, s.nameBold!==false);
+      const offX = clampOffsetXForBounds(anchorXmm, s.nameOffsetX||0, textWmm, nameHAlign, pad, w-pad);
+      lsApplyAlignX(nomEl, nameHAlign, w, pad, scale, offX);
+    }
     label.appendChild(nomEl);
 
     // Repères bio / local (détection depuis les données) — calculés avant le logo, la présence
@@ -6637,68 +6757,99 @@
     const codeLineH = (s.detailCodeFont||8)*0.42 + 1.6;
     const bottomBandReserve = bandAtBottom ? bandH + 1.5 : 0;
     const fromBottomAllergen = marginBottomD + bottomBandReserve;
-    const fromBottomCode = fromBottomAllergen + allergenLineH;
-    const fromBottomKgD = fromBottomAllergen + allergenLineH + (codeAtBottom ? codeLineH : 0);
-    const fromBottomUnitD = fromBottomKgD + (s.detailKgFont*0.42 + 1.8);
-    const fromBottomPriceD = fromBottomUnitD + (detailUnitFont*0.42 + 1.8);
-    // Le décalage du prix (priceOffsetX/Y) s'applique aussi à "soit X €/kg" et à l'unité (ex.
-    // "par 100 g") : informations associées au prix, elles doivent le suivre quand on le déplace.
-    const priceOffXD = s.priceOffsetX||0, priceOffYD = s.priceOffsetY||0;
+    const fromBottomCode = fromBottomAllergen + allergenLineH; // ancre "bas" du code (mm depuis le bas)
+    const gapKg = s.detailKgFont*0.42 + 1.8, gapUnit = detailUnitFont*0.42 + 1.8;
+
+    // Bloc prix + "soit X €/kg" + unité : empilés ensemble autour d'une ancre qui dépend de
+    // priceVAlign (mêmes principes que drawLabelDetail) — tout exprimé ici en mm-depuis-le-haut
+    // pour rester cohérent avec le reste de l'aperçu.
+    let kgTopMm, unitTopMm, priceTopMm;
+    if(priceVAlign === 'bottom'){
+      const fromBottomKgD = fromBottomAllergen + allergenLineH + (codeVAlign==='bottom' ? codeLineH : 0);
+      const fromBottomUnitD = fromBottomKgD + gapKg;
+      const fromBottomPriceD = fromBottomUnitD + gapUnit;
+      kgTopMm = h - fromBottomKgD; unitTopMm = h - fromBottomUnitD; priceTopMm = h - fromBottomPriceD;
+    } else {
+      const priceAscentMm = s.detailPriceFont*0.3528*0.8;
+      priceTopMm = priceVAlign==='top' ? pad+priceAscentMm : h/2;
+      unitTopMm = priceTopMm - gapUnit;
+      kgTopMm = unitTopMm - gapKg;
+    }
+    const priceAnchorXmm = anchorXForAlign(priceHAlign, 0, w, pad);
+    const priceAscentMm = s.detailPriceFont*0.3528*0.8, priceDescentMm = s.detailPriceFont*0.3528*0.3;
+    const priceTextWmm = lsMeasureTextWidthMm(pu.priceStr, s.detailPriceFont, s.priceBold!==false);
+    const priceOffXD = clampOffsetXForBounds(priceAnchorXmm, s.priceOffsetX||0, priceTextWmm, priceHAlign, pad, w-pad);
+    const priceOffYD = clampOffsetYForBounds(priceTopMm, s.priceOffsetY||0, priceAscentMm, priceDescentMm, pad, h-pad);
     if(pu.showKgSecondary){
       const el = document.createElement('div');
       el.className = 'ls-wrap';
       el.textContent = `soit ${pu.priceKgStr}/kg`;
-      el.style.bottom = ((fromBottomKgD-priceOffYD)*scale)+'px';
+      el.style.top = ((kgTopMm+priceOffYD)*scale)+'px';
       el.style.fontSize = (s.detailKgFont*0.3528*scale)+'px';
       el.style.color = '#969696';
-      lsApplyAlignX(el, align, w, pad, scale, priceOffXD);
+      lsApplyAlignX(el, priceHAlign, w, pad, scale, priceOffXD);
       label.appendChild(el);
     }
     if(pu.unitLabel){
       const el = document.createElement('div');
       el.className = 'ls-wrap';
       el.textContent = pu.unitLabel;
-      el.style.bottom = ((fromBottomUnitD-priceOffYD)*scale)+'px';
+      el.style.top = ((unitTopMm+priceOffYD)*scale)+'px';
       el.style.fontSize = (detailUnitFont*0.3528*scale)+'px';
       el.style.color = '#6E6258';
-      lsApplyAlignX(el, align, w, pad, scale, priceOffXD);
+      lsApplyAlignX(el, priceHAlign, w, pad, scale, priceOffXD);
       label.appendChild(el);
     }
     const priceEl = document.createElement('div');
     priceEl.className = 'ls-wrap';
     priceEl.textContent = pu.priceStr;
-    priceEl.style.bottom = ((fromBottomPriceD-priceOffYD)*scale)+'px';
+    priceEl.style.top = ((priceTopMm+priceOffYD)*scale)+'px';
     priceEl.style.fontWeight = s.priceBold===false ? '400' : '700';
     priceEl.style.fontSize = (s.detailPriceFont*0.3528*scale)+'px';
     priceEl.style.color = s.priceColor || '#0A0A0A';
-    lsApplyAlignX(priceEl, align, w, pad, scale, priceOffXD);
+    lsApplyAlignX(priceEl, priceHAlign, w, pad, scale, priceOffXD);
     label.appendChild(priceEl);
 
-    if(codeAtBottom){
-      const el = document.createElement('div');
-      el.textContent = codeAfficheFor(r);
-      el.style.left = ((pad+(s.codeOffsetX||0))*scale)+'px';
-      el.style.bottom = ((fromBottomCode-(s.codeOffsetY||0))*scale)+'px';
-      el.style.fontSize = ((s.detailCodeFont||8)*0.3528*scale)+'px';
-      el.style.fontWeight = s.codeBold ? '700' : '400';
-      el.style.color = s.codeColor || '#2A2420';
-      label.appendChild(el);
+    // Code/PLU : dessiné ici (après le calcul de fromBottomCode) pour pouvoir utiliser l'ancre
+    // "bas" comme l'ancre "haut" (pluTopMm) selon codeVAlign.
+    {
+      const codeEl = document.createElement('div');
+      codeEl.textContent = codeAfficheFor(r);
+      codeEl.style.fontSize = ((s.detailCodeFont||8)*0.3528*scale)+'px';
+      codeEl.style.fontWeight = s.codeBold ? '700' : '400';
+      codeEl.style.color = s.codeColor || '#2A2420';
+      const anchorYmm = codeVAlign==='top' ? pluTopMm : codeVAlign==='bottom' ? h-fromBottomCode : h/2;
+      const ascentMm = (s.detailCodeFont||8)*0.3528*0.8, descentMm = (s.detailCodeFont||8)*0.3528*0.3;
+      const offY = clampOffsetYForBounds(anchorYmm, s.codeOffsetY||0, ascentMm, descentMm, pad, h-pad);
+      codeEl.style.top = ((anchorYmm+offY)*scale)+'px';
+      const anchorXmm = anchorXForAlign(codeHAlign, 0, w, pad);
+      const textWmm = lsMeasureTextWidthMm(codeAfficheFor(r), s.detailCodeFont||8, !!s.codeBold);
+      const offX = clampOffsetXForBounds(anchorXmm, s.codeOffsetX||0, textWmm, codeHAlign, pad, w-pad);
+      lsApplyAlignX(codeEl, codeHAlign, w, pad, scale, offX);
+      label.appendChild(codeEl);
     }
 
-    // Allergènes (catégorie Alimentaire uniquement), toujours en bas à droite — sur sa propre
-    // ligne réservée (revue-graphiste #5), jamais la même que le code balance en bas.
+    // Allergènes (catégorie Alimentaire uniquement) — sur sa propre ligne réservée par défaut
+    // (revue-graphiste #5), jamais la même que le code balance en bas.
     // categoryCodeKey() : la catégorie réelle de la balance est zero-paddée ("01"-"05"), pas "1"-"5".
     if(categoryCodeKey(r[5]) === '1'){
       const plu = (r[0]||'').trim();
       const codes = state.allergens[plu] !== undefined ? state.allergens[plu] : detectAllergens(nom);
       if(codes.length){
+        const allergenStr = `Allerg. ${codes.join(',')}`;
         const el = document.createElement('div');
-        el.textContent = `Allerg. ${codes.join(',')}`;
-        el.style.right = ((pad-(s.allergenOffsetX||0))*scale)+'px';
-        el.style.bottom = ((fromBottomAllergen-(s.allergenOffsetY||0))*scale)+'px';
+        el.textContent = allergenStr;
         el.style.fontSize = (s.allergenFontSize*0.3528*scale)+'px';
         el.style.fontWeight = s.allergenBold ? '700' : '400';
         el.style.color = s.allergenColor || '#787066';
+        const ascentMm = s.allergenFontSize*0.3528*0.8, descentMm = s.allergenFontSize*0.3528*0.3;
+        const anchorYmm = allergenVAlign==='bottom' ? h-fromBottomAllergen : allergenVAlign==='top' ? pad+ascentMm : h/2;
+        const offY = clampOffsetYForBounds(anchorYmm, s.allergenOffsetY||0, ascentMm, descentMm, pad, h-pad);
+        el.style.top = ((anchorYmm+offY)*scale)+'px';
+        const anchorXmm = anchorXForAlign(allergenHAlign, 0, w, pad);
+        const textWmm = lsMeasureTextWidthMm(allergenStr, s.allergenFontSize, !!s.allergenBold);
+        const offX = clampOffsetXForBounds(anchorXmm, s.allergenOffsetX||0, textWmm, allergenHAlign, pad, w-pad);
+        lsApplyAlignX(el, allergenHAlign, w, pad, scale, offX);
         label.appendChild(el);
       }
     }
