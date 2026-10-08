@@ -1752,10 +1752,17 @@
             <div class="field-label"><span class="name">Style du logo</span></div>
             <select id="lsLogoStyle">
               <option value="icon">Icône seule, centrée</option>
-              <option value="band">Bandeau noir en haut, avec logo complet (texte inclus)</option>
+              <option value="band">Bandeau noir, avec logo complet (texte inclus)</option>
             </select>
           </div>
-          <p class="renum-intro" id="lsLogoStyleNote" style="margin:4px 0 10px;">Style « Bandeau » : un bandeau noir pleine largeur en haut de l'étiquette, avec le logo de marque complet (pictogramme + texte), comme sur la page de garde du catalogue. Le PLU se replace juste en dessous, et le nom/les badges/le prix s'enchaînent à la suite. Uniquement disponible sur la trame détaillée — la trame compacte, trop étroite pour le texte du logo, garde toujours l'icône seule.</p>
+          <p class="renum-intro" id="lsLogoStyleNote" style="margin:4px 0 10px;">Style « Bandeau » : un bandeau noir pleine largeur, avec le logo de marque complet (pictogramme + texte), comme sur la page de garde du catalogue. Trame détaillée uniquement — la trame compacte, trop étroite pour le texte du logo, garde toujours l'icône seule.</p>
+          <div class="field" id="lsBandPositionWrap" style="max-width:420px;">
+            <div class="field-label"><span class="name">Position du bandeau (trame détaillée)</span></div>
+            <select id="lsBandPosition">
+              <option value="top">En haut (le contenu s'enchaîne en dessous)</option>
+              <option value="bottom">En bas (le bloc prix/code remonte pour lui laisser la place)</option>
+            </select>
+          </div>
 
           <p class="biz-title" style="margin-top:18px;">Badges Bio / Local (trames détaillée et compacte)</p>
           <p class="renum-intro" style="margin:4px 0 10px;">Trame détaillée : le badge Bio (point + texte) se place au-dessus du logo OPEV, le badge Local (épingle + texte) en dessous — chacun empilé verticalement (ou autour du centre de l'étiquette si le logo est désactivé). Tailles du point/de l'épingle et des textes réglables indépendamment.</p>
@@ -1822,6 +1829,13 @@
             <span class="toggleSwitch"></span>
             Gras
           </label>
+          <div class="field" style="max-width:420px; margin-top:6px;">
+            <div class="field-label"><span class="name">Emplacement (trame détaillée)</span></div>
+            <select id="lsCodePosition">
+              <option value="top">En haut (repère habituel, à côté du nom)</option>
+              <option value="bottom">En bas (le bloc prix remonte pour lui laisser la place, sans jamais chevaucher les allergènes)</option>
+            </select>
+          </div>
 
           <p class="allergen-note" style="margin:14px 0 4px; font-weight:600;">Nom du produit</p>
           <div class="field-grid">
@@ -1977,7 +1991,7 @@
 (function(){
   // Version affichée en haut à droite de la page — à mettre à jour à chaque modification
   // poussée sur GitHub, pour que l'utilisateur puisse vérifier qu'il a bien la dernière version.
-  const APP_VERSION = 'v20261008_8';
+  const APP_VERSION = 'v20261008_9';
   const versionBadge = document.getElementById('appVersionBadge');
   if(versionBadge) versionBadge.textContent = `Version du ${APP_VERSION}`;
 
@@ -2028,7 +2042,9 @@
       showSupplier: false, // afficher le fournisseur sur la trame détaillée
       showDescription: false, // afficher la description longue sur la trame détaillée
       showLogo: true, // afficher le logo OPEV au centre de l'étiquette (trames détaillée et compacte) ; le désactiver libère de l'espace vertical pour des polices plus grandes
-      logoStyle: 'icon', // 'icon' (pictogramme centré, historique) | 'band' (bandeau noir en haut avec le logo de marque complet, trame détaillée uniquement — ignoré en trame compacte)
+      logoStyle: 'icon', // 'icon' (pictogramme centré, historique) | 'band' (bandeau noir avec le logo de marque complet, trame détaillée uniquement — ignoré en trame compacte)
+      bandPosition: 'top', // 'top' | 'bottom' — emplacement du bandeau (style 'band'), trame détaillée uniquement
+      codePosition: 'top', // 'top' | 'bottom' — emplacement du code balance/PLU, trame détaillée uniquement
       // Personnalisation fine par élément (position/couleur/gras) — voir LABEL_SETTINGS_DEFAULTS
       // pour le détail ; valeurs par défaut = rendu actuel codé en dur (décalages à 0).
       compactCodeFont: 6.5, detailCodeFont: 8,
@@ -5558,6 +5574,8 @@
     showDescription: false,
     showLogo: true,
     logoStyle: 'icon',
+    bandPosition: 'top', // 'top' | 'bottom' — emplacement du bandeau noir (style logo 'band'), trame détaillée uniquement
+    codePosition: 'top', // 'top' | 'bottom' — emplacement du code balance/PLU, trame détaillée uniquement
     // ---- Personnalisation fine par élément (position/couleur/gras) ----
     // Chaque "Offset" est un simple décalage (mm) ajouté par-dessus la position déjà calculée
     // par drawLabelCompact/drawLabelDetail — à 0 (valeur par défaut), le rendu reste strictement
@@ -5634,6 +5652,8 @@
     $('lsShowDescription').checked = !!s.showDescription;
     $('lsShowLogo').checked = s.showLogo !== false; // défaut affiché si réglage absent (compat anciens réglages)
     $('lsLogoStyle').value = s.logoStyle === 'band' ? 'band' : 'icon';
+    $('lsBandPosition').value = s.bandPosition === 'bottom' ? 'bottom' : 'top';
+    $('lsCodePosition').value = s.codePosition === 'bottom' ? 'bottom' : 'top';
     $('lsCompactCodeFont').value = s.compactCodeFont ?? LABEL_SETTINGS_DEFAULTS.compactCodeFont;
     $('lsDetailCodeFont').value = s.detailCodeFont ?? LABEL_SETTINGS_DEFAULTS.detailCodeFont;
     $('lsCodeColor').value = s.codeColor || LABEL_SETTINGS_DEFAULTS.codeColor;
@@ -5659,6 +5679,7 @@
     $('lsAllergenOffsetX').value = s.allergenOffsetX ?? 0;
     $('lsAllergenOffsetY').value = s.allergenOffsetY ?? 0;
     updateLogoStyleVisibility();
+    updateBandPositionVisibility();
     updateLabelPreview(); // reflète immédiatement les réglages courants dans l'aperçu à l'ouverture du panneau
   }
   // Le choix du style de logo n'a de sens que si le logo est affiché — masqué sinon (le
@@ -5667,6 +5688,12 @@
     const shown = $('lsShowLogo').checked;
     $('lsLogoStyleWrap').style.display = shown ? '' : 'none';
     $('lsLogoStyleNote').style.display = shown ? '' : 'none';
+  }
+  // Le choix de la position du bandeau n'a de sens que si le logo est affiché EN style
+  // bandeau — masqué sinon (réglage conservé tel quel).
+  function updateBandPositionVisibility(){
+    const shown = $('lsShowLogo').checked && $('lsLogoStyle').value === 'band';
+    $('lsBandPositionWrap').style.display = shown ? '' : 'none';
   }
   // Relit tous les champs du formulaire et renvoie un objet labelSettings complet — utilisé à la fois
   // pour l'enregistrement (lsSave) et pour l'aperçu en direct, afin de garantir qu'ils restent cohérents.
@@ -5701,6 +5728,8 @@
       showDescription: $('lsShowDescription').checked,
       showLogo: $('lsShowLogo').checked,
       logoStyle: $('lsLogoStyle').value === 'band' ? 'band' : 'icon',
+      bandPosition: $('lsBandPosition').value === 'bottom' ? 'bottom' : 'top',
+      codePosition: $('lsCodePosition').value === 'bottom' ? 'bottom' : 'top',
       // ---- Personnalisation fine par élément ----
       compactCodeFont: clampLabelFont('compactCodeFont', num('lsCompactCodeFont', LABEL_SETTINGS_DEFAULTS.compactCodeFont)),
       detailCodeFont: clampLabelFont('detailCodeFont', num('lsDetailCodeFont', LABEL_SETTINGS_DEFAULTS.detailCodeFont)),
@@ -5761,9 +5790,12 @@
   ].forEach(id=> $(id).addEventListener('input', updateLabelPreview));
   [
     'lsDetailAlign','lsBioAsText','lsShowSupplier','lsShowDescription','lsShowLogo','lsLogoStyle',
-    'lsCodeBold','lsNameBold','lsPriceBold','lsBioBold','lsLocalBold','lsAllergenBold'
+    'lsCodeBold','lsNameBold','lsPriceBold','lsBioBold','lsLocalBold','lsAllergenBold',
+    'lsBandPosition','lsCodePosition'
   ].forEach(id=> $(id).addEventListener('change', updateLabelPreview));
   $('lsShowLogo').addEventListener('change', updateLogoStyleVisibility);
+  $('lsShowLogo').addEventListener('change', updateBandPositionVisibility);
+  $('lsLogoStyle').addEventListener('change', updateBandPositionVisibility);
 
   function drawCutGuide(doc, x, y, w, h){
     doc.setDrawColor(180,170,150);
@@ -5894,22 +5926,25 @@
     const kgLineYC = y+h-marginBottom;
     const unitLineYC = kgLineYC - (s.compactKgFont*0.42 + 1.4);
     const priceYC = unitLineYC - (unitFont*0.42 + 1.4);
+    // Le décalage du prix (priceOffsetX/Y) s'applique aussi à "soit X €/kg" et à l'unité (ex.
+    // "par 100 g") : informations associées au prix, elles doivent le suivre quand on le déplace.
+    const priceOffXC = s.priceOffsetX||0, priceOffYC = s.priceOffsetY||0;
     if(pu.showKgSecondary){
       doc.setFont('helvetica','normal');
       doc.setFontSize(s.compactKgFont);
       doc.setTextColor(130,124,114);
-      doc.text(`soit ${pu.priceKgStr}/kg`, x+w-pad, kgLineYC, { align:'right' });
+      doc.text(`soit ${pu.priceKgStr}/kg`, x+w-pad+priceOffXC, kgLineYC+priceOffYC, { align:'right' });
     }
     if(pu.unitLabel){
       doc.setFont('helvetica','normal');
       doc.setFontSize(unitFont);
       doc.setTextColor(96,88,78);
-      doc.text(pu.unitLabel, x+w-pad, unitLineYC, { align:'right' });
+      doc.text(pu.unitLabel, x+w-pad+priceOffXC, unitLineYC+priceOffYC, { align:'right' });
     }
     doc.setFont('helvetica', s.priceBold===false ? 'normal' : 'bold');
     doc.setFontSize(s.compactPriceFont);
     doc.setTextColor(...hexToRgbArray(s.priceColor, BRAND_COLOR));
-    doc.text(pu.priceStr, x+w-pad+(s.priceOffsetX||0), priceYC+(s.priceOffsetY||0), { align:'right' });
+    doc.text(pu.priceStr, x+w-pad+priceOffXC, priceYC+priceOffYC, { align:'right' });
   }
 
   // Bandeau logo (style 'band', trame détaillée uniquement) : dimensionne le logo de marque
@@ -5945,26 +5980,37 @@
     const showLogo = s.showLogo !== false;
     const useBand = showLogo && s.logoStyle === 'band';
 
+    // Position du bandeau (style 'band' uniquement) : en haut (historique, le contenu s'enchaîne
+    // en dessous) ou en bas (le bandeau se dessine alors tout en bas, et le bloc prix/code
+    // remonte d'autant pour ne jamais passer sous le bandeau — voir bottomBandReserve plus bas).
+    const bandAtBottom = useBand && s.bandPosition === 'bottom';
+    const bandAtTop = useBand && !bandAtBottom;
     let bandH = 0;
     if(useBand){
       const bm = detailBandMetrics(w, h);
       bandH = bm.bandH;
+      const bandY = bandAtBottom ? y+h-bandH : y;
       doc.setFillColor(0,0,0);
-      doc.rect(x, y, w, bandH, 'F');
-      doc.addImage(LOGO_BRAND_URI, 'PNG', cx-bm.logoW/2, y+bm.padV, bm.logoW, bm.logoH);
+      doc.rect(x, bandY, w, bandH, 'F');
+      doc.addImage(LOGO_BRAND_URI, 'PNG', cx-bm.logoW/2, bandY+bm.padV, bm.logoW, bm.logoH);
     }
 
-    doc.setTextColor(...hexToRgbArray(s.codeColor, [42,36,32]));
-    doc.setFont('helvetica', s.codeBold ? 'bold' : 'normal');
-    doc.setFontSize(s.detailCodeFont);
-    // Le PLU reste le repère constant en haut à gauche, quel que soit l'alignement choisi —
-    // simplement repoussé sous le bandeau quand celui-ci occupe désormais le haut de l'étiquette.
+    // Emplacement du code/PLU (trame détaillée) : en haut (historique, repère constant à côté du
+    // nom) ou en bas, empilé juste au-dessus de la ligne allergènes (jamais la même ligne : voir
+    // la pile du bas plus loin) — pour laisser le bloc prix remonter et libérer la place demandée.
+    const codeAtBottom = s.codePosition === 'bottom';
     // pluY sert aussi d'ancre de flux pour le nom (style bandeau) : on ne lui applique jamais le
     // décalage du code, uniquement à sa position de dessin ci-dessous, pour que ce décalage reste
     // une simple retouche visuelle du code sans déplacer les éléments qui s'enchaînent après lui.
-    const pluY = useBand ? y+bandH+5 : y+7;
-    // Code balance si renseigné, sinon PLU propre — voir codeAfficheFor.
-    doc.text(codeAfficheFor(r), x+pad+(s.codeOffsetX||0), pluY+(s.codeOffsetY||0));
+    // Le bandeau ne repousse cette ancre que s'il occupe lui-même le haut de l'étiquette.
+    const pluY = bandAtTop ? y+bandH+5 : y+7;
+    if(!codeAtBottom){
+      doc.setTextColor(...hexToRgbArray(s.codeColor, [42,36,32]));
+      doc.setFont('helvetica', s.codeBold ? 'bold' : 'normal');
+      doc.setFontSize(s.detailCodeFont);
+      // Code balance si renseigné, sinon PLU propre — voir codeAfficheFor.
+      doc.text(codeAfficheFor(r), x+pad+(s.codeOffsetX||0), pluY+(s.codeOffsetY||0));
+    }
 
     doc.setFont('helvetica', s.nameBold===false ? 'normal' : 'bold');
     doc.setFontSize(s.detailNameFont);
@@ -6136,40 +6182,55 @@
     const pu = priceAndUnitFor(r);
     const marginBottomD = 4;
     const detailUnitFont = Math.max(7, Math.min(11, s.detailPriceFont*0.5));
-    // Ligne allergènes : emplacement toujours réservé en bas de l'étiquette (qu'il y ait ou non
-    // des allergènes pour cet article), pour que le bloc prix ne varie jamais de hauteur d'une
-    // étiquette à l'autre — et surtout pour ne plus jamais partager sa ligne avec "soit X €/kg"
-    // (les deux étaient auparavant à la même hauteur y+h-4 et se chevauchaient dès que l'article
-    // avait à la fois un prix au kg et des allergènes, notamment en alignement prix à droite).
+    // Pile du bas, empilée du bas vers le haut, chaque ligne réservant toujours sa hauteur
+    // (qu'elle soit utilisée ou non) pour que rien ne bouge d'une étiquette à l'autre : repère
+    // de découpe -> bandeau bas (si présent) -> allergènes -> code balance (si en bas) -> bloc
+    // prix. Code balance et allergènes ont chacun leur propre ligne réservée : ils ne peuvent
+    // donc jamais se chevaucher, quelle que soit la largeur de leur contenu.
     const allergenLineH = s.allergenFontSize*0.42 + 1.6;
-    const allergenLineY = y+h-4;
+    const codeLineH = s.detailCodeFont*0.42 + 1.6; // même principe que allergenLineH, pour la ligne code balance quand elle est en bas
+    const bottomBandReserve = bandAtBottom ? bandH + 1.5 : 0; // ne chevauche jamais le bandeau bas
+    const allergenLineY = y+h-marginBottomD-bottomBandReserve;
+    const codeLineY = allergenLineY - allergenLineH; // juste au-dessus des allergènes, jamais la même ligne
     // Emplacements fixes, réservés qu'ils soient utilisés ou non : le prix (ligne principale)
     // reste toujours à la même hauteur, que l'article ait ou non une ligne "soit X €/kg" ou une
     // unité affichée — ces lignes optionnelles poussaient auparavant le prix vers le haut selon
     // les cas (demande client : prix toujours au même endroit sur toutes les étiquettes d'une
-    // planche, avec ou sans prix au kg / allergènes).
-    const kgLineY = y+h-marginBottomD-allergenLineH;
+    // planche, avec ou sans prix au kg / allergènes). Remonte d'autant plus haut que le code
+    // balance occupe lui-même une ligne réservée en bas (codeAtBottom).
+    const kgLineY = allergenLineY - allergenLineH - (codeAtBottom ? codeLineH : 0);
     const unitLineY = kgLineY - (s.detailKgFont*0.42 + 1.8);
     const priceY = unitLineY - (detailUnitFont*0.42 + 1.8);
+    // Le décalage du prix (priceOffsetX/Y) s'applique aussi à "soit X €/kg" et à l'unité (ex.
+    // "par 100 g") : ce sont les informations associées au prix, elles doivent le suivre quand
+    // on le déplace, plutôt que de rester plantées à leur position d'origine.
+    const priceOffX = s.priceOffsetX||0, priceOffY = s.priceOffsetY||0;
     if(pu.showKgSecondary){
       doc.setFont('helvetica','normal');
       doc.setFontSize(s.detailKgFont);
       doc.setTextColor(150,150,150);
-      doc.text(`soit ${pu.priceKgStr}/kg`, tx, kgLineY, opt);
+      doc.text(`soit ${pu.priceKgStr}/kg`, tx+priceOffX, kgLineY+priceOffY, opt);
     }
     if(pu.unitLabel){
       doc.setFont('helvetica','normal');
       doc.setFontSize(detailUnitFont);
       doc.setTextColor(110,102,92);
-      doc.text(pu.unitLabel, tx, unitLineY, opt);
+      doc.text(pu.unitLabel, tx+priceOffX, unitLineY+priceOffY, opt);
     }
     doc.setFont('helvetica', s.priceBold===false ? 'normal' : 'bold');
     doc.setFontSize(s.detailPriceFont);
     doc.setTextColor(...hexToRgbArray(s.priceColor, BRAND_COLOR));
-    doc.text(pu.priceStr, tx+(s.priceOffsetX||0), priceY+(s.priceOffsetY||0), opt);
+    doc.text(pu.priceStr, tx+priceOffX, priceY+priceOffY, opt);
 
-    const realCat = (r[5]||'').trim();
-    if(realCat === '1'){
+    if(codeAtBottom){
+      doc.setTextColor(...hexToRgbArray(s.codeColor, [42,36,32]));
+      doc.setFont('helvetica', s.codeBold ? 'bold' : 'normal');
+      doc.setFontSize(s.detailCodeFont);
+      doc.text(codeAfficheFor(r), x+pad+(s.codeOffsetX||0), codeLineY+(s.codeOffsetY||0));
+    }
+
+    // categoryCodeKey() : la catégorie réelle de la balance est zero-paddée ("01"-"05"), pas "1"-"5".
+    if(categoryCodeKey(r[5]) === '1'){
       const plu = (r[0]||'').trim();
       const codes = state.allergens[plu] !== undefined ? state.allergens[plu] : detectAllergens(r[1]);
       if(codes.length){
@@ -6314,13 +6375,17 @@
     const showLogo = s.showLogo !== false;
     const useBand = showLogo && s.logoStyle === 'band';
 
+    // Position du bandeau (style 'band' uniquement) — miroir de drawLabelDetail.
+    const bandAtBottom = useBand && s.bandPosition === 'bottom';
+    const bandAtTop = useBand && !bandAtBottom;
     let bandH = 0;
     if(useBand){
       const bm = detailBandMetrics(w, h);
       bandH = bm.bandH;
+      const bandTopMm = bandAtBottom ? h-bandH : 0;
       const band = document.createElement('div');
       band.style.left = '0px';
-      band.style.top = '0px';
+      band.style.top = (bandTopMm*scale)+'px';
       band.style.width = (w*scale)+'px';
       band.style.height = (bandH*scale)+'px';
       band.style.background = '#000';
@@ -6328,23 +6393,27 @@
       const bandLogo = document.createElement('img');
       bandLogo.src = LOGO_BRAND_URI;
       bandLogo.style.left = '50%';
-      bandLogo.style.top = (bm.padV*scale)+'px';
+      bandLogo.style.top = ((bandTopMm+bm.padV)*scale)+'px';
       bandLogo.style.width = (bm.logoW*scale)+'px';
       bandLogo.style.transform = 'translateX(-50%)';
       label.appendChild(bandLogo);
     }
 
-    // PLU, toujours en haut à gauche (repère constant, comme sur le PDF) — repoussé sous le
-    // bandeau quand celui-ci occupe le haut de l'étiquette (style 'band').
-    const pluTopMm = useBand ? bandH+3 : 3;
-    const pluEl = document.createElement('div');
-    pluEl.textContent = codeAfficheFor(r);
-    pluEl.style.left = ((pad+(s.codeOffsetX||0))*scale)+'px';
-    pluEl.style.top = ((pluTopMm+(s.codeOffsetY||0))*scale)+'px';
-    pluEl.style.fontSize = ((s.detailCodeFont||8)*0.3528*scale)+'px';
-    pluEl.style.fontWeight = s.codeBold ? '700' : '400';
-    pluEl.style.color = s.codeColor || '#2A2420';
-    label.appendChild(pluEl);
+    // Emplacement du code/PLU (trame détaillée) : en haut (historique) ou en bas, empilé avec le
+    // bloc prix/allergènes — voir plus bas. pluTopMm sert aussi d'ancre de flux pour le nom (style
+    // bandeau), uniquement repoussée par le bandeau quand il occupe lui-même le haut.
+    const codeAtBottom = s.codePosition === 'bottom';
+    const pluTopMm = bandAtTop ? bandH+3 : 3;
+    if(!codeAtBottom){
+      const pluEl = document.createElement('div');
+      pluEl.textContent = codeAfficheFor(r);
+      pluEl.style.left = ((pad+(s.codeOffsetX||0))*scale)+'px';
+      pluEl.style.top = ((pluTopMm+(s.codeOffsetY||0))*scale)+'px';
+      pluEl.style.fontSize = ((s.detailCodeFont||8)*0.3528*scale)+'px';
+      pluEl.style.fontWeight = s.codeBold ? '700' : '400';
+      pluEl.style.color = s.codeColor || '#2A2420';
+      label.appendChild(pluEl);
+    }
 
     // Nom du produit
     const nom = (r[1]||'').trim();
@@ -6558,56 +6627,75 @@
       belowIconY += 5.6;
     }
 
-    // Bloc prix : emplacements fixes, réservés qu'ils soient utilisés ou non — le prix reste
-    // toujours à la même hauteur, avec ou sans ligne "soit X €/kg" ou unité (miroir de
-    // drawLabelDetail).
+    // Pile du bas (miroir de drawLabelDetail) : bandeau bas (si présent) -> allergènes -> code
+    // balance (si en bas, sur sa propre ligne réservée, jamais la même que les allergènes) ->
+    // bloc prix, qui remonte d'autant.
     const pu = priceAndUnitFor(r);
     const marginBottomD = 4;
     const detailUnitFont = Math.max(7, Math.min(11, s.detailPriceFont*0.5));
-    const fromBottomKgD = marginBottomD;
+    const allergenLineH = s.allergenFontSize*0.42 + 1.6;
+    const codeLineH = (s.detailCodeFont||8)*0.42 + 1.6;
+    const bottomBandReserve = bandAtBottom ? bandH + 1.5 : 0;
+    const fromBottomAllergen = marginBottomD + bottomBandReserve;
+    const fromBottomCode = fromBottomAllergen + allergenLineH;
+    const fromBottomKgD = fromBottomAllergen + allergenLineH + (codeAtBottom ? codeLineH : 0);
     const fromBottomUnitD = fromBottomKgD + (s.detailKgFont*0.42 + 1.8);
     const fromBottomPriceD = fromBottomUnitD + (detailUnitFont*0.42 + 1.8);
+    // Le décalage du prix (priceOffsetX/Y) s'applique aussi à "soit X €/kg" et à l'unité (ex.
+    // "par 100 g") : informations associées au prix, elles doivent le suivre quand on le déplace.
+    const priceOffXD = s.priceOffsetX||0, priceOffYD = s.priceOffsetY||0;
     if(pu.showKgSecondary){
       const el = document.createElement('div');
       el.className = 'ls-wrap';
       el.textContent = `soit ${pu.priceKgStr}/kg`;
-      el.style.bottom = (fromBottomKgD*scale)+'px';
+      el.style.bottom = ((fromBottomKgD-priceOffYD)*scale)+'px';
       el.style.fontSize = (s.detailKgFont*0.3528*scale)+'px';
       el.style.color = '#969696';
-      lsApplyAlignX(el, align, w, pad, scale);
+      lsApplyAlignX(el, align, w, pad, scale, priceOffXD);
       label.appendChild(el);
     }
     if(pu.unitLabel){
       const el = document.createElement('div');
       el.className = 'ls-wrap';
       el.textContent = pu.unitLabel;
-      el.style.bottom = (fromBottomUnitD*scale)+'px';
+      el.style.bottom = ((fromBottomUnitD-priceOffYD)*scale)+'px';
       el.style.fontSize = (detailUnitFont*0.3528*scale)+'px';
       el.style.color = '#6E6258';
-      lsApplyAlignX(el, align, w, pad, scale);
+      lsApplyAlignX(el, align, w, pad, scale, priceOffXD);
       label.appendChild(el);
     }
-    const fromBottomD = fromBottomPriceD;
     const priceEl = document.createElement('div');
     priceEl.className = 'ls-wrap';
     priceEl.textContent = pu.priceStr;
-    priceEl.style.bottom = ((fromBottomD-(s.priceOffsetY||0))*scale)+'px';
+    priceEl.style.bottom = ((fromBottomPriceD-priceOffYD)*scale)+'px';
     priceEl.style.fontWeight = s.priceBold===false ? '400' : '700';
     priceEl.style.fontSize = (s.detailPriceFont*0.3528*scale)+'px';
     priceEl.style.color = s.priceColor || '#0A0A0A';
-    lsApplyAlignX(priceEl, align, w, pad, scale, s.priceOffsetX);
+    lsApplyAlignX(priceEl, align, w, pad, scale, priceOffXD);
     label.appendChild(priceEl);
 
-    // Allergènes (catégorie Alimentaire uniquement), toujours en bas à droite, marge >= 4mm (revue-graphiste #5)
-    const realCat = (r[5]||'').trim();
-    if(realCat==='1'){
+    if(codeAtBottom){
+      const el = document.createElement('div');
+      el.textContent = codeAfficheFor(r);
+      el.style.left = ((pad+(s.codeOffsetX||0))*scale)+'px';
+      el.style.bottom = ((fromBottomCode-(s.codeOffsetY||0))*scale)+'px';
+      el.style.fontSize = ((s.detailCodeFont||8)*0.3528*scale)+'px';
+      el.style.fontWeight = s.codeBold ? '700' : '400';
+      el.style.color = s.codeColor || '#2A2420';
+      label.appendChild(el);
+    }
+
+    // Allergènes (catégorie Alimentaire uniquement), toujours en bas à droite — sur sa propre
+    // ligne réservée (revue-graphiste #5), jamais la même que le code balance en bas.
+    // categoryCodeKey() : la catégorie réelle de la balance est zero-paddée ("01"-"05"), pas "1"-"5".
+    if(categoryCodeKey(r[5]) === '1'){
       const plu = (r[0]||'').trim();
       const codes = state.allergens[plu] !== undefined ? state.allergens[plu] : detectAllergens(nom);
       if(codes.length){
         const el = document.createElement('div');
         el.textContent = `Allerg. ${codes.join(',')}`;
         el.style.right = ((pad-(s.allergenOffsetX||0))*scale)+'px';
-        el.style.bottom = ((4-(s.allergenOffsetY||0))*scale)+'px';
+        el.style.bottom = ((fromBottomAllergen-(s.allergenOffsetY||0))*scale)+'px';
         el.style.fontSize = (s.allergenFontSize*0.3528*scale)+'px';
         el.style.fontWeight = s.allergenBold ? '700' : '400';
         el.style.color = s.allergenColor || '#787066';
@@ -6745,11 +6833,13 @@
     const fromBottomKg = marginBottom;
     const fromBottomUnit = fromBottomKg + (s.compactKgFont*0.42 + 1.4);
     const fromBottomMm = fromBottomUnit + (unitFont*0.42 + 1.4);
+    // Le décalage du prix (priceOffsetX/Y) s'applique aussi à "soit X €/kg" et à l'unité (ex.
+    // "par 100 g") : informations associées au prix, elles doivent le suivre quand on le déplace.
     if(pu.showKgSecondary){
       const el = document.createElement('div');
       el.textContent = `soit ${pu.priceKgStr}/kg`;
-      el.style.right = (pad*scale)+'px';
-      el.style.bottom = (fromBottomKg*scale)+'px';
+      el.style.right = ((pad-(s.priceOffsetX||0))*scale)+'px';
+      el.style.bottom = ((fromBottomKg-(s.priceOffsetY||0))*scale)+'px';
       el.style.fontSize = (s.compactKgFont*0.3528*scale)+'px';
       el.style.color = '#827c6f';
       label.appendChild(el);
@@ -6757,8 +6847,8 @@
     if(pu.unitLabel){
       const el = document.createElement('div');
       el.textContent = pu.unitLabel;
-      el.style.right = (pad*scale)+'px';
-      el.style.bottom = (fromBottomUnit*scale)+'px';
+      el.style.right = ((pad-(s.priceOffsetX||0))*scale)+'px';
+      el.style.bottom = ((fromBottomUnit-(s.priceOffsetY||0))*scale)+'px';
       el.style.fontSize = (unitFont*0.3528*scale)+'px';
       el.style.color = '#60584e';
       label.appendChild(el);
