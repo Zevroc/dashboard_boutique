@@ -1877,7 +1877,7 @@
 (function(){
   // Version affichée en haut à droite de la page — à mettre à jour à chaque modification
   // poussée sur GitHub, pour que l'utilisateur puisse vérifier qu'il a bien la dernière version.
-  const APP_VERSION = 'v20261008_1';
+  const APP_VERSION = 'v20261008_2';
   const versionBadge = document.getElementById('appVersionBadge');
   if(versionBadge) versionBadge.textContent = `Version du ${APP_VERSION}`;
 
@@ -2012,7 +2012,7 @@
     'PLU','Nom','Champ 3','Type','Prix vente','Catégorie','Champ 7','Champ 8','Champ 9',
     'Champ 10','Champ 11','Champ 12','Code','Statut','Département','Code long','Champ 17','Champ 18','Champ 19'
   ];
-  const SHORT_BIZ_LABELS = ['Fournisseur','Prix achat','TVA','Stock','Stock mini','Stock maxi','Bio','Local','Trame étiquette','Affichage prix','Groupe variantes','Taille lot','Période commande','Description longue','Sous-catégorie','Emplacement','Pays','Position camion','Code balance','WooCommerce','Ligne principale'];
+  const SHORT_BIZ_LABELS = ['Fournisseur','Prix achat','TVA','Stock','Stock mini','Stock maxi','Bio','Local','Trame étiquette','Affichage prix','Groupe variantes','Taille lot','Période commande','Description longue','Sous-catégorie','Emplacement','Pays','Position camion','Code balance','WooCommerce'];
   function shortColLabel(c){
     if(c < SHORT_COL_LABELS.length) return SHORT_COL_LABELS[c];
     const bi = c - 19;
@@ -2023,14 +2023,14 @@
   // ---------- Base articles : champs métier ajoutés après les 19 colonnes balance ----------
   // Index 19 à 25. Ces colonnes ne sont JAMAIS envoyées dans le CSV balance (voir buildCsvText) —
   // elles ne vivent que dans la base articles complète.
-  const BIZCOL = { FOURNISSEUR:19, ACHAT_HT:20, TVA:21, STOCK:22, STOCK_MINI:23, STOCK_MAXI:24, BIO:25, LOCAL:26, TEMPLATE:27, UNIT_DISPLAY:28, GROUP:29, PACK_SIZE:30, ORDER_PERIOD:31, DESC_LONGUE:32, SUB_CATEGORY:33, EMPLACEMENT:34, PAYS:35, POSITION_CAMION:36, CODE_BALANCE:37, WOOCOMMERCE:38, LIGNE_PRINCIPALE:39 };
-  const BIZ_COL_COUNT = 21;
-  const BIZ_HEADERS = ['Fournisseur','Prix achat HT (centimes)','Taux TVA (%)','Stock actuel','Stock mini','Stock maxi','Bio (1/0)','Local (1/0)','Trame étiquette','Affichage prix (kg/100g)','Groupe de variantes','Taille du lot (unités)','Période de commande','Description longue','Sous-catégorie (manuel, hors export balance)','Emplacement (manuel, tri des étiquettes)','Pays d\'origine (étiquette, si produit non local)','Position dans le camion (manuel, tri/filtre)','Code balance (regroupe plusieurs articles sous un meme PLU balance)','WooCommerce (1/0 — article du site web, exclu étiquettes/catalogue/export balance)','Ligne principale (1/0 — article de référence exporté pour un groupe Code balance)'];
+  const BIZCOL = { FOURNISSEUR:19, ACHAT_HT:20, TVA:21, STOCK:22, STOCK_MINI:23, STOCK_MAXI:24, BIO:25, LOCAL:26, TEMPLATE:27, UNIT_DISPLAY:28, GROUP:29, PACK_SIZE:30, ORDER_PERIOD:31, DESC_LONGUE:32, SUB_CATEGORY:33, EMPLACEMENT:34, PAYS:35, POSITION_CAMION:36, CODE_BALANCE:37, WOOCOMMERCE:38 };
+  const BIZ_COL_COUNT = 20;
+  const BIZ_HEADERS = ['Fournisseur','Prix achat HT (centimes)','Taux TVA (%)','Stock actuel','Stock mini','Stock maxi','Bio (1/0)','Local (1/0)','Trame étiquette','Affichage prix (kg/100g)','Groupe de variantes','Taille du lot (unités)','Période de commande','Description longue','Sous-catégorie (manuel, hors export balance)','Emplacement (manuel, tri des étiquettes)','Pays d\'origine (étiquette, si produit non local)','Position dans le camion (manuel, tri/filtre)','Code balance (regroupe plusieurs articles sous un meme PLU balance)','WooCommerce (1/0 — article du site web, exclu étiquettes/catalogue/export balance)'];
 
   // Colonnes affichées par défaut en vue compacte (0-indexées) : PLU, Nom, Prix, Catégorie,
   // Bio, Local — les champs les plus consultés au quotidien sans avoir à activer "Toutes les
   // colonnes".
-  const COMPACT_COLS = [0,1,4,5,BIZCOL.BIO,BIZCOL.LOCAL,BIZCOL.LIGNE_PRINCIPALE];
+  const COMPACT_COLS = [0,1,4,5,BIZCOL.BIO,BIZCOL.LOCAL];
 
   // Code réellement affiché/imprimé pour un article (étiquettes, catalogue, export balance) :
   // le "Code balance" (saisi manuellement dans la fiche produit) quand plusieurs articles
@@ -2604,12 +2604,6 @@
       .filter(x => matchesPositionCamionFilter(x.row))
       .filter(x => !q || (x.row[0]||'').toLowerCase().includes(q) || (x.row[1]||'').toLowerCase().includes(q));
 
-    // Calculé une seule fois par rendu (pas par ligne, voir la cellule "Ligne principale" plus
-    // bas) : reconstruire ce regroupement par un state.rows.filter() complet pour chacune des
-    // n lignes affichées rendrait ce rendu O(n²), perceptible dès que le catalogue dépasse
-    // quelques centaines d'articles.
-    const balanceCodeGroupsForRender = computeBalanceCodeGroups();
-
     // Articles WooCommerce (site web, pas forcément en boutique) : jamais sélectionnables pour
     // l'impression d'étiquettes, ni via "tout sélectionner" ni case à case ci-dessous.
     const visiblePlus = visibleRows
@@ -2719,44 +2713,6 @@
             state.rows[ri][c] = cb.checked ? '1' : '0';
           });
           wrapCb.appendChild(cb);
-          td.appendChild(wrapCb);
-          tr.appendChild(td);
-          return;
-        }
-
-        // Ligne principale (groupe Code balance) : case à cocher, affichée seulement pour un
-        // article qui appartient réellement à un groupe de 2+ articles partageant un même
-        // code — un article seul dans son "groupe" est sa propre ligne principale par
-        // définition, pas besoin de case pour lui. Un seul article principal par groupe à la
-        // fois : cocher celui-ci décoche silencieusement et immédiatement les autres membres
-        // du groupe (pas de confirm(), voir demande). Lit balanceCodeGroupsForRender (calculé
-        // une seule fois par rendu juste au-dessus, pas une fonction relancée par ligne — un
-        // state.rows.filter() complet pour chacune des n lignes affichées rendrait ce rendu
-        // O(n²) sur un grand catalogue).
-        if(c===BIZCOL.LIGNE_PRINCIPALE){
-          const wrapCb = document.createElement('div');
-          wrapCb.className = 'biz-checkbox-cell';
-          const siblings = (row[BIZCOL.WOOCOMMERCE]||'')==='1' ? [row] : (balanceCodeGroupsForRender.get(codeAfficheFor(row)) || [row]);
-          if(siblings.length < 2){
-            wrapCb.innerHTML = '<span style="color:var(--ink-soft);font-size:11px;" title="Article seul (pas de code balance partagé) : il est sa propre ligne principale par défaut.">—</span>';
-          } else {
-            const cb = document.createElement('input');
-            cb.type = 'checkbox';
-            cb.checked = trimmed.trim()==='1';
-            cb.disabled = !state.editMode;
-            cb.title = 'Article de référence exporté vers la balance pour ce groupe Code balance (nom et prix) — une seule ligne principale par groupe.';
-            cb.addEventListener('change', ()=>{
-              if(cb.checked){
-                siblings.forEach(r=>{ if(r!==row) r[BIZCOL.LIGNE_PRINCIPALE] = ''; });
-                row[BIZCOL.LIGNE_PRINCIPALE] = '1';
-              } else {
-                row[BIZCOL.LIGNE_PRINCIPALE] = '';
-              }
-              persistSession();
-              render();
-            });
-            wrapCb.appendChild(cb);
-          }
           td.appendChild(wrapCb);
           tr.appendChild(td);
           return;
@@ -2912,19 +2868,6 @@
           problems.push(`Ligne ${ri+1}, colonne ${ci+1} : contient un point-virgule — remplacé par un espace à l'export balance (pas de guillemets d'échappement dans ce format).`);
         }
       });
-    });
-
-    // Groupes Code balance (2+ articles partageant un même code, voir computeBalanceCodeGroups)
-    // sans ligne principale explicitement désignée : l'export retombera sur le plus petit PLU
-    // par défaut (voir buildBalanceExportGroups), un choix implicite qui vaut la peine d'un
-    // avertissement visible pour inciter à le trancher explicitement — sans bloquer l'usage.
-    computeBalanceCodeGroups().forEach((rows, code)=>{
-      if(rows.length < 2) return;
-      const hasPrincipal = rows.some(r => (r[BIZCOL.LIGNE_PRINCIPALE]||'').trim()==='1');
-      if(!hasPrincipal){
-        const noms = rows.map(r=> `PLU ${(r[0]||'').trim()} (${(r[1]||'').trim()||'sans nom'})`).join(', ');
-        problems.push(`Code balance ${code} : groupe de ${rows.length} articles sans ligne principale désignée — ${noms}. Le PLU le plus petit sera utilisé par défaut à l'export ; coche "Ligne principale" sur l'article de ton choix dans la grille pour le fixer explicitement.`);
-      }
     });
 
     const fixedCols = state.colMeta.filter(m=>m.fixed).length;
@@ -3869,76 +3812,19 @@
     { width:2,  numeric:false }  // 18 Departement final (D0)
   ];
 
-  // Regroupe les lignes balance par "code effectif" (code balance saisi manuellement si
-  // renseigné, sinon PLU propre de l'article — voir codeAfficheFor) : plusieurs articles
-  // distincts partageant volontairement un même code balance (ex. plusieurs pâtes à 4€/kg)
-  // doivent produire UNE seule ligne B_PLU à l'export — sinon la balance recevrait plusieurs
-  // lignes avec le même PLU, ce qui est invalide. Exclut les articles WooCommerce (site web,
-  // pas forcément en boutique), déjà exclus des étiquettes et du catalogue pour la même
-  // raison. Partagé entre l'export (buildBalanceExportGroups) et l'avertissement sur les
-  // groupes sans ligne principale désignée (updateStatusAndAnomalies).
-  function computeBalanceCodeGroups(){
-    const groups = new Map(); // code effectif -> lignes du groupe, dans l'ordre PLU croissant
-    rowsSortedByPlu()
-      .filter(row => (row[BIZCOL.WOOCOMMERCE]||'')!=='1')
-      .forEach(row=>{
-        const code = codeAfficheFor(row);
-        if(!groups.has(code)) groups.set(code, []);
-        groups.get(code).push(row);
-      });
-    return groups;
-  }
-
-  // Le prix (row[4], en centimes) doit être identique entre tous les articles d'un même groupe :
-  // sinon, avertit clairement (PLU et prix de chaque article du groupe) et laisse l'utilisateur
-  // choisir de continuer quand même en connaissance de cause (même pattern confirm() qu'ailleurs
-  // dans le fichier, ex. la fusion d'un CSV balance tronqué) ou d'annuler pour corriger les prix
-  // avant de réessayer.
-  // Retourne null si l'utilisateur annule — l'export doit alors être abandonné.
+  // Variantes : un article avec Code balance VIDE est un article normal, exporté avec son
+  // propre PLU/nom/prix (qu'il soit seul ou qu'il serve de base à des variantes). Un article
+  // avec Code balance RENSEIGNÉ est une VARIANTE de l'article de base dont le PLU est indiqué
+  // dans ce champ (ex. l'article 575, variante de l'article 22, a Code balance = "22") : elle
+  // ne produit JAMAIS sa propre ligne à l'export balance — son article de base couvre déjà le
+  // même code/prix sur la balance physique (voir codeAfficheFor, utilisé pour les étiquettes et
+  // le catalogue, où la variante garde elle son propre nom et sa propre ligne, inchangé). Exclut
+  // aussi les articles WooCommerce (site web), déjà exclus des étiquettes et du catalogue pour
+  // la même raison.
   function buildBalanceExportGroups(){
-    const groups = computeBalanceCodeGroups();
-
-    const mismatches = [];
-    groups.forEach((rows, code)=>{
-      if(rows.length < 2) return;
-      const prices = new Set(rows.map(r=> (r[4]||'').trim()));
-      if(prices.size > 1){
-        const detail = rows.map(r=> `PLU ${(r[0]||'').trim()} (${(r[1]||'').trim()}) : ${eurosFromCents(r[4])}`).join('\n  ');
-        mismatches.push(`Code balance ${code} :\n  ${detail}`);
-      }
-    });
-
-    if(mismatches.length){
-      // Le gabarit (nom/prix exportés) ci-dessous est désormais l'article explicitement
-      // désigné "ligne principale" s'il y en a un — donc le message ne peut plus annoncer
-      // à coup sûr "le premier article (plus petit PLU)" : ça reste vrai seulement pour les
-      // groupes sans ligne principale désignée.
-      const ok = confirm(
-        `Prix incohérent(s) entre des articles partageant le même code balance — seul le prix de la ligne principale de chaque groupe (ou du plus petit PLU si aucune n'est désignée) part sur la balance, les autres prix sont ignorés :\n\n${mismatches.join('\n\n')}\n\nContinuer quand même l'export ?`
-      );
-      if(!ok) return null;
-    }
-
-    // Ordre de sortie : code effectif croissant (numérique), comme l'exige la balance pour le PLU.
-    return Array.from(groups.entries())
-      .sort((a,b)=>{
-        const na = parseInt(a[0],10), nb = parseInt(b[0],10);
-        if(!isNaN(na) && !isNaN(nb)) return na-nb;
-        return a[0].localeCompare(b[0],'fr',{numeric:true});
-      })
-      .map(([code, rows])=>{
-        // Ligne de sortie du groupe : l'article explicitement désigné "ligne principale"
-        // (case cochée dans la grille, voir BIZCOL.LIGNE_PRINCIPALE) sert de gabarit pour le
-        // nom et le prix ; à défaut (aucune ligne principale désignée dans ce groupe), on
-        // retombe sur l'ancien comportement implicite — le premier article (plus petit PLU,
-        // rows déjà trié par rowsSortedByPlu ci-dessus) — signalé par ailleurs comme anomalie
-        // (voir updateStatusAndAnomalies) pour inciter à trancher explicitement.
-        const explicitPrincipal = rows.find(r => (r[BIZCOL.LIGNE_PRINCIPALE]||'').trim()==='1');
-        const template = explicitPrincipal || rows[0];
-        const merged = template.slice();
-        merged[0] = code;
-        return merged;
-      });
+    return rowsSortedByPlu()
+      .filter(row => (row[BIZCOL.WOOCOMMERCE]||'')!=='1')
+      .filter(row => !(row[BIZCOL.CODE_BALANCE]||'').trim());
   }
 
   // Format réellement attendu par la balance HELMAC HSM Pro pour B_PLU.CSV, vérifié directement
@@ -3947,12 +3833,10 @@
   // forcée en majuscules) — contrairement à buildCsvText() ci-dessus, conservée telle quelle pour
   // l'export Excel (bouton "Export Excel", format volontairement différent pour un tableur).
   // C'est cette fonction-ci qui doit alimenter tout ce qui part vers la balance physique (bouton
-  // "Exporter" et B_PLU.CSV de l'export ZIP). Regroupe d'abord les articles par code balance
-  // (voir buildBalanceExportGroups) — retourne null si l'utilisateur annule l'export suite à un
-  // avertissement de prix incohérent, à propager tel quel par l'appelant.
+  // "Exporter" et B_PLU.CSV de l'export ZIP). Exclut d'abord les variantes (voir
+  // buildBalanceExportGroups), qui ne doivent jamais produire leur propre ligne balance.
   function buildBalancePluCsvText(){
     const groupedRows = buildBalanceExportGroups();
-    if(groupedRows === null) return null;
     const lines = groupedRows.map(row=>{
       const fields = row.slice(0,19).map((val,ci)=>{ // seules les 19 colonnes balance sont exportées (jamais la base articles)
         const spec = BALANCE_COL_SPECS[ci];
