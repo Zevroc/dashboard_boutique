@@ -698,12 +698,12 @@
     line-height:1.5;
     margin:0 0 10px;
   }
-  .allergen-grid{
+  .allergen-grid, .catalog-chip-grid{
     display:grid;
     grid-template-columns:repeat(auto-fit, minmax(160px, 1fr));
     gap:6px 10px;
   }
-  .allergen-chip{
+  .allergen-chip, .catalog-chip{
     display:flex;
     align-items:center;
     gap:7px;
@@ -718,11 +718,11 @@
     overflow:hidden;
     text-overflow:ellipsis;
   }
-  .allergen-chip:has(input:checked){
+  .allergen-chip:has(input:checked), .catalog-chip:has(input:checked){
     background:#F3E6C8;
     border-color:var(--brass);
   }
-  .allergen-chip input{ accent-color:var(--brass); }
+  .allergen-chip input, .catalog-chip input{ accent-color:var(--brass); }
 
   .biz-section{
     border-top:1px solid var(--paper-line);
@@ -1877,7 +1877,7 @@
 (function(){
   // Version affichée en haut à droite de la page — à mettre à jour à chaque modification
   // poussée sur GitHub, pour que l'utilisateur puisse vérifier qu'il a bien la dernière version.
-  const APP_VERSION = 'v20261008_3';
+  const APP_VERSION = 'v20261008_4';
   const versionBadge = document.getElementById('appVersionBadge');
   if(versionBadge) versionBadge.textContent = `Version du ${APP_VERSION}`;
 
@@ -3323,10 +3323,17 @@
       const localChecked = localStored !== '' ? localStored==='1' : nomLower.includes('local');
 
       const labelsGrid = document.createElement('div');
-      labelsGrid.className = 'allergen-grid';
+      // Classes dédiées (pas "allergen-grid"/"allergen-chip", voir plus bas) : saveSheet()
+      // retrouve la grille des allergènes via sheetBody.querySelector('.allergen-grid'), qui
+      // doit matcher UNIQUEMENT la vraie grille d'allergènes — une classe partagée ferait
+      // retomber ce querySelector sur ce bloc Bio/Local/WooCommerce (ajouté plus haut dans le
+      // DOM), avec des cases dont la value par défaut ("on") n'est pas un code allergène
+      // valide (parseInt("on",10) = NaN) : aucun allergène réellement coché n'était pris en
+      // compte, et une case ici cochée polluait state.allergens avec du NaN.
+      labelsGrid.className = 'catalog-chip-grid';
       const mkChip = (id, text, checked)=>{
         const chip = document.createElement('label');
-        chip.className = 'allergen-chip';
+        chip.className = 'catalog-chip';
         const cb = document.createElement('input');
         cb.type = 'checkbox'; cb.id = id; cb.checked = checked;
         const span = document.createElement('span');
