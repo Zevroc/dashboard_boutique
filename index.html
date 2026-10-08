@@ -2004,7 +2004,7 @@
 (function(){
   // Version affichée en haut à droite de la page — à mettre à jour à chaque modification
   // poussée sur GitHub, pour que l'utilisateur puisse vérifier qu'il a bien la dernière version.
-  const APP_VERSION = 'v20261008_12';
+  const APP_VERSION = 'v20261008_13';
   const versionBadge = document.getElementById('appVersionBadge');
   if(versionBadge) versionBadge.textContent = `Version du ${APP_VERSION}`;
 
@@ -2037,7 +2037,10 @@
     labelSettings: {
       detailW: 44, detailH: 88,
       compactCols: 4, compactRows: 8,
-      detailNameFont: 14, detailPriceFont: 13,
+      // Prix détaillé à 21 pt (pas 13 — voir LABEL_SETTINGS_DEFAULTS, "revue-graphiste #4") :
+      // cette copie initiale avait dérivé de la constante de référence, donnant par défaut une
+      // police de prix trop petite (et donc un espacement prix/unité/kilo trop serré).
+      detailNameFont: 14, detailPriceFont: 21,
       compactNameFont: 8.5, compactPriceFont: 13,
       bioAsText: true, // remplace le logo AB par un texte "BIO" en vert
       bioFontSize: 8, // taille du texte "BIO" (pt, trame détaillée) — la trame compacte en dérive une taille réduite
@@ -6285,7 +6288,12 @@
     // la même trilogie ailleurs sur l'étiquette. Le décalage/alignement du prix s'applique aussi
     // à "soit X €/kg" et à l'unité (ex. "par 100 g") : ce sont des informations associées au
     // prix, elles doivent le suivre partout où on le place.
-    const gapKg = s.detailKgFont*0.42 + 1.8, gapUnit = detailUnitFont*0.42 + 1.8;
+    // Marges augmentées (vs. un simple +1.8mm fixe) et qui tiennent compte de la police du prix,
+    // nettement plus grande que l'unité/le prix au kilo : sans ça, à police de prix élevée, ses
+    // jambages descendants rapprochaient visuellement trop la ligne d'unité (signalé par
+    // l'utilisateur : "les champs prix, par X g, soit X €/kg sont trop près").
+    const gapUnit = detailUnitFont*0.42 + s.detailPriceFont*0.12 + 1.2;
+    const gapKg = s.detailKgFont*0.42 + detailUnitFont*0.12 + 1.2;
     let kgLineY, unitLineY, priceY;
     if(priceVAlign === 'bottom'){
       kgLineY = allergenLineY - allergenLineH - (codeVAlign==='bottom' ? codeLineH : 0);
@@ -6933,7 +6941,10 @@
     const bottomBandReserve = bandAtBottom ? bandH + 1.5 : 0;
     const fromBottomAllergen = marginBottomD + bottomBandReserve;
     const fromBottomCode = fromBottomAllergen + allergenLineH; // ancre "bas" du code (mm depuis le bas)
-    const gapKg = s.detailKgFont*0.42 + 1.8, gapUnit = detailUnitFont*0.42 + 1.8;
+    // Mêmes marges augmentées que drawLabelDetail (tiennent compte de la police du prix, voir
+    // son commentaire) — "les champs prix, par X g, soit X €/kg sont trop près".
+    const gapUnit = detailUnitFont*0.42 + s.detailPriceFont*0.12 + 1.2;
+    const gapKg = s.detailKgFont*0.42 + detailUnitFont*0.12 + 1.2;
 
     // Bloc prix + "soit X €/kg" + unité : empilés ensemble autour d'une ancre qui dépend de
     // priceVAlign (mêmes principes que drawLabelDetail) — tout exprimé ici en mm-depuis-le-haut
