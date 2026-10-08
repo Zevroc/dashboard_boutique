@@ -1952,6 +1952,13 @@
       <div id="sysAdsFields"></div>
       <button class="btn ghost" id="sysAddAd" style="margin-top:6px;">+ Ajouter un message</button>
 
+      <p class="biz-title" style="margin-top:18px;">Seuils de coloration — Taux de marge</p>
+      <p class="allergen-note">S'appliquent à la colonne "Taux de marge" de la grille (réglage d'application, pas par article) : rouge sous le seuil bas, vert au-dessus du seuil haut, orange entre les deux.</p>
+      <div class="biz-row3" style="grid-template-columns:1fr 1fr;">
+        <div><div class="field-label"><span class="name">Seuil bas (rouge sous ce taux, %)</span></div><input type="number" id="sysMargeLow" min="0" max="500" step="1"></div>
+        <div><div class="field-label"><span class="name">Seuil haut (vert au-dessus de ce taux, %)</span></div><input type="number" id="sysMargeHigh" min="0" max="500" step="1"></div>
+      </div>
+
       <p class="biz-title" style="margin-top:18px;">Table TVA (B_IVA — lecture seule)</p>
       <p class="allergen-note">Cette table vient de la balance mais n'est pas utilisée par l'outil : la TVA reste pilotée par la règle catégorie (5,5 % Alimentaire / 20 % reste), voir menu Outils.</p>
       <div id="sysIvaDisplay" style="font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--ink-soft);"></div>
@@ -1970,7 +1977,7 @@
 (function(){
   // Version affichée en haut à droite de la page — à mettre à jour à chaque modification
   // poussée sur GitHub, pour que l'utilisateur puisse vérifier qu'il a bien la dernière version.
-  const APP_VERSION = 'v20261008_6';
+  const APP_VERSION = 'v20261008_7';
   const versionBadge = document.getElementById('appVersionBadge');
   if(versionBadge) versionBadge.textContent = `Version du ${APP_VERSION}`;
 
@@ -1999,6 +2006,7 @@
     salesHistory: {}, // { 'JJ.MM.AAAA': { [plu]: { nom, count, amount(centimes) } } }
     ticketCounts: {}, // { 'JJ.MM.AAAA': nombre de tickets, depuis les fichiers .PAY }
     colWidths: {}, // { [indexColonne]: largeurPx } — auto-calculé au premier affichage, ajustable ensuite à la main
+    marginThresholds: { low:20, high:40 }, // seuils (%) de coloration de la colonne "Taux de marge" — réglage d'application, pas par article
     labelSettings: {
       detailW: 44, detailH: 88,
       compactCols: 4, compactRows: 8,
@@ -2114,7 +2122,7 @@
     'PLU','Nom','Champ 3','Type','Prix vente','Catégorie','Champ 7','Champ 8','Champ 9',
     'Champ 10','Champ 11','Champ 12','Code','Statut','Département','Code long','Champ 17','Champ 18','Champ 19'
   ];
-  const SHORT_BIZ_LABELS = ['Fournisseur','Prix achat','TVA','Stock','Stock mini','Stock maxi','Bio','Local','Trame étiquette','Affichage prix','Groupe variantes','Taille lot','Période commande','Description longue','Sous-catégorie','Emplacement','Pays','Position camion','Code balance','WooCommerce'];
+  const SHORT_BIZ_LABELS = ['Fournisseur','Prix achat','TVA','Stock','Stock mini','Stock maxi','Bio','Local','Trame étiquette','Affichage prix','Groupe variantes','Taille lot','Période commande','Description longue','Sous-catégorie','Emplacement','Pays','Position camion','Code balance','WooCommerce','Taille réf. achat','Prix réf. achat'];
   function shortColLabel(c){
     if(c < SHORT_COL_LABELS.length) return SHORT_COL_LABELS[c];
     const bi = c - 19;
@@ -2125,9 +2133,9 @@
   // ---------- Base articles : champs métier ajoutés après les 19 colonnes balance ----------
   // Index 19 à 25. Ces colonnes ne sont JAMAIS envoyées dans le CSV balance (voir buildCsvText) —
   // elles ne vivent que dans la base articles complète.
-  const BIZCOL = { FOURNISSEUR:19, ACHAT_HT:20, TVA:21, STOCK:22, STOCK_MINI:23, STOCK_MAXI:24, BIO:25, LOCAL:26, TEMPLATE:27, UNIT_DISPLAY:28, GROUP:29, PACK_SIZE:30, ORDER_PERIOD:31, DESC_LONGUE:32, SUB_CATEGORY:33, EMPLACEMENT:34, PAYS:35, POSITION_CAMION:36, CODE_BALANCE:37, WOOCOMMERCE:38 };
-  const BIZ_COL_COUNT = 20;
-  const BIZ_HEADERS = ['Fournisseur','Prix achat HT (centimes)','Taux TVA (%)','Stock actuel','Stock mini','Stock maxi','Bio (1/0)','Local (1/0)','Trame étiquette','Affichage prix (kg/100g)','Groupe de variantes','Taille du lot (unités)','Période de commande','Description longue','Sous-catégorie (manuel, hors export balance)','Emplacement (manuel, tri des étiquettes)','Pays d\'origine (étiquette, si produit non local)','Position dans le camion (manuel, tri/filtre)','Code balance (regroupe plusieurs articles sous un meme PLU balance)','WooCommerce (1/0 — article du site web, exclu étiquettes/catalogue/export balance)'];
+  const BIZCOL = { FOURNISSEUR:19, ACHAT_HT:20, TVA:21, STOCK:22, STOCK_MINI:23, STOCK_MAXI:24, BIO:25, LOCAL:26, TEMPLATE:27, UNIT_DISPLAY:28, GROUP:29, PACK_SIZE:30, ORDER_PERIOD:31, DESC_LONGUE:32, SUB_CATEGORY:33, EMPLACEMENT:34, PAYS:35, POSITION_CAMION:36, CODE_BALANCE:37, WOOCOMMERCE:38, TAILLE_REF_ACHAT:39, PRIX_REF_ACHAT:40 };
+  const BIZ_COL_COUNT = 22;
+  const BIZ_HEADERS = ['Fournisseur','Prix achat HT (centimes)','Taux TVA (%)','Stock actuel','Stock mini','Stock maxi','Bio (1/0)','Local (1/0)','Trame étiquette','Affichage prix (kg/100g)','Groupe de variantes','Taille du lot (unités)','Période de commande','Description longue','Sous-catégorie (manuel, hors export balance)','Emplacement (manuel, tri des étiquettes)','Pays d\'origine (étiquette, si produit non local)','Position dans le camion (manuel, tri/filtre)','Code balance (regroupe plusieurs articles sous un meme PLU balance)','WooCommerce (1/0 — article du site web, exclu étiquettes/catalogue/export balance)','Taille de référence d\'achat (ex. 5kg, 500g)','Prix d\'achat pour cette taille de référence (centimes)'];
 
   // Colonnes affichées par défaut en vue compacte (0-indexées) : PLU, Nom, Prix, Catégorie,
   // Bio, Local — les champs les plus consultés au quotidien sans avoir à activer "Toutes les
@@ -2161,6 +2169,50 @@
     const n = parseFloat(s);
     if(isNaN(n)) return '';
     return String(Math.round(n*100));
+  }
+
+  // ---------- Taille de référence d'achat / Taux de marge ----------
+  // Parse une taille de référence d'achat ("5kg", "5 kg", "500g", "5") en kg — unité par défaut
+  // kg si omise (la plupart des produits en vrac s'achètent par sac/bidon en kg).
+  function parseAchatRefSizeKg(v){
+    const t = (v||'').trim().toLowerCase().replace(',', '.');
+    if(!t) return null;
+    const m = t.match(/^(\d+(?:\.\d+)?)\s*(kg|g)?$/);
+    if(!m) return null;
+    const n = parseFloat(m[1]);
+    if(isNaN(n) || n<=0) return null;
+    return m[2]==='g' ? n/1000 : n;
+  }
+  // Prix d'achat HT par kg (centimes), calculé automatiquement depuis la taille de référence
+  // d'achat et son prix, quand les deux sont renseignés et valides — évite à l'utilisateur de
+  // faire le calcul lui-même (ex. sachet de 5 kg à 20 € -> 4 €/kg).
+  function computeAchatRefPerKgCents(row){
+    const sizeKg = parseAchatRefSizeKg(row[BIZCOL.TAILLE_REF_ACHAT]);
+    const prixRefCents = parseFloat((row[BIZCOL.PRIX_REF_ACHAT]||'').trim());
+    if(!sizeKg || isNaN(prixRefCents) || prixRefCents<=0) return null;
+    return prixRefCents / sizeKg;
+  }
+  // Taux de marge (PAS taux de marque) : (prix de vente HT - prix d'achat HT) / prix d'achat HT.
+  // À distinguer du taux de marque (déjà utilisé ailleurs dans la fiche produit sous "Marge
+  // indicative"), qui divise par le prix de vente HT — les deux sont fréquemment confondus en
+  // France. Ici, précisément celui demandé : rapporté au prix d'achat. Renvoie null si le prix
+  // d'achat ou le prix de vente est manquant, nul ou invalide (jamais de division par zéro).
+  function tauxDeMargeFor(row){
+    const achatCents = parseFloat((row[BIZCOL.ACHAT_HT]||'').trim());
+    const venteTTC = parseInt((row[4]||'0').trim(), 10);
+    const tva = parseFloat(tvaForCategory(row[5]));
+    if(isNaN(achatCents) || achatCents<=0 || isNaN(venteTTC) || venteTTC<=0 || isNaN(tva)) return null;
+    const venteHT = venteTTC / (1+tva/100);
+    return ((venteHT - achatCents) / achatCents) * 100;
+  }
+  // Couleur de fond de la cellule "Taux de marge" selon les deux seuils configurables
+  // (state.marginThresholds, réglage d'application, pas par article) : rouge sous le seuil bas,
+  // vert au-dessus du seuil haut, orange/jaune entre les deux.
+  function marginColorFor(taux){
+    const { low, high } = state.marginThresholds;
+    if(taux < low) return '#F6D5D0';
+    if(taux >= high) return '#D4EAD2';
+    return '#FBE8C4';
   }
 
   // ---------- Nomenclature par catégories (analyse du fichier B_PLU) ----------
@@ -2646,7 +2698,7 @@
     }
 
     const colgroup = $('gridColgroup');
-    colgroup.innerHTML = '<col style="width:104px"><col style="width:120px">';
+    colgroup.innerHTML = '<col style="width:104px"><col style="width:120px"><col style="width:100px">';
     const headRow = $('headRow');
     const selectAllTh = document.createElement('th');
     selectAllTh.className = 'actions';
@@ -2661,6 +2713,10 @@
     const allergensTh = document.createElement('th');
     allergensTh.innerHTML = '<span class="colnum">Allergènes</span>';
     headRow.appendChild(allergensTh);
+    const tauxMargeTh = document.createElement('th');
+    tauxMargeTh.innerHTML = '<span class="colnum">Taux de marge</span>';
+    tauxMargeTh.title = "Information commerciale interne, jamais imprimée sur les étiquettes — (prix de vente HT − prix d'achat HT) / prix d'achat HT.";
+    headRow.appendChild(tauxMargeTh);
     visibleCols.forEach(c=>{
       if(state.colWidths[c]===undefined) state.colWidths[c] = estimateColWidth(c);
       const col = document.createElement('col');
@@ -2830,6 +2886,27 @@
       }
       tdAllergens.addEventListener('click', ()=> openSheet(ri));
       tr.appendChild(tdAllergens);
+
+      // Colonne Taux de marge : calculée à la volée depuis Prix d'achat HT (BIZCOL.ACHAT_HT,
+      // éventuellement lui-même auto-rempli depuis Taille/Prix de référence d'achat) et Prix de
+      // vente — jamais stockée, jamais imprimée sur les étiquettes (information commerciale
+      // interne uniquement). Couleur selon les seuils configurables (state.marginThresholds).
+      const tdTauxMarge = document.createElement('td');
+      tdTauxMarge.style.fontSize = '11px';
+      tdTauxMarge.style.cursor = 'pointer';
+      tdTauxMarge.title = "Cliquer pour ouvrir la fiche produit et renseigner le prix d'achat";
+      const taux = tauxDeMargeFor(row);
+      if(taux === null){
+        tdTauxMarge.textContent = 'à renseigner';
+        tdTauxMarge.style.color = 'var(--ink-soft)';
+      } else {
+        tdTauxMarge.textContent = taux.toFixed(1).replace('.',',') + ' %';
+        tdTauxMarge.style.color = '#2A2420';
+        tdTauxMarge.style.fontWeight = '600';
+        tdTauxMarge.style.background = marginColorFor(taux);
+      }
+      tdTauxMarge.addEventListener('click', ()=> openSheet(ri));
+      tr.appendChild(tdTauxMarge);
 
       visibleCols.forEach(c=>{
         const meta = state.colMeta[c];
@@ -3254,6 +3331,86 @@
       catSelect.addEventListener('change', refreshMarge);
       refreshMarge();
 
+      // ---- Taille/prix de référence d'achat -> calcule automatiquement le prix d'achat HT/kg ----
+      // (au lieu de faire faire le calcul à l'utilisateur, ex. sachet de 5kg à 20€ -> 4€/kg).
+      const refRow = document.createElement('div');
+      refRow.className = 'biz-row3';
+
+      const tailleRefWrap = document.createElement('div');
+      tailleRefWrap.innerHTML = `<div class="field-label"><span class="name">Taille de référence d'achat</span></div>`;
+      const tailleRefInput = document.createElement('input');
+      tailleRefInput.type = 'text'; tailleRefInput.id = 'bizTailleRefAchat';
+      tailleRefInput.value = (row[BIZCOL.TAILLE_REF_ACHAT]||'').trim();
+      tailleRefInput.placeholder = 'ex. 5kg, 500g';
+      tailleRefWrap.appendChild(tailleRefInput);
+      refRow.appendChild(tailleRefWrap);
+
+      const prixRefWrap = document.createElement('div');
+      prixRefWrap.innerHTML = `<div class="field-label"><span class="name">Prix d'achat pour cette taille (€)</span></div>`;
+      const prixRefInput = document.createElement('input');
+      prixRefInput.type = 'text'; prixRefInput.id = 'bizPrixRefAchat';
+      prixRefInput.value = centsToEuroStr(row[BIZCOL.PRIX_REF_ACHAT]);
+      prixRefInput.placeholder = '0,00';
+      prixRefWrap.appendChild(prixRefInput);
+      refRow.appendChild(prixRefWrap);
+
+      const achatCalcWrap = document.createElement('div');
+      achatCalcWrap.innerHTML = `<div class="field-label"><span class="name">Prix d'achat HT/kg (calculé)</span></div>`;
+      const achatCalcOut = document.createElement('div');
+      achatCalcOut.id = 'bizAchatRefCalcOut';
+      achatCalcOut.className = 'biz-marge-out';
+      achatCalcWrap.appendChild(achatCalcOut);
+      refRow.appendChild(achatCalcWrap);
+
+      biz.appendChild(refRow);
+
+      const refreshAchatRef = ()=>{
+        const draftRow = row.slice();
+        draftRow[BIZCOL.TAILLE_REF_ACHAT] = tailleRefInput.value;
+        draftRow[BIZCOL.PRIX_REF_ACHAT] = euroStrToCents(prixRefInput.value);
+        const perKgCents = computeAchatRefPerKgCents(draftRow);
+        if(perKgCents === null){
+          achatCalcOut.textContent = tailleRefInput.value.trim() || prixRefInput.value.trim() ? 'à renseigner' : '—';
+          return;
+        }
+        achatCalcOut.textContent = (perKgCents/100).toFixed(2).replace('.',',') + ' €/kg';
+        // Reprend automatiquement cette valeur dans "Prix d'achat HT" — l'utilisateur n'a plus à
+        // calculer le prix au kg lui-même ; il garde la possibilité de corriger ce champ à la main.
+        achatInput.value = (Math.round(perKgCents)/100).toFixed(2).replace('.',',');
+        refreshMarge();
+        refreshTauxMarge(); // définie plus bas — jamais invoquée avant, voir l'appel initial de refreshAchatRef() en bas de ce bloc
+      };
+      tailleRefInput.addEventListener('input', refreshAchatRef);
+      prixRefInput.addEventListener('input', refreshAchatRef);
+
+      // ---- Taux de marge (distinct du taux de marque "Marge indicative" ci-dessus) ----
+      const tauxMargeWrap = document.createElement('div');
+      tauxMargeWrap.className = 'field';
+      tauxMargeWrap.innerHTML = `<div class="field-label"><span class="name">Taux de marge</span></div>`;
+      const tauxMargeOut = document.createElement('div');
+      tauxMargeOut.id = 'bizTauxMargeOut';
+      tauxMargeOut.className = 'biz-marge-out';
+      tauxMargeWrap.appendChild(tauxMargeOut);
+      const tauxMargeNote = document.createElement('p');
+      tauxMargeNote.className = 'allergen-note';
+      tauxMargeNote.textContent = "Information commerciale interne — jamais imprimée sur les étiquettes. (Prix de vente HT − Prix d'achat HT) / Prix d'achat HT.";
+      tauxMargeWrap.appendChild(tauxMargeNote);
+      biz.appendChild(tauxMargeWrap);
+
+      const refreshTauxMarge = ()=>{
+        const draftRow = row.slice();
+        draftRow[BIZCOL.ACHAT_HT] = euroStrToCents(achatInput.value);
+        const taux = tauxDeMargeFor(draftRow);
+        tauxMargeOut.classList.remove('neg');
+        if(taux === null){ tauxMargeOut.textContent = 'à renseigner'; return; }
+        tauxMargeOut.textContent = taux.toFixed(1).replace('.',',') + ' %';
+        if(taux < 0) tauxMargeOut.classList.add('neg');
+      };
+      achatInput.addEventListener('input', refreshTauxMarge);
+      catSelect.addEventListener('change', refreshTauxMarge);
+      refreshTauxMarge();
+      refreshAchatRef(); // appel initial, placé ici (après la définition de refreshTauxMarge, qu'il invoque) pour l'affichage à l'ouverture de la fiche
+
       // Stock actuel / mini / maxi
       const stockRow = document.createElement('div');
       stockRow.className = 'biz-row3';
@@ -3631,6 +3788,10 @@
     }
     const achatEl = document.getElementById('bizAchat');
     if(achatEl) state.rows[sheetRow][BIZCOL.ACHAT_HT] = euroStrToCents(achatEl.value);
+    const tailleRefAchatEl = document.getElementById('bizTailleRefAchat');
+    if(tailleRefAchatEl) state.rows[sheetRow][BIZCOL.TAILLE_REF_ACHAT] = tailleRefAchatEl.value.trim();
+    const prixRefAchatEl = document.getElementById('bizPrixRefAchat');
+    if(prixRefAchatEl) state.rows[sheetRow][BIZCOL.PRIX_REF_ACHAT] = euroStrToCents(prixRefAchatEl.value);
     // Catégorie (remplit la colonne 6 côté balance) — doit être posée avant le calcul de la TVA
     const catSelect = document.getElementById('bizCategorie');
     if(catSelect) state.rows[sheetRow][5] = catSelect.value;
@@ -8678,6 +8839,9 @@
     $('sysMsg1').value = state.storeInfo.msg1;
     $('sysMsg2').value = state.storeInfo.msg2;
 
+    $('sysMargeLow').value = state.marginThresholds.low;
+    $('sysMargeHigh').value = state.marginThresholds.high;
+
     const adsDiv = $('sysAdsFields');
     adsDiv.innerHTML = '';
     state.adMessages.forEach((ad,i)=>{
@@ -8733,6 +8897,15 @@
       nom: $('sysNom').value.trim(), tel: $('sysTel').value.trim(), site: $('sysSite').value.trim(),
       msg1: $('sysMsg1').value.trim(), msg2: $('sysMsg2').value.trim()
     };
+    {
+      const lowN = parseFloat($('sysMargeLow').value);
+      const highN = parseFloat($('sysMargeHigh').value);
+      const low = isNaN(lowN) ? state.marginThresholds.low : lowN;
+      const high = isNaN(highN) ? state.marginThresholds.high : highN;
+      // Le seuil bas ne doit jamais dépasser le seuil haut (sinon aucune valeur ne serait jamais
+      // verte, ou la zone orange serait inversée) — on les échange silencieusement si inversés.
+      state.marginThresholds = low <= high ? { low, high } : { low: high, high: low };
+    }
     document.querySelectorAll('#sysAdsFields input[data-ad-index]').forEach(inp=>{
       const i = parseInt(inp.dataset.adIndex,10);
       if(state.adMessages[i]) state.adMessages[i].text = inp.value.trim();
