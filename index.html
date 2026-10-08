@@ -1801,6 +1801,99 @@
             Afficher la description longue
           </label>
 
+          <p class="biz-title" style="margin-top:18px;">Personnalisation fine par élément (position, couleur, gras)</p>
+          <p class="renum-intro" style="margin:4px 0 10px;">Le décalage (mm) s'ajoute à la position déjà calculée par la trame — à 0, le rendu reste identique aux réglages ci-dessus. S'applique aux deux trames (détaillée et compacte) sauf la mention allergènes, affichée uniquement en trame détaillée.</p>
+
+          <p class="allergen-note" style="margin:10px 0 4px; font-weight:600;">Code / PLU affiché</p>
+          <div class="field-grid">
+            <div class="field"><div class="field-label"><span class="name">Police (pt, détaillée)</span></div>
+              <input type="number" id="lsDetailCodeFont" min="6" max="14" step="0.5"></div>
+            <div class="field"><div class="field-label"><span class="name">Police (pt, compacte)</span></div>
+              <input type="number" id="lsCompactCodeFont" min="5" max="10" step="0.5"></div>
+            <div class="field"><div class="field-label"><span class="name">Couleur</span></div>
+              <input type="color" id="lsCodeColor"></div>
+            <div class="field"><div class="field-label"><span class="name">Décalage X (mm)</span></div>
+              <input type="number" id="lsCodeOffsetX" min="-20" max="20" step="0.5"></div>
+            <div class="field"><div class="field-label"><span class="name">Décalage Y (mm)</span></div>
+              <input type="number" id="lsCodeOffsetY" min="-20" max="20" step="0.5"></div>
+          </div>
+          <label class="toggleLabel" style="margin:8px 0;">
+            <input type="checkbox" id="lsCodeBold">
+            <span class="toggleSwitch"></span>
+            Gras
+          </label>
+
+          <p class="allergen-note" style="margin:14px 0 4px; font-weight:600;">Nom du produit</p>
+          <div class="field-grid">
+            <div class="field"><div class="field-label"><span class="name">Couleur</span></div>
+              <input type="color" id="lsNameColor"></div>
+            <div class="field"><div class="field-label"><span class="name">Décalage X (mm)</span></div>
+              <input type="number" id="lsNameOffsetX" min="-20" max="20" step="0.5"></div>
+            <div class="field"><div class="field-label"><span class="name">Décalage Y (mm)</span></div>
+              <input type="number" id="lsNameOffsetY" min="-20" max="20" step="0.5"></div>
+          </div>
+          <label class="toggleLabel" style="margin:8px 0;">
+            <input type="checkbox" id="lsNameBold">
+            <span class="toggleSwitch"></span>
+            Gras
+          </label>
+
+          <p class="allergen-note" style="margin:14px 0 4px; font-weight:600;">Prix</p>
+          <div class="field-grid">
+            <div class="field"><div class="field-label"><span class="name">Couleur</span></div>
+              <input type="color" id="lsPriceColor"></div>
+            <div class="field"><div class="field-label"><span class="name">Décalage X (mm)</span></div>
+              <input type="number" id="lsPriceOffsetX" min="-20" max="20" step="0.5"></div>
+            <div class="field"><div class="field-label"><span class="name">Décalage Y (mm)</span></div>
+              <input type="number" id="lsPriceOffsetY" min="-20" max="20" step="0.5"></div>
+          </div>
+          <label class="toggleLabel" style="margin:8px 0;">
+            <input type="checkbox" id="lsPriceBold">
+            <span class="toggleSwitch"></span>
+            Gras
+          </label>
+
+          <p class="allergen-note" style="margin:14px 0 4px; font-weight:600;">Badge Bio (couleur/taille déjà réglables plus haut)</p>
+          <div class="field-grid">
+            <div class="field"><div class="field-label"><span class="name">Décalage X (mm)</span></div>
+              <input type="number" id="lsBioOffsetX" min="-20" max="20" step="0.5"></div>
+            <div class="field"><div class="field-label"><span class="name">Décalage Y (mm)</span></div>
+              <input type="number" id="lsBioOffsetY" min="-20" max="20" step="0.5"></div>
+          </div>
+          <label class="toggleLabel" style="margin:8px 0;">
+            <input type="checkbox" id="lsBioBold">
+            <span class="toggleSwitch"></span>
+            Gras
+          </label>
+
+          <p class="allergen-note" style="margin:14px 0 4px; font-weight:600;">Badge Local (couleur/taille déjà réglables plus haut)</p>
+          <div class="field-grid">
+            <div class="field"><div class="field-label"><span class="name">Décalage X (mm)</span></div>
+              <input type="number" id="lsLocalOffsetX" min="-20" max="20" step="0.5"></div>
+            <div class="field"><div class="field-label"><span class="name">Décalage Y (mm)</span></div>
+              <input type="number" id="lsLocalOffsetY" min="-20" max="20" step="0.5"></div>
+          </div>
+          <label class="toggleLabel" style="margin:8px 0;">
+            <input type="checkbox" id="lsLocalBold">
+            <span class="toggleSwitch"></span>
+            Gras
+          </label>
+
+          <p class="allergen-note" style="margin:14px 0 4px; font-weight:600;">Mention allergènes (trame détaillée uniquement)</p>
+          <div class="field-grid">
+            <div class="field"><div class="field-label"><span class="name">Couleur</span></div>
+              <input type="color" id="lsAllergenColor"></div>
+            <div class="field"><div class="field-label"><span class="name">Décalage X (mm)</span></div>
+              <input type="number" id="lsAllergenOffsetX" min="-20" max="20" step="0.5"></div>
+            <div class="field"><div class="field-label"><span class="name">Décalage Y (mm)</span></div>
+              <input type="number" id="lsAllergenOffsetY" min="-20" max="20" step="0.5"></div>
+          </div>
+          <label class="toggleLabel" style="margin:8px 0;">
+            <input type="checkbox" id="lsAllergenBold">
+            <span class="toggleSwitch"></span>
+            Gras
+          </label>
+
         </div>
 
         <div class="ls-preview">
@@ -1877,7 +1970,7 @@
 (function(){
   // Version affichée en haut à droite de la page — à mettre à jour à chaque modification
   // poussée sur GitHub, pour que l'utilisateur puisse vérifier qu'il a bien la dernière version.
-  const APP_VERSION = 'v20261008_5';
+  const APP_VERSION = 'v20261008_6';
   const versionBadge = document.getElementById('appVersionBadge');
   if(versionBadge) versionBadge.textContent = `Version du ${APP_VERSION}`;
 
@@ -1927,7 +2020,16 @@
       showSupplier: false, // afficher le fournisseur sur la trame détaillée
       showDescription: false, // afficher la description longue sur la trame détaillée
       showLogo: true, // afficher le logo OPEV au centre de l'étiquette (trames détaillée et compacte) ; le désactiver libère de l'espace vertical pour des polices plus grandes
-      logoStyle: 'icon' // 'icon' (pictogramme centré, historique) | 'band' (bandeau noir en haut avec le logo de marque complet, trame détaillée uniquement — ignoré en trame compacte)
+      logoStyle: 'icon', // 'icon' (pictogramme centré, historique) | 'band' (bandeau noir en haut avec le logo de marque complet, trame détaillée uniquement — ignoré en trame compacte)
+      // Personnalisation fine par élément (position/couleur/gras) — voir LABEL_SETTINGS_DEFAULTS
+      // pour le détail ; valeurs par défaut = rendu actuel codé en dur (décalages à 0).
+      compactCodeFont: 6.5, detailCodeFont: 8,
+      codeColor: '#2A2420', codeBold: false, codeOffsetX: 0, codeOffsetY: 0,
+      nameColor: '#2A2420', nameBold: true, nameOffsetX: 0, nameOffsetY: 0,
+      priceColor: '#0A0A0A', priceBold: true, priceOffsetX: 0, priceOffsetY: 0,
+      bioBold: true, bioOffsetX: 0, bioOffsetY: 0,
+      localBold: true, localOffsetX: 0, localOffsetY: 0,
+      allergenColor: '#787878', allergenBold: false, allergenOffsetX: 0, allergenOffsetY: 0
     }
   };
   const $ = (id)=>document.getElementById(id);
@@ -5261,7 +5363,23 @@
     showSupplier: false,
     showDescription: false,
     showLogo: true,
-    logoStyle: 'icon'
+    logoStyle: 'icon',
+    // ---- Personnalisation fine par élément (position/couleur/gras) ----
+    // Chaque "Offset" est un simple décalage (mm) ajouté par-dessus la position déjà calculée
+    // par drawLabelCompact/drawLabelDetail — à 0 (valeur par défaut), le rendu reste strictement
+    // identique à l'existant. Couleur/gras par défaut = valeurs codées en dur actuelles.
+    // Code/PLU : taille de police scindée par trame (comme les autres polices), le reste
+    // (couleur, gras, décalage) est partagé — la couleur/le gras actuels sont déjà identiques
+    // sur les deux trames, seule la taille diffère (6.5 vs 8 pt, déjà codée en dur ainsi).
+    compactCodeFont: 6.5, detailCodeFont: 8,
+    codeColor: '#2A2420', codeBold: false, codeOffsetX: 0, codeOffsetY: 0,
+    nameColor: '#2A2420', nameBold: true, nameOffsetX: 0, nameOffsetY: 0,
+    priceColor: '#0A0A0A', priceBold: true, priceOffsetX: 0, priceOffsetY: 0,
+    bioBold: true, bioOffsetX: 0, bioOffsetY: 0,
+    localBold: true, localOffsetX: 0, localOffsetY: 0,
+    // Allergènes : uniquement affichés sur la trame détaillée (la trame compacte n'en a jamais
+    // affiché, ça reste vrai avec ces nouveaux réglages).
+    allergenColor: '#787878', allergenBold: false, allergenOffsetX: 0, allergenOffsetY: 0
   };
   // Plafonds de sécurité pour les tailles de police personnalisables (revue-graphiste
   // #2) : au-delà, le texte se chevauche dans les cellules aux dimensions par défaut
@@ -5282,8 +5400,14 @@
     localIconSize: { min:2, max:8 },
     allergenFontSize: { min:5, max:9 },
     detailKgFont: { min:5, max:10 },
-    compactKgFont: { min:4, max:8 }
+    compactKgFont: { min:4, max:8 },
+    compactCodeFont: { min:5, max:10 },
+    detailCodeFont: { min:6, max:14 }
   };
+  // Plafond des décalages (mm) de position par élément — large mais borné, pour éviter qu'une
+  // valeur extrême ne pousse totalement un élément hors de l'étiquette.
+  const LABEL_OFFSET_CAP = 20;
+  const clampLabelOffset = (v)=> Math.max(-LABEL_OFFSET_CAP, Math.min(LABEL_OFFSET_CAP, v));
   const clampLabelFont = (key, v)=>{
     const c = LABEL_FONT_CAPS[key];
     return Math.max(c.min, Math.min(c.max, v));
@@ -5316,6 +5440,30 @@
     $('lsShowDescription').checked = !!s.showDescription;
     $('lsShowLogo').checked = s.showLogo !== false; // défaut affiché si réglage absent (compat anciens réglages)
     $('lsLogoStyle').value = s.logoStyle === 'band' ? 'band' : 'icon';
+    $('lsCompactCodeFont').value = s.compactCodeFont ?? LABEL_SETTINGS_DEFAULTS.compactCodeFont;
+    $('lsDetailCodeFont').value = s.detailCodeFont ?? LABEL_SETTINGS_DEFAULTS.detailCodeFont;
+    $('lsCodeColor').value = s.codeColor || LABEL_SETTINGS_DEFAULTS.codeColor;
+    $('lsCodeBold').checked = !!s.codeBold;
+    $('lsCodeOffsetX').value = s.codeOffsetX ?? 0;
+    $('lsCodeOffsetY').value = s.codeOffsetY ?? 0;
+    $('lsNameColor').value = s.nameColor || LABEL_SETTINGS_DEFAULTS.nameColor;
+    $('lsNameBold').checked = s.nameBold !== false;
+    $('lsNameOffsetX').value = s.nameOffsetX ?? 0;
+    $('lsNameOffsetY').value = s.nameOffsetY ?? 0;
+    $('lsPriceColor').value = s.priceColor || LABEL_SETTINGS_DEFAULTS.priceColor;
+    $('lsPriceBold').checked = s.priceBold !== false;
+    $('lsPriceOffsetX').value = s.priceOffsetX ?? 0;
+    $('lsPriceOffsetY').value = s.priceOffsetY ?? 0;
+    $('lsBioBold').checked = s.bioBold !== false;
+    $('lsBioOffsetX').value = s.bioOffsetX ?? 0;
+    $('lsBioOffsetY').value = s.bioOffsetY ?? 0;
+    $('lsLocalBold').checked = s.localBold !== false;
+    $('lsLocalOffsetX').value = s.localOffsetX ?? 0;
+    $('lsLocalOffsetY').value = s.localOffsetY ?? 0;
+    $('lsAllergenColor').value = s.allergenColor || LABEL_SETTINGS_DEFAULTS.allergenColor;
+    $('lsAllergenBold').checked = !!s.allergenBold;
+    $('lsAllergenOffsetX').value = s.allergenOffsetX ?? 0;
+    $('lsAllergenOffsetY').value = s.allergenOffsetY ?? 0;
     updateLogoStyleVisibility();
     updateLabelPreview(); // reflète immédiatement les réglages courants dans l'aperçu à l'ouverture du panneau
   }
@@ -5358,7 +5506,32 @@
       showSupplier: $('lsShowSupplier').checked,
       showDescription: $('lsShowDescription').checked,
       showLogo: $('lsShowLogo').checked,
-      logoStyle: $('lsLogoStyle').value === 'band' ? 'band' : 'icon'
+      logoStyle: $('lsLogoStyle').value === 'band' ? 'band' : 'icon',
+      // ---- Personnalisation fine par élément ----
+      compactCodeFont: clampLabelFont('compactCodeFont', num('lsCompactCodeFont', LABEL_SETTINGS_DEFAULTS.compactCodeFont)),
+      detailCodeFont: clampLabelFont('detailCodeFont', num('lsDetailCodeFont', LABEL_SETTINGS_DEFAULTS.detailCodeFont)),
+      codeColor: $('lsCodeColor').value || LABEL_SETTINGS_DEFAULTS.codeColor,
+      codeBold: $('lsCodeBold').checked,
+      codeOffsetX: clampLabelOffset(num('lsCodeOffsetX', 0)),
+      codeOffsetY: clampLabelOffset(num('lsCodeOffsetY', 0)),
+      nameColor: $('lsNameColor').value || LABEL_SETTINGS_DEFAULTS.nameColor,
+      nameBold: $('lsNameBold').checked,
+      nameOffsetX: clampLabelOffset(num('lsNameOffsetX', 0)),
+      nameOffsetY: clampLabelOffset(num('lsNameOffsetY', 0)),
+      priceColor: $('lsPriceColor').value || LABEL_SETTINGS_DEFAULTS.priceColor,
+      priceBold: $('lsPriceBold').checked,
+      priceOffsetX: clampLabelOffset(num('lsPriceOffsetX', 0)),
+      priceOffsetY: clampLabelOffset(num('lsPriceOffsetY', 0)),
+      bioBold: $('lsBioBold').checked,
+      bioOffsetX: clampLabelOffset(num('lsBioOffsetX', 0)),
+      bioOffsetY: clampLabelOffset(num('lsBioOffsetY', 0)),
+      localBold: $('lsLocalBold').checked,
+      localOffsetX: clampLabelOffset(num('lsLocalOffsetX', 0)),
+      localOffsetY: clampLabelOffset(num('lsLocalOffsetY', 0)),
+      allergenColor: $('lsAllergenColor').value || LABEL_SETTINGS_DEFAULTS.allergenColor,
+      allergenBold: $('lsAllergenBold').checked,
+      allergenOffsetX: clampLabelOffset(num('lsAllergenOffsetX', 0)),
+      allergenOffsetY: clampLabelOffset(num('lsAllergenOffsetY', 0))
     };
   }
   $('btnLabelSettings').addEventListener('click', ()=>{
@@ -5385,9 +5558,17 @@
     'lsDetailW','lsDetailH','lsDetailNameFont','lsDetailPriceFont','lsDetailPadding','lsElementSpacing',
     'lsCompactCols','lsCompactRows','lsCompactNameFont','lsCompactPriceFont','lsCompactPadding',
     'lsBioFont','lsLocalFont','lsBioDotSize','lsLocalIconSize','lsBioColor','lsLocalColor',
-    'lsAllergenFont','lsDetailKgFont','lsCompactKgFont'
+    'lsAllergenFont','lsDetailKgFont','lsCompactKgFont',
+    'lsCompactCodeFont','lsDetailCodeFont','lsCodeColor','lsCodeOffsetX','lsCodeOffsetY',
+    'lsNameColor','lsNameOffsetX','lsNameOffsetY',
+    'lsPriceColor','lsPriceOffsetX','lsPriceOffsetY',
+    'lsBioOffsetX','lsBioOffsetY','lsLocalOffsetX','lsLocalOffsetY',
+    'lsAllergenColor','lsAllergenOffsetX','lsAllergenOffsetY'
   ].forEach(id=> $(id).addEventListener('input', updateLabelPreview));
-  ['lsDetailAlign','lsBioAsText','lsShowSupplier','lsShowDescription','lsShowLogo','lsLogoStyle'].forEach(id=> $(id).addEventListener('change', updateLabelPreview));
+  [
+    'lsDetailAlign','lsBioAsText','lsShowSupplier','lsShowDescription','lsShowLogo','lsLogoStyle',
+    'lsCodeBold','lsNameBold','lsPriceBold','lsBioBold','lsLocalBold','lsAllergenBold'
+  ].forEach(id=> $(id).addEventListener('change', updateLabelPreview));
   $('lsShowLogo').addEventListener('change', updateLogoStyleVisibility);
 
   function drawCutGuide(doc, x, y, w, h){
@@ -5431,14 +5612,18 @@
     drawCutGuide(doc, x, y, w, h);
     const s = state.labelSettings;
     const pad = s.compactPadding;
-    doc.setTextColor(42,36,32);
-    doc.setFont('helvetica','normal');
-    doc.setFontSize(6.5);
+    doc.setTextColor(...hexToRgbArray(s.codeColor, [42,36,32]));
+    doc.setFont('helvetica', s.codeBold ? 'bold' : 'normal');
+    doc.setFontSize(s.compactCodeFont);
     // Code balance (regroupement d'articles) si renseigné, sinon PLU propre de l'article —
     // voir codeAfficheFor. Seul le code imprimé change, le reste de l'étiquette (nom, prix,
     // bio/local...) reste propre à cet article précis.
     const pluStr = codeAfficheFor(r);
-    doc.text(pluStr, x+pad, y+5);
+    // bx (position des badges bio/local) reste calculé à partir de la position NON décalée du
+    // code — le décalage du code n'est qu'une retouche visuelle de ce seul élément, il ne doit
+    // pas déplacer les éléments qui s'enchaînent après lui (voir note en tête de drawLabelDetail
+    // pour le même principe).
+    doc.text(pluStr, x+pad+(s.codeOffsetX||0), y+5+(s.codeOffsetY||0));
 
     // Repère bio/local, à côté du PLU — la trame compacte est celle par défaut et en était
     // totalement dépourvue jusqu'ici (revue-graphiste #1). Même logique de détection que la
@@ -5465,29 +5650,31 @@
       const maxBadgeRight = x+w-pad; // ne jamais déborder du bord droit de l'étiquette
       if(isBioC){
         doc.setFillColor(...hexToRgbArray(s.bioColor, [60,130,60]));
-        doc.circle(bx+bioDotRC, y+3.9, bioDotRC, 'F');
-        bx += bioDotRC*2+0.4;
-        doc.setFont('helvetica','bold');
+        doc.circle(bx+bioDotRC+(s.bioOffsetX||0), y+3.9+(s.bioOffsetY||0), bioDotRC, 'F');
+        doc.setFont('helvetica', s.bioBold===false ? 'normal' : 'bold');
         doc.setFontSize(bioBadgeFontC);
         doc.setTextColor(...hexToRgbArray(s.bioColor, [60,130,60]));
-        doc.text('BIO', bx, y+4.6);
-        bx += doc.getTextWidth('BIO') + 2;
+        doc.text('BIO', bx+(s.bioOffsetX||0), y+4.6+(s.bioOffsetY||0));
+        // bx (position du badge Local qui suit) continue depuis la position NON décalée du
+        // badge Bio — le décalage ne doit nudger que le rendu du badge Bio lui-même.
+        bx += bioDotRC*2+0.4 + doc.getTextWidth('BIO') + 2;
       }
       if(pinTextC){
-        drawMapPin(doc, bx+pinRC, y+4.6, pinRC, hexToRgbArray(s.localColor, PIN_RED));
+        drawMapPin(doc, bx+pinRC+(s.localOffsetX||0), y+4.6+(s.localOffsetY||0), pinRC, hexToRgbArray(s.localColor, PIN_RED));
         bx += pinRC*2+0.4;
-        doc.setFont('helvetica','bold');
+        doc.setFont('helvetica', s.localBold===false ? 'normal' : 'bold');
         doc.setFontSize(localBadgeFontC);
         doc.setTextColor(...hexToRgbArray(s.localColor, PIN_RED));
-        doc.text(truncateTextToWidth(doc, pinTextC, maxBadgeRight-bx), bx, y+4.6);
+        doc.text(truncateTextToWidth(doc, pinTextC, maxBadgeRight-bx), bx+(s.localOffsetX||0), y+4.6+(s.localOffsetY||0));
       }
       doc.setTextColor(42,36,32); // remet la couleur d'encre standard avant le nom du produit
     }
 
-    doc.setFont('helvetica','bold');
+    doc.setFont('helvetica', s.nameBold===false ? 'normal' : 'bold');
     doc.setFontSize(s.compactNameFont);
+    doc.setTextColor(...hexToRgbArray(s.nameColor, [42,36,32]));
     const nomLines = doc.splitTextToSize((r[1]||'').trim(), w-2*pad);
-    doc.text(ellipsizeLines(nomLines, 1), x+pad, y+10);
+    doc.text(ellipsizeLines(nomLines, 1), x+pad+(s.nameOffsetX||0), y+10+(s.nameOffsetY||0));
 
     // logo au centre de l'étiquette (réduit de 10%) — désactivable (réglage showLogo, défaut
     // affiché si absent pour compat des réglages enregistrés avant cette évolution). Le style
@@ -5525,10 +5712,10 @@
       doc.setTextColor(96,88,78);
       doc.text(pu.unitLabel, x+w-pad, unitLineYC, { align:'right' });
     }
-    doc.setFont('helvetica','bold');
+    doc.setFont('helvetica', s.priceBold===false ? 'normal' : 'bold');
     doc.setFontSize(s.compactPriceFont);
-    doc.setTextColor(...BRAND_COLOR);
-    doc.text(pu.priceStr, x+w-pad, priceYC, { align:'right' });
+    doc.setTextColor(...hexToRgbArray(s.priceColor, BRAND_COLOR));
+    doc.text(pu.priceStr, x+w-pad+(s.priceOffsetX||0), priceYC+(s.priceOffsetY||0), { align:'right' });
   }
 
   // Bandeau logo (style 'band', trame détaillée uniquement) : dimensionne le logo de marque
@@ -5573,21 +5760,28 @@
       doc.addImage(LOGO_BRAND_URI, 'PNG', cx-bm.logoW/2, y+bm.padV, bm.logoW, bm.logoH);
     }
 
-    doc.setTextColor(42,36,32);
-    doc.setFont('helvetica','normal');
-    doc.setFontSize(8);
+    doc.setTextColor(...hexToRgbArray(s.codeColor, [42,36,32]));
+    doc.setFont('helvetica', s.codeBold ? 'bold' : 'normal');
+    doc.setFontSize(s.detailCodeFont);
     // Le PLU reste le repère constant en haut à gauche, quel que soit l'alignement choisi —
     // simplement repoussé sous le bandeau quand celui-ci occupe désormais le haut de l'étiquette.
+    // pluY sert aussi d'ancre de flux pour le nom (style bandeau) : on ne lui applique jamais le
+    // décalage du code, uniquement à sa position de dessin ci-dessous, pour que ce décalage reste
+    // une simple retouche visuelle du code sans déplacer les éléments qui s'enchaînent après lui.
     const pluY = useBand ? y+bandH+5 : y+7;
     // Code balance si renseigné, sinon PLU propre — voir codeAfficheFor.
-    doc.text(codeAfficheFor(r), x+pad, pluY);
+    doc.text(codeAfficheFor(r), x+pad+(s.codeOffsetX||0), pluY+(s.codeOffsetY||0));
 
-    doc.setFont('helvetica','bold');
+    doc.setFont('helvetica', s.nameBold===false ? 'normal' : 'bold');
     doc.setFontSize(s.detailNameFont);
+    doc.setTextColor(...hexToRgbArray(s.nameColor, [42,36,32]));
     const nomLines = doc.splitTextToSize((r[1]||'').trim(), w-2*pad);
     const nomLinesShown = ellipsizeLines(nomLines, 4); // ellipse si le nom dépasse 4 lignes
+    // nomY est aussi l'ancre de flux des badges Bio/Local en style bandeau (flowY ci-dessous) —
+    // comme pour pluY, le décalage nameOffset ne s'applique qu'au dessin ci-dessous.
     const nomY = useBand ? pluY+6 : y+16;
-    doc.text(nomLinesShown, tx, nomY, opt);
+    doc.text(nomLinesShown, tx+(s.nameOffsetX||0), nomY+(s.nameOffsetY||0), opt);
+    doc.setTextColor(42,36,32); // remet la couleur d'encre standard (badges/prix gèrent la leur explicitement)
 
     // Repères bio / local (détection depuis les données) — calculés avant le logo/bandeau car
     // la présence du badge Bio conditionne la position verticale du logo en style 'icon'
@@ -5637,14 +5831,14 @@
         if(s.bioAsText){
           const dotCy = flowY + bioDotD/2;
           doc.setFillColor(...hexToRgbArray(s.bioColor, [60,130,60]));
-          doc.circle(cx, dotCy, bioDotD/2, 'F');
+          doc.circle(cx+(s.bioOffsetX||0), dotCy+(s.bioOffsetY||0), bioDotD/2, 'F');
           const textBaseline = dotCy + bioDotD/2 + bioDotGap + bioTxtH*0.8;
-          doc.setFont('helvetica','bold');
+          doc.setFont('helvetica', s.bioBold===false ? 'normal' : 'bold');
           doc.setFontSize(s.bioFontSize);
           doc.setTextColor(...hexToRgbArray(s.bioColor, [60,130,60]));
-          doc.text('BIO', cx, textBaseline, { align:'center' });
+          doc.text('BIO', cx+(s.bioOffsetX||0), textBaseline+(s.bioOffsetY||0), { align:'center' });
         } else {
-          doc.addImage(LOGO_AB_URI, 'PNG', cx-abImgW/2, flowY, abImgW, abImgH);
+          doc.addImage(LOGO_AB_URI, 'PNG', cx-abImgW/2+(s.bioOffsetX||0), flowY+(s.bioOffsetY||0), abImgW, abImgH);
         }
         doc.setTextColor(42,36,32);
       }
@@ -5654,12 +5848,12 @@
         const pinTopY = flowY; // haut de la tête de l'épingle, cf. drawMapPin (top = cy - headR*1.4)
         const pinCenterParam = pinTopY + headR*1.4;
         const pinTipY = pinTopY + headR*2.9; // pointe de l'épingle, cf. drawMapPin (tip = cy + headR*1.5)
-        drawMapPin(doc, cx, pinCenterParam, headR, hexToRgbArray(s.localColor, PIN_RED));
+        drawMapPin(doc, cx+(s.localOffsetX||0), pinCenterParam+(s.localOffsetY||0), headR, hexToRgbArray(s.localColor, PIN_RED));
         const textBaseline = pinTipY + 0.8 + localTxtH*0.8;
-        doc.setFont('helvetica','bold');
+        doc.setFont('helvetica', s.localBold===false ? 'normal' : 'bold');
         doc.setFontSize(s.localFontSize);
         doc.setTextColor(...hexToRgbArray(s.localColor, PIN_RED));
-        doc.text(pinTextShown, cx, textBaseline, { align:'center' });
+        doc.text(pinTextShown, cx+(s.localOffsetX||0), textBaseline+(s.localOffsetY||0), { align:'center' });
         doc.setTextColor(42,36,32);
       }
       flowY += localSlotH + 2.5; // emplacement fournisseur/description, fixe (réserve toujours la place du badge Local)
@@ -5690,13 +5884,13 @@
           const textBaseline = badgeBottom;
           const dotCy = textBaseline - bioTxtH - bioDotGap - bioDotD/2;
           doc.setFillColor(...hexToRgbArray(s.bioColor, [60,130,60]));
-          doc.circle(cx, dotCy, bioDotD/2, 'F');
-          doc.setFont('helvetica','bold');
+          doc.circle(cx+(s.bioOffsetX||0), dotCy+(s.bioOffsetY||0), bioDotD/2, 'F');
+          doc.setFont('helvetica', s.bioBold===false ? 'normal' : 'bold');
           doc.setFontSize(s.bioFontSize);
           doc.setTextColor(...hexToRgbArray(s.bioColor, [60,130,60]));
-          doc.text('BIO', cx, textBaseline, { align:'center' });
+          doc.text('BIO', cx+(s.bioOffsetX||0), textBaseline+(s.bioOffsetY||0), { align:'center' });
         } else {
-          doc.addImage(LOGO_AB_URI, 'PNG', cx-abImgW/2, badgeBottom-abImgH, abImgW, abImgH);
+          doc.addImage(LOGO_AB_URI, 'PNG', cx-abImgW/2+(s.bioOffsetX||0), badgeBottom-abImgH+(s.bioOffsetY||0), abImgW, abImgH);
         }
         doc.setTextColor(42,36,32);
       }
@@ -5710,12 +5904,12 @@
       if(pinTextShown){
         const pinCenterParam = localSlotTop + headR*1.4;
         const pinTipY = localSlotTop + headR*2.9; // pointe de l'épingle, cf. drawMapPin (tip = cy + headR*1.5)
-        drawMapPin(doc, cx, pinCenterParam, headR, hexToRgbArray(s.localColor, PIN_RED));
+        drawMapPin(doc, cx+(s.localOffsetX||0), pinCenterParam+(s.localOffsetY||0), headR, hexToRgbArray(s.localColor, PIN_RED));
         const textBaseline = pinTipY + localGap + localTxtH*0.8;
-        doc.setFont('helvetica','bold');
+        doc.setFont('helvetica', s.localBold===false ? 'normal' : 'bold');
         doc.setFontSize(s.localFontSize);
         doc.setTextColor(...hexToRgbArray(s.localColor, PIN_RED));
-        doc.text(pinTextShown, cx, textBaseline, { align:'center' });
+        doc.text(pinTextShown, cx+(s.localOffsetX||0), textBaseline+(s.localOffsetY||0), { align:'center' });
         doc.setTextColor(42,36,32);
       }
       belowY = localSlotTop + localSlotH + 2.5; // toujours fixe, badge Local affiché ou non
@@ -5775,20 +5969,20 @@
       doc.setTextColor(110,102,92);
       doc.text(pu.unitLabel, tx, unitLineY, opt);
     }
-    doc.setFont('helvetica','bold');
+    doc.setFont('helvetica', s.priceBold===false ? 'normal' : 'bold');
     doc.setFontSize(s.detailPriceFont);
-    doc.setTextColor(...BRAND_COLOR);
-    doc.text(pu.priceStr, tx, priceY, opt);
+    doc.setTextColor(...hexToRgbArray(s.priceColor, BRAND_COLOR));
+    doc.text(pu.priceStr, tx+(s.priceOffsetX||0), priceY+(s.priceOffsetY||0), opt);
 
     const realCat = (r[5]||'').trim();
     if(realCat === '1'){
       const plu = (r[0]||'').trim();
       const codes = state.allergens[plu] !== undefined ? state.allergens[plu] : detectAllergens(r[1]);
       if(codes.length){
-        doc.setFont('helvetica','normal');
+        doc.setFont('helvetica', s.allergenBold ? 'bold' : 'normal');
         doc.setFontSize(s.allergenFontSize);
-        doc.setTextColor(120,120,120);
-        doc.text('Allerg. '+codes.join(','), x+w-pad, allergenLineY, { align:'right' }); // >= 3-4 mm avant le repère de découpe (revue-graphiste #5), sur sa propre ligne réservée (ne chevauche plus le prix au kg)
+        doc.setTextColor(...hexToRgbArray(s.allergenColor, [120,120,120]));
+        doc.text('Allerg. '+codes.join(','), x+w-pad+(s.allergenOffsetX||0), allergenLineY+(s.allergenOffsetY||0), { align:'right' }); // >= 3-4 mm avant le repère de découpe (revue-graphiste #5), sur sa propre ligne réservée (ne chevauche plus le prix au kg)
       }
     }
   }
@@ -5835,12 +6029,13 @@
   }
   // Positionne un bloc de texte horizontalement selon l'alignement choisi (gauche/centre/droite),
   // en mm convertis en px — miroir du calcul de tx/opt dans drawLabelDetail.
-  function lsApplyAlignX(el, align, wMm, padMm, scale){
+  function lsApplyAlignX(el, align, wMm, padMm, scale, offsetXmm){
+    offsetXmm = offsetXmm || 0;
     el.style.width = ((wMm-2*padMm)*scale)+'px';
     el.style.textAlign = align;
-    if(align==='left'){ el.style.left = (padMm*scale)+'px'; }
-    else if(align==='right'){ el.style.right = (padMm*scale)+'px'; }
-    else { el.style.left = '50%'; el.style.transform = 'translateX(-50%)'; }
+    if(align==='left'){ el.style.left = ((padMm+offsetXmm)*scale)+'px'; }
+    else if(align==='right'){ el.style.right = ((padMm-offsetXmm)*scale)+'px'; }
+    else { el.style.left = '50%'; el.style.transform = `translateX(calc(-50% + ${offsetXmm*scale}px))`; }
   }
   // Petite épingle SVG reprenant la forme de drawMapPin (tête ronde + pointe + point blanc central)
   function lsBuildPinSvg(colorHex, sizePx){
@@ -5950,10 +6145,11 @@
     const pluTopMm = useBand ? bandH+3 : 3;
     const pluEl = document.createElement('div');
     pluEl.textContent = codeAfficheFor(r);
-    pluEl.style.left = (pad*scale)+'px';
-    pluEl.style.top = (pluTopMm*scale)+'px';
-    pluEl.style.fontSize = (8*0.3528*scale)+'px';
-    pluEl.style.color = '#2A2420';
+    pluEl.style.left = ((pad+(s.codeOffsetX||0))*scale)+'px';
+    pluEl.style.top = ((pluTopMm+(s.codeOffsetY||0))*scale)+'px';
+    pluEl.style.fontSize = ((s.detailCodeFont||8)*0.3528*scale)+'px';
+    pluEl.style.fontWeight = s.codeBold ? '700' : '400';
+    pluEl.style.color = s.codeColor || '#2A2420';
     label.appendChild(pluEl);
 
     // Nom du produit
@@ -5962,11 +6158,11 @@
     const nomEl = document.createElement('div');
     nomEl.className = 'ls-wrap';
     nomEl.textContent = nom;
-    nomEl.style.top = (nomTopMm*scale)+'px';
-    nomEl.style.fontWeight = '700';
+    nomEl.style.top = ((nomTopMm+(s.nameOffsetY||0))*scale)+'px';
+    nomEl.style.fontWeight = s.nameBold===false ? '400' : '700';
     nomEl.style.fontSize = (s.detailNameFont*0.3528*scale)+'px';
-    nomEl.style.color = '#2A2420';
-    lsApplyAlignX(nomEl, align, w, pad, scale);
+    nomEl.style.color = s.nameColor || '#2A2420';
+    lsApplyAlignX(nomEl, align, w, pad, scale, s.nameOffsetX);
     label.appendChild(nomEl);
 
     // Repères bio / local (détection depuis les données) — calculés avant le logo, la présence
@@ -6007,8 +6203,8 @@
         if(s.bioAsText){
           const dotCy = flowY + bioDotD/2;
           const dot = document.createElement('div');
-          dot.style.left = ((cxMm-bioDotD/2)*scale)+'px';
-          dot.style.top = ((dotCy-bioDotD/2)*scale)+'px';
+          dot.style.left = ((cxMm-bioDotD/2+(s.bioOffsetX||0))*scale)+'px';
+          dot.style.top = ((dotCy-bioDotD/2+(s.bioOffsetY||0))*scale)+'px';
           dot.style.width = (bioDotD*scale)+'px';
           dot.style.height = (bioDotD*scale)+'px';
           dot.style.borderRadius = '50%';
@@ -6018,17 +6214,17 @@
           const el = document.createElement('div');
           el.textContent = 'BIO';
           el.style.left = '50%';
-          el.style.transform = 'translateX(-50%)';
-          el.style.top = ((textBaseline - s.bioFontSize*0.325)*scale)+'px';
-          el.style.fontWeight = '700';
+          el.style.transform = `translateX(calc(-50% + ${(s.bioOffsetX||0)*scale}px))`;
+          el.style.top = ((textBaseline - s.bioFontSize*0.325 + (s.bioOffsetY||0))*scale)+'px';
+          el.style.fontWeight = s.bioBold===false ? '400' : '700';
           el.style.fontSize = (s.bioFontSize*0.3528*scale)+'px';
           el.style.color = s.bioColor;
           label.appendChild(el);
         } else {
           const el = document.createElement('img');
           el.src = LOGO_AB_URI;
-          el.style.left = ((cxMm-abImgW/2)*scale)+'px';
-          el.style.top = (flowY*scale)+'px';
+          el.style.left = ((cxMm-abImgW/2+(s.bioOffsetX||0))*scale)+'px';
+          el.style.top = ((flowY+(s.bioOffsetY||0))*scale)+'px';
           el.style.width = (abImgW*scale)+'px';
           label.appendChild(el);
         }
@@ -6040,16 +6236,16 @@
         const pinTopY = flowY;
         const pinTipY = pinTopY + pinD*1.2; // approximation propre au tracé de lsBuildPinSvg (viewBox 20x26, tête + pointe)
         const svg = lsBuildPinSvg(s.localColor, pinPx);
-        svg.style.left = ((cxMm-pinD/2)*scale)+'px';
-        svg.style.top = (pinTopY*scale)+'px';
+        svg.style.left = ((cxMm-pinD/2+(s.localOffsetX||0))*scale)+'px';
+        svg.style.top = ((pinTopY+(s.localOffsetY||0))*scale)+'px';
         label.appendChild(svg);
         const textBaseline = pinTipY + 0.8 + localTxtH*0.8;
         const txt = document.createElement('div');
         txt.textContent = pinTextShown;
         txt.style.left = '50%';
-        txt.style.transform = 'translateX(-50%)';
-        txt.style.top = ((textBaseline - s.localFontSize*0.325)*scale)+'px';
-        txt.style.fontWeight = '700';
+        txt.style.transform = `translateX(calc(-50% + ${(s.localOffsetX||0)*scale}px))`;
+        txt.style.top = ((textBaseline - s.localFontSize*0.325 + (s.localOffsetY||0))*scale)+'px';
+        txt.style.fontWeight = s.localBold===false ? '400' : '700';
         txt.style.fontSize = (s.localFontSize*0.3528*scale)+'px';
         txt.style.color = s.localColor;
         label.appendChild(txt);
@@ -6088,8 +6284,8 @@
           const textBaseline = badgeBottom;
           const dotCy = textBaseline - bioTxtH - bioDotGap - bioDotD/2;
           const dot = document.createElement('div');
-          dot.style.left = ((cxMm-bioDotD/2)*scale)+'px';
-          dot.style.top = ((dotCy-bioDotD/2)*scale)+'px';
+          dot.style.left = ((cxMm-bioDotD/2+(s.bioOffsetX||0))*scale)+'px';
+          dot.style.top = ((dotCy-bioDotD/2+(s.bioOffsetY||0))*scale)+'px';
           dot.style.width = (bioDotD*scale)+'px';
           dot.style.height = (bioDotD*scale)+'px';
           dot.style.borderRadius = '50%';
@@ -6098,17 +6294,17 @@
           const el = document.createElement('div');
           el.textContent = 'BIO';
           el.style.left = '50%';
-          el.style.transform = 'translateX(-50%)';
-          el.style.top = ((textBaseline - s.bioFontSize*0.325)*scale)+'px';
-          el.style.fontWeight = '700';
+          el.style.transform = `translateX(calc(-50% + ${(s.bioOffsetX||0)*scale}px))`;
+          el.style.top = ((textBaseline - s.bioFontSize*0.325 + (s.bioOffsetY||0))*scale)+'px';
+          el.style.fontWeight = s.bioBold===false ? '400' : '700';
           el.style.fontSize = (s.bioFontSize*0.3528*scale)+'px';
           el.style.color = s.bioColor;
           label.appendChild(el);
         } else {
           const el = document.createElement('img');
           el.src = LOGO_AB_URI;
-          el.style.left = ((cxMm-abImgW/2)*scale)+'px';
-          el.style.top = ((badgeBottom-abImgH)*scale)+'px';
+          el.style.left = ((cxMm-abImgW/2+(s.bioOffsetX||0))*scale)+'px';
+          el.style.top = ((badgeBottom-abImgH+(s.bioOffsetY||0))*scale)+'px';
           el.style.width = (abImgW*scale)+'px';
           label.appendChild(el);
         }
@@ -6125,16 +6321,16 @@
         const pinTopY = localSlotTop;
         const pinTipY = pinTopY + pinD*1.2; // approximation propre au tracé de lsBuildPinSvg (viewBox 20x26, tête + pointe)
         const svg = lsBuildPinSvg(s.localColor, pinPx);
-        svg.style.left = ((cxMm-pinD/2)*scale)+'px';
-        svg.style.top = (pinTopY*scale)+'px';
+        svg.style.left = ((cxMm-pinD/2+(s.localOffsetX||0))*scale)+'px';
+        svg.style.top = ((pinTopY+(s.localOffsetY||0))*scale)+'px';
         label.appendChild(svg);
         const textBaseline = pinTipY + localGap + localTxtH*0.8;
         const txt = document.createElement('div');
         txt.textContent = pinTextShown;
         txt.style.left = '50%';
-        txt.style.transform = 'translateX(-50%)';
-        txt.style.top = ((textBaseline - s.localFontSize*0.325)*scale)+'px';
-        txt.style.fontWeight = '700';
+        txt.style.transform = `translateX(calc(-50% + ${(s.localOffsetX||0)*scale}px))`;
+        txt.style.top = ((textBaseline - s.localFontSize*0.325 + (s.localOffsetY||0))*scale)+'px';
+        txt.style.fontWeight = s.localBold===false ? '400' : '700';
         txt.style.fontSize = (s.localFontSize*0.3528*scale)+'px';
         txt.style.color = s.localColor;
         label.appendChild(txt);
@@ -6201,11 +6397,11 @@
     const priceEl = document.createElement('div');
     priceEl.className = 'ls-wrap';
     priceEl.textContent = pu.priceStr;
-    priceEl.style.bottom = (fromBottomD*scale)+'px';
-    priceEl.style.fontWeight = '700';
+    priceEl.style.bottom = ((fromBottomD-(s.priceOffsetY||0))*scale)+'px';
+    priceEl.style.fontWeight = s.priceBold===false ? '400' : '700';
     priceEl.style.fontSize = (s.detailPriceFont*0.3528*scale)+'px';
-    priceEl.style.color = '#0A0A0A';
-    lsApplyAlignX(priceEl, align, w, pad, scale);
+    priceEl.style.color = s.priceColor || '#0A0A0A';
+    lsApplyAlignX(priceEl, align, w, pad, scale, s.priceOffsetX);
     label.appendChild(priceEl);
 
     // Allergènes (catégorie Alimentaire uniquement), toujours en bas à droite, marge >= 4mm (revue-graphiste #5)
@@ -6216,10 +6412,11 @@
       if(codes.length){
         const el = document.createElement('div');
         el.textContent = `Allerg. ${codes.join(',')}`;
-        el.style.right = (pad*scale)+'px';
-        el.style.bottom = (4*scale)+'px';
+        el.style.right = ((pad-(s.allergenOffsetX||0))*scale)+'px';
+        el.style.bottom = ((4-(s.allergenOffsetY||0))*scale)+'px';
         el.style.fontSize = (s.allergenFontSize*0.3528*scale)+'px';
-        el.style.color = '#787066';
+        el.style.fontWeight = s.allergenBold ? '700' : '400';
+        el.style.color = s.allergenColor || '#787066';
         label.appendChild(el);
       }
     }
@@ -6241,12 +6438,14 @@
     label.style.height = (h*scale)+'px';
 
     const pluStr = codeAfficheFor(r);
+    const compactCodeFont = s.compactCodeFont || 6.5;
     const pluEl = document.createElement('div');
     pluEl.textContent = pluStr;
-    pluEl.style.left = (pad*scale)+'px';
-    pluEl.style.top = (1*scale)+'px';
-    pluEl.style.fontSize = (6.5*0.3528*scale)+'px';
-    pluEl.style.color = '#2A2420';
+    pluEl.style.left = ((pad+(s.codeOffsetX||0))*scale)+'px';
+    pluEl.style.top = ((1+(s.codeOffsetY||0))*scale)+'px';
+    pluEl.style.fontSize = (compactCodeFont*0.3528*scale)+'px';
+    pluEl.style.fontWeight = s.codeBold ? '700' : '400';
+    pluEl.style.color = s.codeColor || '#2A2420';
     label.appendChild(pluEl);
 
     // Repère bio/local, à côté du PLU — reflète drawLabelCompact (revue-graphiste #1 puis
@@ -6265,16 +6464,18 @@
       const pinDC = 2*Math.max(0.6, Math.min(1.6, s.localIconSize*0.25));
       const bioBadgeFontC = Math.max(4, Math.min(6, s.bioFontSize*0.65));
       const localBadgeFontC = Math.max(4, Math.min(6, s.localFontSize*0.65));
-      // largeur réelle du PLU mesurée à sa police (6,5pt normal), comme côté jsPDF
-      const badgeLeftMm = pad + lsMeasureTextWidthMm(pluStr, 6.5, false) + 1.5;
+      // largeur réelle du PLU mesurée à sa police (comme côté jsPDF) — ancrée à la position NON
+      // décalée du code : le décalage du code (codeOffsetX/Y) ne doit nudger que son propre
+      // rendu, pas déplacer les badges qui s'enchaînent après lui.
+      const badgeLeftMm = pad + lsMeasureTextWidthMm(pluStr, compactCodeFont, !!s.codeBold) + 1.5;
       let bx = badgeLeftMm;
       const maxBadgeRightMm = w - pad;
       if(isBioC){
         // centre du point à 3,5 mm du haut de l'étiquette, quelle que soit sa taille (comme
         // l'ancien point fixe de 2,2 mm dont il reprend le centre)
         const dot = document.createElement('div');
-        dot.style.left = (bx*scale)+'px';
-        dot.style.top = ((3.5-bioDotDC/2)*scale)+'px';
+        dot.style.left = ((bx+(s.bioOffsetX||0))*scale)+'px';
+        dot.style.top = ((3.5-bioDotDC/2+(s.bioOffsetY||0))*scale)+'px';
         dot.style.width = (bioDotDC*scale)+'px';
         dot.style.height = (bioDotDC*scale)+'px';
         dot.style.borderRadius = '50%';
@@ -6283,9 +6484,9 @@
         bx += bioDotDC+0.4;
         const txt = document.createElement('div');
         txt.textContent = 'BIO';
-        txt.style.left = (bx*scale)+'px';
-        txt.style.top = ((1+2.4-bioBadgeFontC*0.325)*scale)+'px';
-        txt.style.fontWeight = '700';
+        txt.style.left = ((bx+(s.bioOffsetX||0))*scale)+'px';
+        txt.style.top = ((1+2.4-bioBadgeFontC*0.325+(s.bioOffsetY||0))*scale)+'px';
+        txt.style.fontWeight = s.bioBold===false ? '400' : '700';
         txt.style.fontSize = (bioBadgeFontC*0.3528*scale)+'px';
         txt.style.color = s.bioColor || '#3C823C';
         label.appendChild(txt);
@@ -6295,8 +6496,8 @@
         // centre de l'épingle à 3,1 mm du haut de l'étiquette, quelle que soit sa taille
         // (comme l'ancienne épingle fixe de 2,2 mm dont elle reprend le centre)
         const pin = document.createElement('div');
-        pin.style.left = (bx*scale)+'px';
-        pin.style.top = ((3.1-pinDC/2)*scale)+'px';
+        pin.style.left = ((bx+(s.localOffsetX||0))*scale)+'px';
+        pin.style.top = ((3.1-pinDC/2+(s.localOffsetY||0))*scale)+'px';
         pin.style.width = (pinDC*scale)+'px';
         pin.style.height = (pinDC*scale)+'px';
         pin.style.borderRadius = '50% 50% 50% 0';
@@ -6307,9 +6508,9 @@
         const shown = lsTruncateToWidth(pinTextC, localBadgeFontC, true, maxBadgeRightMm-bx);
         const txt = document.createElement('div');
         txt.textContent = shown;
-        txt.style.left = (bx*scale)+'px';
-        txt.style.top = ((1+2-localBadgeFontC*0.325)*scale)+'px';
-        txt.style.fontWeight = '700';
+        txt.style.left = ((bx+(s.localOffsetX||0))*scale)+'px';
+        txt.style.top = ((1+2-localBadgeFontC*0.325+(s.localOffsetY||0))*scale)+'px';
+        txt.style.fontWeight = s.localBold===false ? '400' : '700';
         txt.style.fontSize = (localBadgeFontC*0.3528*scale)+'px';
         txt.style.color = s.localColor || '#DB4437';
         label.appendChild(txt);
@@ -6319,12 +6520,12 @@
     const nomEl = document.createElement('div');
     nomEl.className = 'ls-wrap';
     nomEl.textContent = (r[1]||'').trim();
-    nomEl.style.left = (pad*scale)+'px';
-    nomEl.style.top = (5.5*scale)+'px';
+    nomEl.style.left = ((pad+(s.nameOffsetX||0))*scale)+'px';
+    nomEl.style.top = ((5.5+(s.nameOffsetY||0))*scale)+'px';
     nomEl.style.width = ((w-2*pad)*scale)+'px';
-    nomEl.style.fontWeight = '700';
+    nomEl.style.fontWeight = s.nameBold===false ? '400' : '700';
     nomEl.style.fontSize = (s.compactNameFont*0.3528*scale)+'px';
-    nomEl.style.color = '#2A2420';
+    nomEl.style.color = s.nameColor || '#2A2420';
     label.appendChild(nomEl);
 
     // Logo désactivable (showLogo, défaut affiché si absent) — trame compacte : les badges
@@ -6370,11 +6571,11 @@
     }
     const priceEl = document.createElement('div');
     priceEl.textContent = pu.priceStr;
-    priceEl.style.right = (pad*scale)+'px';
-    priceEl.style.bottom = (fromBottomMm*scale)+'px';
-    priceEl.style.fontWeight = '700';
+    priceEl.style.right = ((pad-(s.priceOffsetX||0))*scale)+'px';
+    priceEl.style.bottom = ((fromBottomMm-(s.priceOffsetY||0))*scale)+'px';
+    priceEl.style.fontWeight = s.priceBold===false ? '400' : '700';
     priceEl.style.fontSize = (s.compactPriceFont*0.3528*scale)+'px';
-    priceEl.style.color = '#0A0A0A';
+    priceEl.style.color = s.priceColor || '#0A0A0A';
     label.appendChild(priceEl);
 
     container.innerHTML = '';
