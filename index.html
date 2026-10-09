@@ -1124,7 +1124,7 @@
     <div class="menu-panel">
       <button class="menu-item" id="btnRenumber" disabled>🔢 Renumériser (nomenclature)</button>
       <button class="menu-item" id="btnNormalizeCase" disabled>Aa Normaliser la casse (Nom)</button>
-      <button class="menu-item" id="btnApplyTva" disabled>% Appliquer la TVA par catégorie (5,5 / 20)</button>
+      <button class="menu-item" id="btnApplyTva" disabled>% Appliquer la TVA par catégorie (5,5 / 20 + classe balance 1/2)</button>
       <button class="menu-item" id="btnCatalog" disabled>📄 Catalogue PDF</button>
     </div>
   </details>
@@ -2004,7 +2004,7 @@
 (function(){
   // Version affichée en haut à droite de la page — à mettre à jour à chaque modification
   // poussée sur GitHub, pour que l'utilisateur puisse vérifier qu'il a bien la dernière version.
-  const APP_VERSION = 'v20261008_14';
+  const APP_VERSION = 'v20261009_1';
   const versionBadge = document.getElementById('appVersionBadge');
   if(versionBadge) versionBadge.textContent = `Version du ${APP_VERSION}`;
 
@@ -2134,7 +2134,7 @@
     { label:'Champ 9', confirmed:false },
     { label:'Champ 10', confirmed:false },
     { label:'Champ 11', confirmed:false },
-    { label:'Champ 12', confirmed:false },
+    { label:'Classe TVA balance (1=Alimentaire, 2=autre) — calculée automatiquement depuis la catégorie, non modifiable', confirmed:true },
     { label:'Code (ex. B000)', confirmed:false },
     { label:'Statut (P1 actif / P0 inactif)', confirmed:false },
     { label:'Département', confirmed:false },
@@ -2151,7 +2151,7 @@
   // dans la fiche produit, mais sont trop longs pour une colonne de tableau).
   const SHORT_COL_LABELS = [
     'PLU','Nom','Champ 3','Type','Prix vente','Catégorie','Champ 7','Champ 8','Champ 9',
-    'Champ 10','Champ 11','Champ 12','Code','Statut','Département','Code long','Champ 17','Champ 18','Champ 19'
+    'Champ 10','Champ 11','Classe TVA','Code','Statut','Département','Code long','Champ 17','Champ 18','Champ 19'
   ];
   const SHORT_BIZ_LABELS = ['Fournisseur','Prix achat','TVA','Stock','Stock mini','Stock maxi','Bio','Local','Trame étiquette','Affichage prix','Groupe variantes','Taille lot','Période commande','Description longue','Sous-catégorie','Emplacement','Pays','Position camion','Code balance','WooCommerce','Taille réf. achat','Prix réf. achat'];
   function shortColLabel(c){
@@ -2317,6 +2317,15 @@
   // TVA fixée par catégorie : 5,5% Alimentaire, 20% pour tout le reste.
   function tvaForCategory(realCat){
     return categoryCodeKey(realCat) === '1' ? '5.5' : '20';
+  }
+
+  // Classe TVA transmise à la balance (colonne 12 brute du fichier balance, index 11 dans la
+  // ligne — "Champ 12") : 1 pour Alimentaire, 2 pour tout le reste. C'est un code de classe lu
+  // par la balance physique elle-même, distinct du taux TVA interne ci-dessus (qui est un
+  // pourcentage de gestion, jamais envoyé dans le CSV balance). Toujours recalculé depuis la
+  // catégorie, jamais saisi à la main — voir saveSheet() et le bouton "Appliquer la TVA".
+  function tvaClasseBalanceForCategory(realCat){
+    return categoryCodeKey(realCat) === '1' ? '1' : '2';
   }
 
   function classifyProduct(nom, realCat){
@@ -3384,6 +3393,27 @@
       catSelect.addEventListener('change', refreshMarge);
       refreshMarge();
 
+      // Classe TVA balance (colonne 12 brute du fichier balance, "Champ 12") : code 1/2 lu par
+      // la balance physique, distinct du taux TVA interne ci-dessus. Toujours recalculée depuis
+      // la catégorie, jamais saisie à la main.
+      const tvaClasseWrap = document.createElement('div');
+      tvaClasseWrap.className = 'field';
+      tvaClasseWrap.style.marginTop = '10px';
+      tvaClasseWrap.innerHTML = `<div class="field-label"><span class="name">Classe TVA balance</span><span class="meta">colonne 12 brute, transmise à la balance</span></div>`;
+      const tvaClasseInput = document.createElement('input');
+      tvaClasseInput.type = 'text'; tvaClasseInput.id = 'bizTvaClasseBalance';
+      tvaClasseInput.readOnly = true;
+      tvaClasseInput.classList.add('biz-readonly');
+      tvaClasseInput.title = 'Classe fixée par catégorie : 1 = Alimentaire, 2 = tout le reste — non modifiable ici.';
+      const refreshTvaClasse = ()=>{
+        const cls = tvaClasseBalanceForCategory(catSelect.value);
+        tvaClasseInput.value = cls + ' — ' + (cls==='1' ? 'Alimentaire' : 'Autre');
+      };
+      refreshTvaClasse();
+      catSelect.addEventListener('change', refreshTvaClasse);
+      tvaClasseWrap.appendChild(tvaClasseInput);
+      biz.appendChild(tvaClasseWrap);
+
       // ---- Taille/prix de référence d'achat -> calcule automatiquement le prix d'achat HT/kg ----
       // (au lieu de faire faire le calcul à l'utilisateur, ex. sachet de 5kg à 20€ -> 4€/kg).
       const refRow = document.createElement('div');
@@ -3823,9 +3853,10 @@
       sheetBody.appendChild(biz);
     }
 
-    // ---- Reste des champs balance (hors PLU, Nom déjà en tête, et Catégorie gérée ci-dessus) ----
+    // ---- Reste des champs balance (hors PLU, Nom déjà en tête, Catégorie gérée ci-dessus,
+    // et Classe TVA [ci 11] calculée automatiquement — voir le champ "Classe TVA balance") ----
     for(let ci=2; ci<19; ci++){
-      if(ci === 5) continue;
+      if(ci === 5 || ci === 11) continue;
       sheetBody.appendChild(buildGenericField(ci));
     }
 
@@ -3934,6 +3965,8 @@
     if(catSelect) state.rows[sheetRow][5] = catSelect.value;
     // TVA toujours recalculée depuis la catégorie (jamais saisie à la main)
     state.rows[sheetRow][BIZCOL.TVA] = tvaForCategory(state.rows[sheetRow][5]);
+    // Classe TVA balance (colonne 12 brute, "Champ 12") : idem, jamais saisie à la main.
+    state.rows[sheetRow][11] = tvaClasseBalanceForCategory(state.rows[sheetRow][5]);
     // Étiquettes catalogue (bio / local)
     const bioEl = document.getElementById('bizBio');
     if(bioEl) state.rows[sheetRow][BIZCOL.BIO] = bioEl.checked ? '1' : '0';
@@ -4444,16 +4477,21 @@
   });
 
   btnApplyTva.addEventListener('click', ()=>{
-    const ok = confirm(`Applique le taux de TVA fixe par catégorie à tous les produits chargés :\n\n• 5,5 % pour l'Alimentaire\n• 20 % pour toutes les autres catégories\n\nContinuer ?`);
+    const ok = confirm(`Applique le taux de TVA fixe par catégorie à tous les produits chargés :\n\n• 5,5 % pour l'Alimentaire\n• 20 % pour toutes les autres catégories\n\nMet aussi à jour la classe TVA balance (colonne 12 brute, "Champ 12") : 1 pour l'Alimentaire, 2 pour le reste.\n\nContinuer ?`);
     if(!ok) return;
     let changed = 0;
     state.rows.forEach(row=>{
       const newTva = tvaForCategory(row[5]);
-      if(row[BIZCOL.TVA] !== newTva){ row[BIZCOL.TVA] = newTva; changed++; }
+      const newTvaClasse = tvaClasseBalanceForCategory(row[5]);
+      if(row[BIZCOL.TVA] !== newTva || row[11] !== newTvaClasse){
+        row[BIZCOL.TVA] = newTva;
+        row[11] = newTvaClasse;
+        changed++;
+      }
     });
     render();
     persistSession();
-    alert(`${changed} taux de TVA mis à jour.`);
+    alert(`${changed} produit(s) mis à jour (taux de TVA et classe TVA balance).`);
   });
 
   // ---------- Base articles complète : export / import-fusion ----------
