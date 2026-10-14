@@ -1772,7 +1772,7 @@
             Afficher "BIO" en texte vert plutôt que le logo AB (trame détaillée)
           </label>
           <div class="field-grid" style="margin-top:10px;">
-            <div class="field"><div class="field-label"><span class="name">Taille point "Bio" (mm)</span></div>
+            <div class="field"><div class="field-label"><span class="name">Taille feuille "Bio" (mm)</span></div>
               <input type="number" id="lsBioDotSize" min="2" max="8" step="0.2"></div>
             <div class="field"><div class="field-label"><span class="name">Taille texte "BIO" (pt)</span></div>
               <input type="number" id="lsBioFont" min="6" max="14" step="0.5"></div>
@@ -2004,7 +2004,7 @@
 (function(){
   // Version affichée en haut à droite de la page — à mettre à jour à chaque modification
   // poussée sur GitHub, pour que l'utilisateur puisse vérifier qu'il a bien la dernière version.
-  const APP_VERSION = 'v20261009_1';
+  const APP_VERSION = 'v20261014_1';
   const versionBadge = document.getElementById('appVersionBadge');
   if(versionBadge) versionBadge.textContent = `Version du ${APP_VERSION}`;
 
@@ -4588,6 +4588,7 @@
   // directement et d'exercer étiquettes/catalogue/export balance depuis un test.
   window.__opevBIZCOL = BIZCOL;
   window.__opevBIZ_COL_COUNT = BIZ_COL_COUNT;
+  window.__opevDrawLabelDetailForTest = drawLabelDetail;
   window.__opevSetRowsForTest = function(rows){
     state.rows = rows.map(r=>{
       const copy = r.slice();
@@ -5399,6 +5400,31 @@
     doc.circle(cx, headCenterY, headR*0.4, 'F');
   }
 
+  // Petite feuille verte (remplace l'ancien "point plein" du badge Bio) : silhouette simple
+  // (vesica inclinée à 35°, pointes haut/bas) + courte tige + nervure centrale, pour rester
+  // lisible à la taille réduite d'une étiquette. size = encombrement (mm), comparable au
+  // diamètre de l'ancien point, pour ne pas avoir à retoucher la mise en page qui l'entoure.
+  // color (optionnel) : [r,g,b], recolorable comme l'était le point (s.bioColor).
+  function drawLeafIcon(doc, cx, cy, size, color){
+    const [lr,lg,lb] = color || [60,130,60];
+    const k = size*0.5;
+    const ax = cx-0.573576*k, ay = cy+0.819152*k; // pointe basse (attache de la tige)
+    doc.setFillColor(lr,lg,lb);
+    doc.lines(
+      [
+        [0.954388*k, 0.118922*k, 1.585322*k, -0.782146*k, 1.147152*k, -1.638304*k],
+        [-0.954388*k, -0.118922*k, -1.585322*k, 0.782146*k, -1.147152*k, 1.638304*k]
+      ],
+      ax, ay, [1,1], 'F', true
+    );
+    doc.setDrawColor(lr,lg,lb);
+    doc.setLineWidth(Math.max(0.15, size*0.045));
+    doc.line(ax, ay, cx-0.745649*k, cy+1.064898*k); // tige courte
+    doc.setDrawColor(255,255,255);
+    doc.setLineWidth(Math.max(0.12, size*0.035));
+    doc.line(ax, ay, cx+0.573576*k, cy-0.819152*k); // nervure centrale
+  }
+
   function drawTitlePage(doc, totalCount, dateStr){
     // Fond kraft clair + filet laiton plutôt qu'un aplat noir plein (revue-graphiste #6) :
     // cohérent avec la palette de l'app et beaucoup plus économe en encre à l'impression.
@@ -6078,8 +6104,7 @@
       const localBadgeFontC = Math.max(4, Math.min(6, s.localFontSize*0.65));
       const maxBadgeRight = x+w-pad; // ne jamais déborder du bord droit de l'étiquette
       if(isBioC){
-        doc.setFillColor(...hexToRgbArray(s.bioColor, [60,130,60]));
-        doc.circle(bx+bioDotRC+(s.bioOffsetX||0), y+3.9+(s.bioOffsetY||0), bioDotRC, 'F');
+        drawLeafIcon(doc, bx+bioDotRC+(s.bioOffsetX||0), y+3.9+(s.bioOffsetY||0), bioDotRC*2, hexToRgbArray(s.bioColor, [60,130,60]));
         doc.setFont('helvetica', s.bioBold===false ? 'normal' : 'bold');
         doc.setFontSize(bioBadgeFontC);
         doc.setTextColor(...hexToRgbArray(s.bioColor, [60,130,60]));
@@ -6213,6 +6238,27 @@
     const allergenHAlign = s.allergenHAlign || 'right';
     const allergenVAlign = s.allergenVAlign || 'bottom';
 
+    // Anticipe où commence le bloc prix (pile du bas, calculée en détail plus bas) pour éviter
+    // que le badge Local (style 'icon', position fixe sous le logo — voir plus bas) ne déborde
+    // dedans sur une étiquette courte (signalé : le badge Local chevauchait le prix). Ne dépend
+    // que des réglages, jamais du contenu de CETTE ligne (prix/unité/kg occupent toujours la
+    // même place, qu'ils soient affichés ou non — même principe que la pile du bas elle-même),
+    // pour que la position du badge reste identique d'une étiquette à l'autre dans un même lot.
+    let priceTopBoundaryMm = null;
+    if(priceVAlign === 'bottom'){
+      const allergenLineHPre = s.allergenFontSize*0.42 + 1.6;
+      const codeLineHPre = s.detailCodeFont*0.42 + 1.6;
+      const bottomBandReservePre = bandAtBottom ? bandH + 1.5 : 0;
+      const allergenLineYPre = y+h-4-bottomBandReservePre; // marginBottomD = 4, voir le bloc prix plus bas
+      const detailUnitFontPre = Math.max(7, Math.min(11, s.detailPriceFont*0.5));
+      const gapUnitPre = detailUnitFontPre*0.42 + s.detailPriceFont*0.12 + 1.2;
+      const gapKgPre = s.detailKgFont*0.42 + detailUnitFontPre*0.12 + 1.2;
+      const kgLineYPre = allergenLineYPre - allergenLineHPre - (codeVAlign==='bottom' ? codeLineHPre : 0);
+      const unitLineYPre = kgLineYPre - gapKgPre;
+      const priceYPre = unitLineYPre - gapUnitPre;
+      priceTopBoundaryMm = priceYPre - s.detailPriceFont*0.3528*0.8; // priceAscentMm
+    }
+
     // pluY/nomY restent les ancres de flux historiques (position "en haut"), toujours calculées
     // car badges et bloc bandeau s'y raccrochent — seule la position de DESSIN du code/nom en
     // tient compte quand leur alignement vertical vaut 'top'. Le dessin du code est différé après
@@ -6284,8 +6330,7 @@
       if(isBio){
         if(s.bioAsText){
           const dotCy = flowY + bioDotD/2;
-          doc.setFillColor(...hexToRgbArray(s.bioColor, [60,130,60]));
-          doc.circle(cx+(s.bioOffsetX||0), dotCy+(s.bioOffsetY||0), bioDotD/2, 'F');
+          drawLeafIcon(doc, cx+(s.bioOffsetX||0), dotCy+(s.bioOffsetY||0), bioDotD, hexToRgbArray(s.bioColor, [60,130,60]));
           const textBaseline = dotCy + bioDotD/2 + bioDotGap + bioTxtH*0.8;
           doc.setFont('helvetica', s.bioBold===false ? 'normal' : 'bold');
           doc.setFontSize(s.bioFontSize);
@@ -6325,7 +6370,32 @@
       const bioDotD = s.bioDotSize, bioDotGap = 0.8; // gap entre le point et le texte "BIO"
       const bioTxtH = s.bioFontSize * 0.42;
       const abImgW = 5.5, abImgH = abImgW/LOGO_AB_RATIO; // logo AB image, utilisé si bioAsText est désactivé
-      const iconCy = y+h/2; // toujours le centre exact de l'étiquette, quel que soit le contenu
+      let iconCy = y+h/2; // centre de l'étiquette par défaut, remonté si possible sans risque ci-dessous (jamais selon le contenu de cette ligne — voir note)
+      if(priceTopBoundaryMm !== null){
+        // Pire cas : badge Local affiché (toujours réservé, voir headR/localSlotH plus bas,
+        // dupliqués ici car pas encore calculés à ce stade du flux). Si même ce pire cas
+        // chevaucherait le haut du bloc prix, on remonte iconCy (donc logo + Bio + Local
+        // ensemble) d'autant — dépend uniquement des réglages, jamais de isBio/isLocal pour
+        // CETTE ligne, donc la position reste fixe d'une étiquette à l'autre dans un même lot.
+        // Sur une étiquette trop courte pour que ça marche sans aller chevaucher le nom à la
+        // place (vérifié juste en dessous), on renonce au remontage : mieux vaut garder le
+        // chevauchement Local/prix d'origine que d'en créer un nouveau avec le nom.
+        const headRPre = s.localIconSize/2;
+        const localSlotHPre = headRPre*2.9 + 0.8 + s.localFontSize*0.42;
+        const worstLocalBottom = iconCy + iconH/2 + badgeLogoGap + localSlotHPre;
+        const overflow = (worstLocalBottom + 1.5) - priceTopBoundaryMm; // 1.5mm de marge de sécurité
+        if(overflow > 0){
+          let candidateIconCy = iconCy - overflow;
+          if(nameVAlign === 'top'){
+            // Marge réaliste (une ligne de nom + 3mm), pas le pire cas à 4 lignes de la trame
+            // bandeau ni la pleine réserve du badge Bio au-dessus du logo : but ici est d'éviter
+            // un chevauchement flagrant logo/nom, pas de garantir une position au pixel près.
+            const minIconCy = nomY + s.detailNameFont*0.42 + 3 + spacing + iconH/2;
+            if(candidateIconCy < minIconCy) candidateIconCy = null;
+          }
+          if(candidateIconCy !== null) iconCy = candidateIconCy;
+        }
+      }
       if(showLogo){
         doc.addImage(LOGO_ICON_URI, 'PNG', cx-iconW/2, iconCy-iconH/2, iconW, iconH);
       }
@@ -6337,8 +6407,7 @@
         if(s.bioAsText){
           const textBaseline = badgeBottom;
           const dotCy = textBaseline - bioTxtH - bioDotGap - bioDotD/2;
-          doc.setFillColor(...hexToRgbArray(s.bioColor, [60,130,60]));
-          doc.circle(cx+(s.bioOffsetX||0), dotCy+(s.bioOffsetY||0), bioDotD/2, 'F');
+          drawLeafIcon(doc, cx+(s.bioOffsetX||0), dotCy+(s.bioOffsetY||0), bioDotD, hexToRgbArray(s.bioColor, [60,130,60]));
           doc.setFont('helvetica', s.bioBold===false ? 'normal' : 'bold');
           doc.setFontSize(s.bioFontSize);
           doc.setTextColor(...hexToRgbArray(s.bioColor, [60,130,60]));
@@ -6732,6 +6801,30 @@
     svg.appendChild(circle); svg.appendChild(tri); svg.appendChild(dot);
     return svg;
   }
+  // Petite feuille SVG reprenant la géométrie de drawLeafIcon (vesica inclinée à 35° + tige +
+  // nervure centrale) — remplace l'ancien "point plein" du badge Bio dans l'aperçu HTML.
+  function lsBuildLeafSvg(colorHex, sizePx){
+    const svgNS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(svgNS,'svg');
+    svg.setAttribute('width', sizePx);
+    svg.setAttribute('height', sizePx);
+    svg.setAttribute('viewBox','-13 -13 26 26');
+    const blade = document.createElementNS(svgNS,'path');
+    blade.setAttribute('d','M -5.74 8.19 C 3.81 9.38 10.12 0.37 5.74 -8.19 C -3.81 -9.38 -10.12 -0.37 -5.74 8.19 Z');
+    blade.setAttribute('fill', colorHex);
+    const stem = document.createElementNS(svgNS,'line');
+    stem.setAttribute('x1','-5.74'); stem.setAttribute('y1','8.19');
+    stem.setAttribute('x2','-7.46'); stem.setAttribute('y2','10.65');
+    stem.setAttribute('stroke', colorHex); stem.setAttribute('stroke-width','1.1');
+    stem.setAttribute('stroke-linecap','round');
+    const vein = document.createElementNS(svgNS,'line');
+    vein.setAttribute('x1','-5.74'); vein.setAttribute('y1','8.19');
+    vein.setAttribute('x2','5.74'); vein.setAttribute('y2','-8.19');
+    vein.setAttribute('stroke','#fff'); vein.setAttribute('stroke-width','0.9');
+    vein.setAttribute('stroke-linecap','round');
+    svg.appendChild(blade); svg.appendChild(stem); svg.appendChild(vein);
+    return svg;
+  }
 
   // Mesure la largeur réelle (mm) d'un texte à un corps donné (pt) avec la police des
   // étiquettes — miroir HTML de doc.getTextWidth() côté génération PDF (jsPDF), nécessaire
@@ -6830,6 +6923,22 @@
     const allergenHAlign = s.allergenHAlign || 'right';
     const allergenVAlign = s.allergenVAlign || 'bottom';
 
+    // Anticipe où commence le bloc prix (pile du bas, calculée en détail plus bas) — miroir de
+    // drawLabelDetail, voir son commentaire pour le détail du raisonnement.
+    let priceTopBoundaryMm = null;
+    if(priceVAlign === 'bottom'){
+      const allergenLineHPre = s.allergenFontSize*0.42 + 1.6;
+      const codeLineHPre = (s.detailCodeFont||8)*0.42 + 1.6;
+      const bottomBandReservePre = bandAtBottom ? bandH + 1.5 : 0;
+      const fromBottomAllergenPre = 4 + bottomBandReservePre; // marginBottomD = 4
+      const detailUnitFontPre = Math.max(7, Math.min(11, s.detailPriceFont*0.5));
+      const gapUnitPre = detailUnitFontPre*0.42 + s.detailPriceFont*0.12 + 1.2;
+      const gapKgPre = s.detailKgFont*0.42 + detailUnitFontPre*0.12 + 1.2;
+      const fromBottomKgPre = fromBottomAllergenPre + allergenLineHPre + (codeVAlign==='bottom' ? codeLineHPre : 0);
+      const fromBottomPricePre = fromBottomKgPre + gapKgPre + gapUnitPre;
+      priceTopBoundaryMm = h - fromBottomPricePre;
+    }
+
     // pluTopMm sert aussi d'ancre de flux pour le nom (style bandeau), uniquement repoussée par
     // le bandeau quand il occupe lui-même le haut — toujours calculée, le dessin du code est
     // différé après le calcul de la pile du bas (codeVAlign peut valoir 'bottom').
@@ -6893,14 +7002,11 @@
       if(isBio){
         if(s.bioAsText){
           const dotCy = flowY + bioDotD/2;
-          const dot = document.createElement('div');
-          dot.style.left = ((cxMm-bioDotD/2+(s.bioOffsetX||0))*scale)+'px';
-          dot.style.top = ((dotCy-bioDotD/2+(s.bioOffsetY||0))*scale)+'px';
-          dot.style.width = (bioDotD*scale)+'px';
-          dot.style.height = (bioDotD*scale)+'px';
-          dot.style.borderRadius = '50%';
-          dot.style.background = s.bioColor;
-          label.appendChild(dot);
+          const leaf = lsBuildLeafSvg(s.bioColor, bioDotD*scale);
+          leaf.style.position = 'absolute';
+          leaf.style.left = ((cxMm-bioDotD/2+(s.bioOffsetX||0))*scale)+'px';
+          leaf.style.top = ((dotCy-bioDotD/2+(s.bioOffsetY||0))*scale)+'px';
+          label.appendChild(leaf);
           const textBaseline = dotCy + bioDotD/2 + bioDotGap + bioTxtH*0.8;
           const el = document.createElement('div');
           el.textContent = 'BIO';
@@ -6955,7 +7061,21 @@
       const bioDotD = s.bioDotSize, bioDotGap = 0.8;
       const bioTxtH = s.bioFontSize * 0.42;
       const abImgW = 5.5, abImgH = abImgW/LOGO_AB_RATIO; // logo AB image, utilisé si bioAsText est désactivé
-      const iconCy = h/2; // toujours le centre exact de l'étiquette, quel que soit le contenu
+      let iconCy = h/2; // centre de l'étiquette par défaut, remonté si besoin ci-dessous — miroir de drawLabelDetail
+      if(priceTopBoundaryMm !== null){
+        const headRPre = s.localIconSize/2;
+        const localSlotHPre = headRPre*2.9 + 0.8 + s.localFontSize*0.42;
+        const worstLocalBottom = iconCy + iconW/2 + badgeLogoGap + localSlotHPre;
+        const overflow = (worstLocalBottom + 1.5) - priceTopBoundaryMm;
+        if(overflow > 0){
+          let candidateIconCy = iconCy - overflow;
+          if(nameVAlign === 'top'){
+            const minIconCy = nomTopMm + s.detailNameFont*0.42 + 3 + spacing + iconW/2;
+            if(candidateIconCy < minIconCy) candidateIconCy = null;
+          }
+          if(candidateIconCy !== null) iconCy = candidateIconCy;
+        }
+      }
       if(showLogo){
         const logoEl = document.createElement('img');
         logoEl.src = LOGO_ICON_URI;
@@ -6974,14 +7094,11 @@
         if(s.bioAsText){
           const textBaseline = badgeBottom;
           const dotCy = textBaseline - bioTxtH - bioDotGap - bioDotD/2;
-          const dot = document.createElement('div');
-          dot.style.left = ((cxMm-bioDotD/2+(s.bioOffsetX||0))*scale)+'px';
-          dot.style.top = ((dotCy-bioDotD/2+(s.bioOffsetY||0))*scale)+'px';
-          dot.style.width = (bioDotD*scale)+'px';
-          dot.style.height = (bioDotD*scale)+'px';
-          dot.style.borderRadius = '50%';
-          dot.style.background = s.bioColor;
-          label.appendChild(dot);
+          const leaf = lsBuildLeafSvg(s.bioColor, bioDotD*scale);
+          leaf.style.position = 'absolute';
+          leaf.style.left = ((cxMm-bioDotD/2+(s.bioOffsetX||0))*scale)+'px';
+          leaf.style.top = ((dotCy-bioDotD/2+(s.bioOffsetY||0))*scale)+'px';
+          label.appendChild(leaf);
           const el = document.createElement('div');
           el.textContent = 'BIO';
           el.style.left = '50%';
@@ -7454,16 +7571,13 @@
       let bx = badgeLeftMm;
       const maxBadgeRightMm = w - pad;
       if(isBioC){
-        // centre du point à 3,5 mm du haut de l'étiquette, quelle que soit sa taille (comme
-        // l'ancien point fixe de 2,2 mm dont il reprend le centre)
-        const dot = document.createElement('div');
-        dot.style.left = ((bx+(s.bioOffsetX||0))*scale)+'px';
-        dot.style.top = ((3.5-bioDotDC/2+(s.bioOffsetY||0))*scale)+'px';
-        dot.style.width = (bioDotDC*scale)+'px';
-        dot.style.height = (bioDotDC*scale)+'px';
-        dot.style.borderRadius = '50%';
-        dot.style.background = s.bioColor || '#3C823C';
-        label.appendChild(dot);
+        // centre de la feuille à 3,5 mm du haut de l'étiquette, quelle que soit sa taille
+        // (comme l'ancien point fixe de 2,2 mm dont elle reprend le centre)
+        const leaf = lsBuildLeafSvg(s.bioColor || '#3C823C', bioDotDC*scale);
+        leaf.style.position = 'absolute';
+        leaf.style.left = ((bx+(s.bioOffsetX||0))*scale)+'px';
+        leaf.style.top = ((3.5-bioDotDC/2+(s.bioOffsetY||0))*scale)+'px';
+        label.appendChild(leaf);
         bx += bioDotDC+0.4;
         const txt = document.createElement('div');
         txt.textContent = 'BIO';
