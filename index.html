@@ -2004,7 +2004,7 @@
 (function(){
   // Version affichée en haut à droite de la page — à mettre à jour à chaque modification
   // poussée sur GitHub, pour que l'utilisateur puisse vérifier qu'il a bien la dernière version.
-  const APP_VERSION = 'v20261014_1';
+  const APP_VERSION = 'v20261019_1';
   const versionBadge = document.getElementById('appVersionBadge');
   if(versionBadge) versionBadge.textContent = `Version du ${APP_VERSION}`;
 
@@ -4589,6 +4589,8 @@
   window.__opevBIZCOL = BIZCOL;
   window.__opevBIZ_COL_COUNT = BIZ_COL_COUNT;
   window.__opevDrawLabelDetailForTest = drawLabelDetail;
+  window.__opevGetLabelSettingsForTest = function(){ return state.labelSettings; };
+  window.__opevSetLabelSettingsForTest = function(partial){ Object.assign(state.labelSettings, partial); };
   window.__opevSetRowsForTest = function(rows){
     state.rows = rows.map(r=>{
       const copy = r.slice();
@@ -6326,6 +6328,16 @@
       const localSlotH = headR*2.9 + 0.8 + localTxtH; // hauteur réservée (pointe de l'épingle + gap + texte), badge affiché ou non
 
       let flowY = nomY + NAME_MAX_LINES*nameLineH + 2 + spacing; // emplacement Bio, fixe
+      // Un grand "espace additionnel" (elementSpacing) pousse tout le bloc Bio+Local vers le bas
+      // jusqu'à chevaucher le bloc prix (pile du bas) sur certains réglages — signalé (logo style
+      // bandeau, badge Local en chevauchement avec le prix). On plafonne le remontage sans jamais
+      // redescendre sous la position "sans espace additionnel" (qui, elle, ne chevauche jamais le
+      // nom par construction) : dépend uniquement des réglages, jamais du contenu de cette ligne.
+      if(priceTopBoundaryMm !== null){
+        const maxFlowY = priceTopBoundaryMm - 1.5 - bioSlotH - 2.5 - localSlotH;
+        const minFlowY = nomY + NAME_MAX_LINES*nameLineH + 2;
+        if(flowY > maxFlowY) flowY = Math.max(minFlowY, maxFlowY);
+      }
 
       if(isBio){
         if(s.bioAsText){
@@ -6998,6 +7010,13 @@
       const localSlotH = pinD*1.2 + 0.8 + localTxtH;
 
       let flowY = nomTopMm + NAME_MAX_LINES*nameLineH + 2 + spacing; // emplacement Bio, fixe
+      // Miroir de drawLabelDetail : un grand espace additionnel ne doit pas pousser Bio/Local
+      // jusqu'à chevaucher le prix.
+      if(priceTopBoundaryMm !== null){
+        const maxFlowY = priceTopBoundaryMm - 1.5 - bioSlotH - 2.5 - localSlotH;
+        const minFlowY = nomTopMm + NAME_MAX_LINES*nameLineH + 2;
+        if(flowY > maxFlowY) flowY = Math.max(minFlowY, maxFlowY);
+      }
 
       if(isBio){
         if(s.bioAsText){
