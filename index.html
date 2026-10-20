@@ -2004,7 +2004,7 @@
 (function(){
   // Version affichée en haut à droite de la page — à mettre à jour à chaque modification
   // poussée sur GitHub, pour que l'utilisateur puisse vérifier qu'il a bien la dernière version.
-  const APP_VERSION = 'v20261020_1';
+  const APP_VERSION = 'v20261020_2';
   const versionBadge = document.getElementById('appVersionBadge');
   if(versionBadge) versionBadge.textContent = `Version du ${APP_VERSION}`;
 
@@ -6261,7 +6261,10 @@
       // Intègre le décalage manuel du prix (lsPriceOffsetY) : un décalage négatif rapproche le
       // prix des badges, ce qui doit resserrer d'autant la limite à ne pas franchir (signalé :
       // chevauchement visible seulement avec un décalage prix/local non nul).
-      priceTopBoundaryMm = priceYPre - s.detailPriceFont*0.3528*0.8 + (s.priceOffsetY||0); // priceAscentMm
+      // Ascendant réel mesuré plus généreux que l'approximation utilisée ailleurs (0.8) pour le
+      // seul calcul de cette limite protectrice — un chiffre trop optimiste ici laissait déjà
+      // passer un très léger contact visuel entre Local et le prix dans un cas limite.
+      priceTopBoundaryMm = priceYPre - s.detailPriceFont*0.3528*1.0 + (s.priceOffsetY||0);
     }
 
     // pluY/nomY restent les ancres de flux historiques (position "en haut"), toujours calculées
@@ -6344,6 +6347,7 @@
         if(flowY > maxFlowY) flowY = Math.max(minFlowY, maxFlowY);
       }
 
+      let bioFinalBottomMm = null;
       if(isBio){
         if(s.bioAsText){
           const dotCy = flowY + bioDotD/2;
@@ -6353,8 +6357,10 @@
           doc.setFontSize(s.bioFontSize);
           doc.setTextColor(...hexToRgbArray(s.bioColor, [60,130,60]));
           doc.text('BIO', cx+(s.bioOffsetX||0), textBaseline+(s.bioOffsetY||0), { align:'center' });
+          bioFinalBottomMm = textBaseline + (s.bioOffsetY||0) + bioTxtH*0.3;
         } else {
           doc.addImage(LOGO_AB_URI, 'PNG', cx-abImgW/2+(s.bioOffsetX||0), flowY+(s.bioOffsetY||0), abImgW, abImgH);
+          bioFinalBottomMm = flowY + (s.bioOffsetY||0) + abImgH;
         }
         doc.setTextColor(42,36,32);
       }
@@ -6366,14 +6372,30 @@
         const pinTipY = pinTopY + headR*2.9; // pointe de l'épingle, cf. drawMapPin (tip = cy + headR*1.5)
         const textBaseline = pinTipY + 0.8 + localTxtH*0.8;
         // Filet de sécurité final : quel que soit le décalage manuel (lsLocalOffsetY) demandé,
-        // il ne doit jamais pousser le badge Local à chevaucher le prix — signalé (chevauchement
-        // reproduit avec des décalages Local/Bio/Prix combinés, que le seul ajustement de
-        // l'espace additionnel plus haut ne suffit pas toujours à couvrir).
+        // Local ne doit chevaucher ni le prix en dessous ni Bio au-dessus — signalé (chevauchement
+        // reproduit avec des décalages Local/Bio/Prix combinés, que le seul ajustement de l'espace
+        // additionnel plus haut ne suffit pas toujours à couvrir). Si la place manque des deux
+        // côtés à la fois (décalages extrêmes et opposés, pas assez d'espace entre Bio et le prix),
+        // on donne la priorité à l'absence de chevauchement avec Bio (deux badges qui se
+        // chevauchent entre eux est visuellement pire qu'entamer la marge de sécurité, généreuse,
+        // réservée côté prix).
         let localOffYEff = s.localOffsetY||0;
+        let ceilOffY = Infinity, floorOffY = -Infinity;
         if(priceTopBoundaryMm !== null){
-          const finalBottom = textBaseline + localOffYEff + localTxtH*0.3;
-          const maxFinalBottom = priceTopBoundaryMm - 1.5;
-          if(finalBottom > maxFinalBottom) localOffYEff -= (finalBottom - maxFinalBottom);
+          ceilOffY = (priceTopBoundaryMm - 2.5) - textBaseline - localTxtH*0.3;
+        }
+        if(bioFinalBottomMm !== null){
+          floorOffY = (bioFinalBottomMm + 1) - pinTopY;
+        }
+        if(floorOffY > ceilOffY){
+          // Conflit réel (pas assez de place entre Bio et le prix) : priorise l'absence de
+          // chevauchement avec Bio — deux badges qui se chevauchent entre eux est le pire rendu
+          // visuel (pointe de l'épingle en plein milieu du texte "BIO", constaté lors des tests),
+          // quitte à entamer la marge de sécurité (généreuse) réservée côté prix.
+          localOffYEff = floorOffY;
+        } else {
+          if(localOffYEff > ceilOffY) localOffYEff = ceilOffY;
+          if(localOffYEff < floorOffY) localOffYEff = floorOffY;
         }
         drawMapPin(doc, cx+(s.localOffsetX||0), pinCenterParam+localOffYEff, headR, hexToRgbArray(s.localColor, PIN_RED));
         doc.setFont('helvetica', s.localBold===false ? 'normal' : 'bold');
@@ -6434,6 +6456,7 @@
       // Badge Bio, emplacement fixe au-dessus du logo : point plein puis "BIO" en dessous (ou logo AB seul).
       const iconTop = iconCy - iconH/2;
       const badgeBottom = iconTop - badgeLogoGap; // bas du badge, toujours au même endroit
+      let bioFinalBottomMm = null;
       if(isBio){
         if(s.bioAsText){
           const textBaseline = badgeBottom;
@@ -6443,8 +6466,10 @@
           doc.setFontSize(s.bioFontSize);
           doc.setTextColor(...hexToRgbArray(s.bioColor, [60,130,60]));
           doc.text('BIO', cx+(s.bioOffsetX||0), textBaseline+(s.bioOffsetY||0), { align:'center' });
+          bioFinalBottomMm = textBaseline + (s.bioOffsetY||0) + bioTxtH*0.3;
         } else {
           doc.addImage(LOGO_AB_URI, 'PNG', cx-abImgW/2+(s.bioOffsetX||0), badgeBottom-abImgH+(s.bioOffsetY||0), abImgW, abImgH);
+          bioFinalBottomMm = badgeBottom + (s.bioOffsetY||0);
         }
         doc.setTextColor(42,36,32);
       }
@@ -6461,10 +6486,22 @@
         const textBaseline = pinTipY + localGap + localTxtH*0.8;
         // Filet de sécurité final (voir même commentaire dans la section 'bandeau' plus haut).
         let localOffYEff = s.localOffsetY||0;
+        let ceilOffY = Infinity, floorOffY = -Infinity;
         if(priceTopBoundaryMm !== null){
-          const finalBottom = textBaseline + localOffYEff + localTxtH*0.3;
-          const maxFinalBottom = priceTopBoundaryMm - 1.5;
-          if(finalBottom > maxFinalBottom) localOffYEff -= (finalBottom - maxFinalBottom);
+          ceilOffY = (priceTopBoundaryMm - 2.5) - textBaseline - localTxtH*0.3;
+        }
+        if(bioFinalBottomMm !== null){
+          floorOffY = (bioFinalBottomMm + 1) - localSlotTop;
+        }
+        if(floorOffY > ceilOffY){
+          // Conflit réel (pas assez de place entre Bio et le prix) : priorise l'absence de
+          // chevauchement avec Bio — deux badges qui se chevauchent entre eux est le pire rendu
+          // visuel (pointe de l'épingle en plein milieu du texte "BIO", constaté lors des tests),
+          // quitte à entamer la marge de sécurité (généreuse) réservée côté prix.
+          localOffYEff = floorOffY;
+        } else {
+          if(localOffYEff > ceilOffY) localOffYEff = ceilOffY;
+          if(localOffYEff < floorOffY) localOffYEff = floorOffY;
         }
         drawMapPin(doc, cx+(s.localOffsetX||0), pinCenterParam+localOffYEff, headR, hexToRgbArray(s.localColor, PIN_RED));
         doc.setFont('helvetica', s.localBold===false ? 'normal' : 'bold');
@@ -6975,17 +7012,24 @@
       const fromBottomKgPre = fromBottomAllergenPre + allergenLineHPre + (codeVAlign==='bottom' ? codeLineHPre : 0);
       const fromBottomPricePre = fromBottomKgPre + gapKgPre + gapUnitPre;
       // Intègre le décalage manuel du prix (lsPriceOffsetY) — miroir de drawLabelDetail.
-      priceTopBoundaryMm = h - fromBottomPricePre + (s.priceOffsetY||0);
+      // Ascendant réel — miroir exact de drawLabelDetail (voir son commentaire) : fromBottomPricePre
+      // chaîne les mêmes écarts que priceYPre côté PDF, donc cette valeur est une BASELINE, pas déjà
+      // un haut d'encre — sans cette soustraction, le seuil était ~8mm trop permissif par rapport au
+      // PDF (signalé : l'aperçu ne détectait pas un chevauchement Local/Prix pourtant bien réel dans
+      // le PDF généré avec les mêmes réglages).
+      priceTopBoundaryMm = h - fromBottomPricePre - s.detailPriceFont*0.3528*1.0 + (s.priceOffsetY||0);
     }
 
     // pluTopMm sert aussi d'ancre de flux pour le nom (style bandeau), uniquement repoussée par
     // le bandeau quand il occupe lui-même le haut — toujours calculée, le dessin du code est
-    // différé après le calcul de la pile du bas (codeVAlign peut valoir 'bottom').
-    const pluTopMm = bandAtTop ? bandH+3 : 3;
+    // différé après le calcul de la pile du bas (codeVAlign peut valoir 'bottom'). Constantes
+    // alignées sur pluY/nomY de drawLabelDetail (miroir exact — un écart de quelques mm ici
+    // contribuait aussi à la divergence aperçu/PDF signalée sur le flux Bio/Local).
+    const pluTopMm = bandAtTop ? bandH+5 : 7;
 
     // Nom du produit
     const nom = (r[1]||'').trim();
-    const nomTopMm = useBand ? pluTopMm+6 : 10;
+    const nomTopMm = useBand ? pluTopMm+6 : 16;
     const nomEl = document.createElement('div');
     nomEl.className = 'ls-wrap';
     nomEl.textContent = nom;
@@ -7045,6 +7089,7 @@
         if(flowY > maxFlowY) flowY = Math.max(minFlowY, maxFlowY);
       }
 
+      let bioFinalBottomMm = null;
       if(isBio){
         if(s.bioAsText){
           const dotCy = flowY + bioDotD/2;
@@ -7063,6 +7108,7 @@
           el.style.fontSize = (s.bioFontSize*0.3528*scale)+'px';
           el.style.color = s.bioColor;
           label.appendChild(el);
+          bioFinalBottomMm = textBaseline + (s.bioOffsetY||0) + bioTxtH*0.3;
         } else {
           const el = document.createElement('img');
           el.src = LOGO_AB_URI;
@@ -7070,6 +7116,7 @@
           el.style.top = ((flowY+(s.bioOffsetY||0))*scale)+'px';
           el.style.width = (abImgW*scale)+'px';
           label.appendChild(el);
+          bioFinalBottomMm = flowY + (s.bioOffsetY||0) + abImgH;
         }
       }
       flowY += bioSlotH + 2.5; // emplacement Local, fixe
@@ -7079,12 +7126,23 @@
         const pinTopY = flowY;
         const pinTipY = pinTopY + pinD*1.2; // approximation propre au tracé de lsBuildPinSvg (viewBox 20x26, tête + pointe)
         const textBaseline = pinTipY + 0.8 + localTxtH*0.8;
-        // Filet de sécurité final — miroir de drawLabelDetail.
+        // Filet de sécurité final — miroir de drawLabelDetail (partage le chevauchement au
+        // milieu si Bio et Prix ne laissent pas assez de place à Local entre les deux).
         let localOffYEff = s.localOffsetY||0;
+        let ceilOffY = Infinity, floorOffY = -Infinity;
         if(priceTopBoundaryMm !== null){
-          const finalBottom = textBaseline + localOffYEff + localTxtH*0.3;
-          const maxFinalBottom = priceTopBoundaryMm - 1.5;
-          if(finalBottom > maxFinalBottom) localOffYEff -= (finalBottom - maxFinalBottom);
+          ceilOffY = (priceTopBoundaryMm - 2.5) - textBaseline - localTxtH*0.3;
+        }
+        if(bioFinalBottomMm !== null){
+          floorOffY = (bioFinalBottomMm + 1) - pinTopY;
+        }
+        if(floorOffY > ceilOffY){
+          // Conflit réel — même choix que drawLabelDetail (priorise l'absence de chevauchement
+          // avec Bio, le pire rendu visuel des deux).
+          localOffYEff = floorOffY;
+        } else {
+          if(localOffYEff > ceilOffY) localOffYEff = ceilOffY;
+          if(localOffYEff < floorOffY) localOffYEff = floorOffY;
         }
         const svg = lsBuildPinSvg(s.localColor, pinPx);
         svg.style.left = ((cxMm-pinD/2+(s.localOffsetX||0))*scale)+'px';
@@ -7143,6 +7201,7 @@
       // Badge Bio, emplacement fixe au-dessus du logo : point plein puis "BIO" en dessous (ou logo AB seul).
       const iconTop = iconCy - iconW/2;
       const badgeBottom = iconTop - badgeLogoGap;
+      let bioFinalBottomMm = null;
       if(isBio){
         if(s.bioAsText){
           const textBaseline = badgeBottom;
@@ -7161,6 +7220,7 @@
           el.style.fontSize = (s.bioFontSize*0.3528*scale)+'px';
           el.style.color = s.bioColor;
           label.appendChild(el);
+          bioFinalBottomMm = textBaseline + (s.bioOffsetY||0) + bioTxtH*0.3;
         } else {
           const el = document.createElement('img');
           el.src = LOGO_AB_URI;
@@ -7168,6 +7228,7 @@
           el.style.top = ((badgeBottom-abImgH+(s.bioOffsetY||0))*scale)+'px';
           el.style.width = (abImgW*scale)+'px';
           label.appendChild(el);
+          bioFinalBottomMm = badgeBottom + (s.bioOffsetY||0);
         }
       }
 
@@ -7182,12 +7243,23 @@
         const pinTopY = localSlotTop;
         const pinTipY = pinTopY + pinD*1.2; // approximation propre au tracé de lsBuildPinSvg (viewBox 20x26, tête + pointe)
         const textBaseline = pinTipY + localGap + localTxtH*0.8;
-        // Filet de sécurité final — miroir de drawLabelDetail.
+        // Filet de sécurité final — miroir de drawLabelDetail (partage le chevauchement au
+        // milieu si Bio et Prix ne laissent pas assez de place à Local entre les deux).
         let localOffYEff = s.localOffsetY||0;
+        let ceilOffY = Infinity, floorOffY = -Infinity;
         if(priceTopBoundaryMm !== null){
-          const finalBottom = textBaseline + localOffYEff + localTxtH*0.3;
-          const maxFinalBottom = priceTopBoundaryMm - 1.5;
-          if(finalBottom > maxFinalBottom) localOffYEff -= (finalBottom - maxFinalBottom);
+          ceilOffY = (priceTopBoundaryMm - 2.5) - textBaseline - localTxtH*0.3;
+        }
+        if(bioFinalBottomMm !== null){
+          floorOffY = (bioFinalBottomMm + 1) - pinTopY;
+        }
+        if(floorOffY > ceilOffY){
+          // Conflit réel — même choix que drawLabelDetail (priorise l'absence de chevauchement
+          // avec Bio, le pire rendu visuel des deux).
+          localOffYEff = floorOffY;
+        } else {
+          if(localOffYEff > ceilOffY) localOffYEff = ceilOffY;
+          if(localOffYEff < floorOffY) localOffYEff = floorOffY;
         }
         const svg = lsBuildPinSvg(s.localColor, pinPx);
         svg.style.left = ((cxMm-pinD/2+(s.localOffsetX||0))*scale)+'px';
