@@ -2004,7 +2004,7 @@
 (function(){
   // Version affichée en haut à droite de la page — à mettre à jour à chaque modification
   // poussée sur GitHub, pour que l'utilisateur puisse vérifier qu'il a bien la dernière version.
-  const APP_VERSION = 'v20261019_1';
+  const APP_VERSION = 'v20261020_1';
   const versionBadge = document.getElementById('appVersionBadge');
   if(versionBadge) versionBadge.textContent = `Version du ${APP_VERSION}`;
 
@@ -6258,7 +6258,10 @@
       const kgLineYPre = allergenLineYPre - allergenLineHPre - (codeVAlign==='bottom' ? codeLineHPre : 0);
       const unitLineYPre = kgLineYPre - gapKgPre;
       const priceYPre = unitLineYPre - gapUnitPre;
-      priceTopBoundaryMm = priceYPre - s.detailPriceFont*0.3528*0.8; // priceAscentMm
+      // Intègre le décalage manuel du prix (lsPriceOffsetY) : un décalage négatif rapproche le
+      // prix des badges, ce qui doit resserrer d'autant la limite à ne pas franchir (signalé :
+      // chevauchement visible seulement avec un décalage prix/local non nul).
+      priceTopBoundaryMm = priceYPre - s.detailPriceFont*0.3528*0.8 + (s.priceOffsetY||0); // priceAscentMm
     }
 
     // pluY/nomY restent les ancres de flux historiques (position "en haut"), toujours calculées
@@ -6334,8 +6337,10 @@
       // redescendre sous la position "sans espace additionnel" (qui, elle, ne chevauche jamais le
       // nom par construction) : dépend uniquement des réglages, jamais du contenu de cette ligne.
       if(priceTopBoundaryMm !== null){
-        const maxFlowY = priceTopBoundaryMm - 1.5 - bioSlotH - 2.5 - localSlotH;
-        const minFlowY = nomY + NAME_MAX_LINES*nameLineH + 2;
+        // Intègre les décalages manuels Local/Bio (lsLocalOffsetY/lsBioOffsetY) — même principe
+        // que le style 'icon' ci-dessus.
+        const maxFlowY = priceTopBoundaryMm - 4 - bioSlotH - 2.5 - localSlotH - (s.localOffsetY||0);
+        const minFlowY = nomY + NAME_MAX_LINES*nameLineH + 2 - (s.bioOffsetY||0);
         if(flowY > maxFlowY) flowY = Math.max(minFlowY, maxFlowY);
       }
 
@@ -6359,12 +6364,22 @@
         const pinTopY = flowY; // haut de la tête de l'épingle, cf. drawMapPin (top = cy - headR*1.4)
         const pinCenterParam = pinTopY + headR*1.4;
         const pinTipY = pinTopY + headR*2.9; // pointe de l'épingle, cf. drawMapPin (tip = cy + headR*1.5)
-        drawMapPin(doc, cx+(s.localOffsetX||0), pinCenterParam+(s.localOffsetY||0), headR, hexToRgbArray(s.localColor, PIN_RED));
         const textBaseline = pinTipY + 0.8 + localTxtH*0.8;
+        // Filet de sécurité final : quel que soit le décalage manuel (lsLocalOffsetY) demandé,
+        // il ne doit jamais pousser le badge Local à chevaucher le prix — signalé (chevauchement
+        // reproduit avec des décalages Local/Bio/Prix combinés, que le seul ajustement de
+        // l'espace additionnel plus haut ne suffit pas toujours à couvrir).
+        let localOffYEff = s.localOffsetY||0;
+        if(priceTopBoundaryMm !== null){
+          const finalBottom = textBaseline + localOffYEff + localTxtH*0.3;
+          const maxFinalBottom = priceTopBoundaryMm - 1.5;
+          if(finalBottom > maxFinalBottom) localOffYEff -= (finalBottom - maxFinalBottom);
+        }
+        drawMapPin(doc, cx+(s.localOffsetX||0), pinCenterParam+localOffYEff, headR, hexToRgbArray(s.localColor, PIN_RED));
         doc.setFont('helvetica', s.localBold===false ? 'normal' : 'bold');
         doc.setFontSize(s.localFontSize);
         doc.setTextColor(...hexToRgbArray(s.localColor, PIN_RED));
-        doc.text(pinTextShown, cx+(s.localOffsetX||0), textBaseline+(s.localOffsetY||0), { align:'center' });
+        doc.text(pinTextShown, cx+(s.localOffsetX||0), textBaseline+localOffYEff, { align:'center' });
         doc.setTextColor(42,36,32);
       }
       flowY += localSlotH + 2.5; // emplacement fournisseur/description, fixe (réserve toujours la place du badge Local)
@@ -6394,15 +6409,19 @@
         // chevauchement Local/prix d'origine que d'en créer un nouveau avec le nom.
         const headRPre = s.localIconSize/2;
         const localSlotHPre = headRPre*2.9 + 0.8 + s.localFontSize*0.42;
-        const worstLocalBottom = iconCy + iconH/2 + badgeLogoGap + localSlotHPre;
-        const overflow = (worstLocalBottom + 1.5) - priceTopBoundaryMm; // 1.5mm de marge de sécurité
+        // Intègre les décalages manuels Local/Bio (lsLocalOffsetY/lsBioOffsetY) : un décalage
+        // positif de Local (vers le bas) ou négatif de Bio (vers le haut, donc du logo aussi,
+        // solidaire) change la position réellement atteinte, pas seulement la position "de base"
+        // — signalé : chevauchement visible seulement avec un décalage non nul.
+        const worstLocalBottom = iconCy + iconH/2 + badgeLogoGap + localSlotHPre + (s.localOffsetY||0);
+        const overflow = (worstLocalBottom + 4) - priceTopBoundaryMm; // marge de sécurité (couvre aussi un léger écart structurel entre aperçu et PDF)
         if(overflow > 0){
           let candidateIconCy = iconCy - overflow;
           if(nameVAlign === 'top'){
             // Marge réaliste (une ligne de nom + 3mm), pas le pire cas à 4 lignes de la trame
             // bandeau ni la pleine réserve du badge Bio au-dessus du logo : but ici est d'éviter
             // un chevauchement flagrant logo/nom, pas de garantir une position au pixel près.
-            const minIconCy = nomY + s.detailNameFont*0.42 + 3 + spacing + iconH/2;
+            const minIconCy = nomY + s.detailNameFont*0.42 + 3 + spacing + iconH/2 - (s.bioOffsetY||0);
             if(candidateIconCy < minIconCy) candidateIconCy = null;
           }
           if(candidateIconCy !== null) iconCy = candidateIconCy;
@@ -6439,12 +6458,19 @@
       if(pinTextShown){
         const pinCenterParam = localSlotTop + headR*1.4;
         const pinTipY = localSlotTop + headR*2.9; // pointe de l'épingle, cf. drawMapPin (tip = cy + headR*1.5)
-        drawMapPin(doc, cx+(s.localOffsetX||0), pinCenterParam+(s.localOffsetY||0), headR, hexToRgbArray(s.localColor, PIN_RED));
         const textBaseline = pinTipY + localGap + localTxtH*0.8;
+        // Filet de sécurité final (voir même commentaire dans la section 'bandeau' plus haut).
+        let localOffYEff = s.localOffsetY||0;
+        if(priceTopBoundaryMm !== null){
+          const finalBottom = textBaseline + localOffYEff + localTxtH*0.3;
+          const maxFinalBottom = priceTopBoundaryMm - 1.5;
+          if(finalBottom > maxFinalBottom) localOffYEff -= (finalBottom - maxFinalBottom);
+        }
+        drawMapPin(doc, cx+(s.localOffsetX||0), pinCenterParam+localOffYEff, headR, hexToRgbArray(s.localColor, PIN_RED));
         doc.setFont('helvetica', s.localBold===false ? 'normal' : 'bold');
         doc.setFontSize(s.localFontSize);
         doc.setTextColor(...hexToRgbArray(s.localColor, PIN_RED));
-        doc.text(pinTextShown, cx+(s.localOffsetX||0), textBaseline+(s.localOffsetY||0), { align:'center' });
+        doc.text(pinTextShown, cx+(s.localOffsetX||0), textBaseline+localOffYEff, { align:'center' });
         doc.setTextColor(42,36,32);
       }
       belowY = localSlotTop + localSlotH + 2.5; // toujours fixe, badge Local affiché ou non
@@ -6948,7 +6974,8 @@
       const gapKgPre = s.detailKgFont*0.42 + detailUnitFontPre*0.12 + 1.2;
       const fromBottomKgPre = fromBottomAllergenPre + allergenLineHPre + (codeVAlign==='bottom' ? codeLineHPre : 0);
       const fromBottomPricePre = fromBottomKgPre + gapKgPre + gapUnitPre;
-      priceTopBoundaryMm = h - fromBottomPricePre;
+      // Intègre le décalage manuel du prix (lsPriceOffsetY) — miroir de drawLabelDetail.
+      priceTopBoundaryMm = h - fromBottomPricePre + (s.priceOffsetY||0);
     }
 
     // pluTopMm sert aussi d'ancre de flux pour le nom (style bandeau), uniquement repoussée par
@@ -7013,8 +7040,8 @@
       // Miroir de drawLabelDetail : un grand espace additionnel ne doit pas pousser Bio/Local
       // jusqu'à chevaucher le prix.
       if(priceTopBoundaryMm !== null){
-        const maxFlowY = priceTopBoundaryMm - 1.5 - bioSlotH - 2.5 - localSlotH;
-        const minFlowY = nomTopMm + NAME_MAX_LINES*nameLineH + 2;
+        const maxFlowY = priceTopBoundaryMm - 4 - bioSlotH - 2.5 - localSlotH - (s.localOffsetY||0);
+        const minFlowY = nomTopMm + NAME_MAX_LINES*nameLineH + 2 - (s.bioOffsetY||0);
         if(flowY > maxFlowY) flowY = Math.max(minFlowY, maxFlowY);
       }
 
@@ -7051,16 +7078,23 @@
         const pinPx = pinD*scale;
         const pinTopY = flowY;
         const pinTipY = pinTopY + pinD*1.2; // approximation propre au tracé de lsBuildPinSvg (viewBox 20x26, tête + pointe)
+        const textBaseline = pinTipY + 0.8 + localTxtH*0.8;
+        // Filet de sécurité final — miroir de drawLabelDetail.
+        let localOffYEff = s.localOffsetY||0;
+        if(priceTopBoundaryMm !== null){
+          const finalBottom = textBaseline + localOffYEff + localTxtH*0.3;
+          const maxFinalBottom = priceTopBoundaryMm - 1.5;
+          if(finalBottom > maxFinalBottom) localOffYEff -= (finalBottom - maxFinalBottom);
+        }
         const svg = lsBuildPinSvg(s.localColor, pinPx);
         svg.style.left = ((cxMm-pinD/2+(s.localOffsetX||0))*scale)+'px';
-        svg.style.top = ((pinTopY+(s.localOffsetY||0))*scale)+'px';
+        svg.style.top = ((pinTopY+localOffYEff)*scale)+'px';
         label.appendChild(svg);
-        const textBaseline = pinTipY + 0.8 + localTxtH*0.8;
         const txt = document.createElement('div');
         txt.textContent = pinTextShown;
         txt.style.left = '50%';
         txt.style.transform = `translateX(calc(-50% + ${(s.localOffsetX||0)*scale}px))`;
-        txt.style.top = ((textBaseline - s.localFontSize*0.325 + (s.localOffsetY||0))*scale)+'px';
+        txt.style.top = ((textBaseline - s.localFontSize*0.325 + localOffYEff)*scale)+'px';
         txt.style.fontWeight = s.localBold===false ? '400' : '700';
         txt.style.fontSize = (s.localFontSize*0.3528*scale)+'px';
         txt.style.color = s.localColor;
@@ -7084,12 +7118,12 @@
       if(priceTopBoundaryMm !== null){
         const headRPre = s.localIconSize/2;
         const localSlotHPre = headRPre*2.9 + 0.8 + s.localFontSize*0.42;
-        const worstLocalBottom = iconCy + iconW/2 + badgeLogoGap + localSlotHPre;
-        const overflow = (worstLocalBottom + 1.5) - priceTopBoundaryMm;
+        const worstLocalBottom = iconCy + iconW/2 + badgeLogoGap + localSlotHPre + (s.localOffsetY||0);
+        const overflow = (worstLocalBottom + 4) - priceTopBoundaryMm;
         if(overflow > 0){
           let candidateIconCy = iconCy - overflow;
           if(nameVAlign === 'top'){
-            const minIconCy = nomTopMm + s.detailNameFont*0.42 + 3 + spacing + iconW/2;
+            const minIconCy = nomTopMm + s.detailNameFont*0.42 + 3 + spacing + iconW/2 - (s.bioOffsetY||0);
             if(candidateIconCy < minIconCy) candidateIconCy = null;
           }
           if(candidateIconCy !== null) iconCy = candidateIconCy;
@@ -7147,16 +7181,23 @@
         const pinPx = pinD*scale;
         const pinTopY = localSlotTop;
         const pinTipY = pinTopY + pinD*1.2; // approximation propre au tracé de lsBuildPinSvg (viewBox 20x26, tête + pointe)
+        const textBaseline = pinTipY + localGap + localTxtH*0.8;
+        // Filet de sécurité final — miroir de drawLabelDetail.
+        let localOffYEff = s.localOffsetY||0;
+        if(priceTopBoundaryMm !== null){
+          const finalBottom = textBaseline + localOffYEff + localTxtH*0.3;
+          const maxFinalBottom = priceTopBoundaryMm - 1.5;
+          if(finalBottom > maxFinalBottom) localOffYEff -= (finalBottom - maxFinalBottom);
+        }
         const svg = lsBuildPinSvg(s.localColor, pinPx);
         svg.style.left = ((cxMm-pinD/2+(s.localOffsetX||0))*scale)+'px';
-        svg.style.top = ((pinTopY+(s.localOffsetY||0))*scale)+'px';
+        svg.style.top = ((pinTopY+localOffYEff)*scale)+'px';
         label.appendChild(svg);
-        const textBaseline = pinTipY + localGap + localTxtH*0.8;
         const txt = document.createElement('div');
         txt.textContent = pinTextShown;
         txt.style.left = '50%';
         txt.style.transform = `translateX(calc(-50% + ${(s.localOffsetX||0)*scale}px))`;
-        txt.style.top = ((textBaseline - s.localFontSize*0.325 + (s.localOffsetY||0))*scale)+'px';
+        txt.style.top = ((textBaseline - s.localFontSize*0.325 + localOffYEff)*scale)+'px';
         txt.style.fontWeight = s.localBold===false ? '400' : '700';
         txt.style.fontSize = (s.localFontSize*0.3528*scale)+'px';
         txt.style.color = s.localColor;
