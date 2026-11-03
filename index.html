@@ -691,6 +691,11 @@
   }
   .field.overflow .field-warn.w-overflow{ display:block; }
   .field.comma-error .field-warn.w-comma{ display:block; }
+  .field-hint{
+    font-size:11px;
+    color:var(--ink-soft);
+    margin-top:4px;
+  }
 
   .allergen-note{
     font-size:11px;
@@ -2004,7 +2009,7 @@
 (function(){
   // Version affichée en haut à droite de la page — à mettre à jour à chaque modification
   // poussée sur GitHub, pour que l'utilisateur puisse vérifier qu'il a bien la dernière version.
-  const APP_VERSION = 'v20261020_2';
+  const APP_VERSION = 'v20261103_1';
   const versionBadge = document.getElementById('appVersionBadge');
   if(versionBadge) versionBadge.textContent = `Version du ${APP_VERSION}`;
 
@@ -3194,6 +3199,11 @@
     sheetTitle.textContent = nom || '(nouvel article)';
 
     sheetBody.innerHTML = '';
+    // Déclarés ici (portée de openSheet) plutôt que dans le bloc "Base articles" plus bas où ils
+    // sont créés : le filet "prix conseillé" de buildGenericField (champ Prix de vente, colonne 4)
+    // a besoin d'y accéder par fermeture, et une déclaration à l'intérieur d'un bloc { } ne serait
+    // pas visible en dehors de ce bloc.
+    let achatInput, catSelect;
 
     function buildGenericField(ci){
       const meta = state.colMeta[ci];
@@ -3259,6 +3269,30 @@
         wrap.appendChild(warnPlu);
       }
 
+      // Prix de vente (colonne 4) : suggère, en petit, le prix TTC qui donnerait une marge de
+      // 55 % (même définition que "Marge indicative" ci-dessus — taux de marque, rapporté au
+      // prix de vente HT) à partir du prix d'achat HT et du taux de TVA déjà renseignés plus
+      // haut dans la fiche. Pure indication, ne modifie jamais le champ ni ne force la saisie.
+      if(ci === 4){
+        const prixSuggereHint = document.createElement('div');
+        prixSuggereHint.className = 'field-hint';
+        const refreshPrixSuggere = ()=>{
+          const achatCents = parseFloat(euroStrToCents(achatInput.value));
+          const tva = parseFloat(tvaForCategory(catSelect.value));
+          if(isNaN(achatCents) || achatCents<=0 || isNaN(tva)){
+            prixSuggereHint.textContent = '';
+            return;
+          }
+          const venteHTConseille = achatCents / (1 - 0.55);
+          const venteTTCConseille = venteHTConseille * (1 + tva/100);
+          prixSuggereHint.textContent = `Prix conseillé pour une marge de 55 % : ${(venteTTCConseille/100).toFixed(2).replace('.',',')} €`;
+        };
+        achatInput.addEventListener('input', refreshPrixSuggere);
+        catSelect.addEventListener('change', refreshPrixSuggere);
+        refreshPrixSuggere();
+        wrap.appendChild(prixSuggereHint);
+      }
+
       return wrap;
     }
 
@@ -3315,7 +3349,7 @@
       const catWrap = document.createElement('div');
       catWrap.className = 'field';
       catWrap.innerHTML = `<div class="field-label"><span class="name">Catégorie</span></div>`;
-      const catSelect = document.createElement('select');
+      catSelect = document.createElement('select');
       catSelect.id = 'bizCategorie';
       // Normalisé (clé non paddée) : la colonne catégorie d'un export balance natif est
       // zero-paddée ("01"), alors que les valeurs des options ci-dessous (et donc
@@ -3344,7 +3378,7 @@
 
       const achatWrap = document.createElement('div');
       achatWrap.innerHTML = `<div class="field-label"><span class="name">Prix d'achat HT (€)</span></div>`;
-      const achatInput = document.createElement('input');
+      achatInput = document.createElement('input');
       achatInput.type = 'text'; achatInput.id = 'bizAchat';
       achatInput.value = centsToEuroStr(row[BIZCOL.ACHAT_HT]);
       achatInput.placeholder = '0,00';
