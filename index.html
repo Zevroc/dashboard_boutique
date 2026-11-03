@@ -2009,7 +2009,7 @@
 (function(){
   // Version affichée en haut à droite de la page — à mettre à jour à chaque modification
   // poussée sur GitHub, pour que l'utilisateur puisse vérifier qu'il a bien la dernière version.
-  const APP_VERSION = 'v20261103_1';
+  const APP_VERSION = 'v20261103_2';
   const versionBadge = document.getElementById('appVersionBadge');
   if(versionBadge) versionBadge.textContent = `Version du ${APP_VERSION}`;
 
@@ -6405,14 +6405,15 @@
         const pinCenterParam = pinTopY + headR*1.4;
         const pinTipY = pinTopY + headR*2.9; // pointe de l'épingle, cf. drawMapPin (tip = cy + headR*1.5)
         const textBaseline = pinTipY + 0.8 + localTxtH*0.8;
-        // Filet de sécurité final : quel que soit le décalage manuel (lsLocalOffsetY) demandé,
-        // Local ne doit chevaucher ni le prix en dessous ni Bio au-dessus — signalé (chevauchement
-        // reproduit avec des décalages Local/Bio/Prix combinés, que le seul ajustement de l'espace
-        // additionnel plus haut ne suffit pas toujours à couvrir). Si la place manque des deux
-        // côtés à la fois (décalages extrêmes et opposés, pas assez d'espace entre Bio et le prix),
-        // on donne la priorité à l'absence de chevauchement avec Bio (deux badges qui se
-        // chevauchent entre eux est visuellement pire qu'entamer la marge de sécurité, généreuse,
-        // réservée côté prix).
+        // Filet de sécurité final : quand il existe une position qui évite à la fois Bio et le
+        // prix, on y ramène le décalage manuel (lsLocalOffsetY) s'il en sortait — signalé
+        // (chevauchement reproduit avec des décalages Local/Bio/Prix combinés, que le seul
+        // ajustement de l'espace additionnel plus haut ne suffit pas toujours à couvrir). Si la
+        // place manque des deux côtés à la fois (décalages Bio/Prix extrêmes, aucune position ne
+        // convient), on NE force plus le décalage à une valeur imposée — ça bloquait le curseur
+        // "décalage Local" sur une position fixe, impossible à faire bouger (signalé : "même en
+        // jouant sur le décalage, on n'arrive pas à les remonter"). Le décalage manuel s'applique
+        // alors tel quel : à l'utilisateur de trouver le meilleur compromis à l'œil via l'aperçu.
         let localOffYEff = s.localOffsetY||0;
         let ceilOffY = Infinity, floorOffY = -Infinity;
         if(priceTopBoundaryMm !== null){
@@ -6421,13 +6422,7 @@
         if(bioFinalBottomMm !== null){
           floorOffY = (bioFinalBottomMm + 1) - pinTopY;
         }
-        if(floorOffY > ceilOffY){
-          // Conflit réel (pas assez de place entre Bio et le prix) : priorise l'absence de
-          // chevauchement avec Bio — deux badges qui se chevauchent entre eux est le pire rendu
-          // visuel (pointe de l'épingle en plein milieu du texte "BIO", constaté lors des tests),
-          // quitte à entamer la marge de sécurité (généreuse) réservée côté prix.
-          localOffYEff = floorOffY;
-        } else {
+        if(floorOffY <= ceilOffY){
           if(localOffYEff > ceilOffY) localOffYEff = ceilOffY;
           if(localOffYEff < floorOffY) localOffYEff = floorOffY;
         }
@@ -6527,13 +6522,7 @@
         if(bioFinalBottomMm !== null){
           floorOffY = (bioFinalBottomMm + 1) - localSlotTop;
         }
-        if(floorOffY > ceilOffY){
-          // Conflit réel (pas assez de place entre Bio et le prix) : priorise l'absence de
-          // chevauchement avec Bio — deux badges qui se chevauchent entre eux est le pire rendu
-          // visuel (pointe de l'épingle en plein milieu du texte "BIO", constaté lors des tests),
-          // quitte à entamer la marge de sécurité (généreuse) réservée côté prix.
-          localOffYEff = floorOffY;
-        } else {
+        if(floorOffY <= ceilOffY){
           if(localOffYEff > ceilOffY) localOffYEff = ceilOffY;
           if(localOffYEff < floorOffY) localOffYEff = floorOffY;
         }
@@ -7160,8 +7149,9 @@
         const pinTopY = flowY;
         const pinTipY = pinTopY + pinD*1.2; // approximation propre au tracé de lsBuildPinSvg (viewBox 20x26, tête + pointe)
         const textBaseline = pinTipY + 0.8 + localTxtH*0.8;
-        // Filet de sécurité final — miroir de drawLabelDetail (partage le chevauchement au
-        // milieu si Bio et Prix ne laissent pas assez de place à Local entre les deux).
+        // Filet de sécurité final — miroir de drawLabelDetail (voir son commentaire : quand
+        // aucune position ne satisfait à la fois Bio et le prix, le décalage manuel s'applique
+        // tel quel plutôt que d'être figé à une valeur imposée).
         let localOffYEff = s.localOffsetY||0;
         let ceilOffY = Infinity, floorOffY = -Infinity;
         if(priceTopBoundaryMm !== null){
@@ -7170,11 +7160,7 @@
         if(bioFinalBottomMm !== null){
           floorOffY = (bioFinalBottomMm + 1) - pinTopY;
         }
-        if(floorOffY > ceilOffY){
-          // Conflit réel — même choix que drawLabelDetail (priorise l'absence de chevauchement
-          // avec Bio, le pire rendu visuel des deux).
-          localOffYEff = floorOffY;
-        } else {
+        if(floorOffY <= ceilOffY){
           if(localOffYEff > ceilOffY) localOffYEff = ceilOffY;
           if(localOffYEff < floorOffY) localOffYEff = floorOffY;
         }
@@ -7277,8 +7263,9 @@
         const pinTopY = localSlotTop;
         const pinTipY = pinTopY + pinD*1.2; // approximation propre au tracé de lsBuildPinSvg (viewBox 20x26, tête + pointe)
         const textBaseline = pinTipY + localGap + localTxtH*0.8;
-        // Filet de sécurité final — miroir de drawLabelDetail (partage le chevauchement au
-        // milieu si Bio et Prix ne laissent pas assez de place à Local entre les deux).
+        // Filet de sécurité final — miroir de drawLabelDetail (voir son commentaire : quand
+        // aucune position ne satisfait à la fois Bio et le prix, le décalage manuel s'applique
+        // tel quel plutôt que d'être figé à une valeur imposée).
         let localOffYEff = s.localOffsetY||0;
         let ceilOffY = Infinity, floorOffY = -Infinity;
         if(priceTopBoundaryMm !== null){
@@ -7287,11 +7274,7 @@
         if(bioFinalBottomMm !== null){
           floorOffY = (bioFinalBottomMm + 1) - pinTopY;
         }
-        if(floorOffY > ceilOffY){
-          // Conflit réel — même choix que drawLabelDetail (priorise l'absence de chevauchement
-          // avec Bio, le pire rendu visuel des deux).
-          localOffYEff = floorOffY;
-        } else {
+        if(floorOffY <= ceilOffY){
           if(localOffYEff > ceilOffY) localOffYEff = ceilOffY;
           if(localOffYEff < floorOffY) localOffYEff = floorOffY;
         }
