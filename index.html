@@ -2009,7 +2009,7 @@
 (function(){
   // Version affichée en haut à droite de la page — à mettre à jour à chaque modification
   // poussée sur GitHub, pour que l'utilisateur puisse vérifier qu'il a bien la dernière version.
-  const APP_VERSION = 'v20261103_2';
+  const APP_VERSION = 'v20261103_3';
   const versionBadge = document.getElementById('appVersionBadge');
   if(versionBadge) versionBadge.textContent = `Version du ${APP_VERSION}`;
 
@@ -6374,10 +6374,14 @@
       // redescendre sous la position "sans espace additionnel" (qui, elle, ne chevauche jamais le
       // nom par construction) : dépend uniquement des réglages, jamais du contenu de cette ligne.
       if(priceTopBoundaryMm !== null){
-        // Intègre les décalages manuels Local/Bio (lsLocalOffsetY/lsBioOffsetY) — même principe
-        // que le style 'icon' ci-dessus.
+        // Intègre le décalage manuel Local (lsLocalOffsetY) — même principe que le style 'icon'
+        // ci-dessus. minFlowY ne doit PAS intégrer lsBioOffsetY : celui-ci est déjà appliqué tel
+        // quel, en plus, au moment de dessiner Bio plus bas (dotCy+bioOffsetY) — le soustraire ici
+        // aussi l'annulait exactement dès que ce plancher était retenu, rendant Bio insensible à
+        // son propre curseur de décalage (signalé : "le décalage en y du badge bio... le badge
+        // bio semble fixe").
         const maxFlowY = priceTopBoundaryMm - 4 - bioSlotH - 2.5 - localSlotH - (s.localOffsetY||0);
-        const minFlowY = nomY + NAME_MAX_LINES*nameLineH + 2 - (s.bioOffsetY||0);
+        const minFlowY = nomY + NAME_MAX_LINES*nameLineH + 2;
         if(flowY > maxFlowY) flowY = Math.max(minFlowY, maxFlowY);
       }
 
@@ -7107,8 +7111,9 @@
       // Miroir de drawLabelDetail : un grand espace additionnel ne doit pas pousser Bio/Local
       // jusqu'à chevaucher le prix.
       if(priceTopBoundaryMm !== null){
+        // minFlowY n'intègre pas lsBioOffsetY — voir le commentaire dans drawLabelDetail.
         const maxFlowY = priceTopBoundaryMm - 4 - bioSlotH - 2.5 - localSlotH - (s.localOffsetY||0);
-        const minFlowY = nomTopMm + NAME_MAX_LINES*nameLineH + 2 - (s.bioOffsetY||0);
+        const minFlowY = nomTopMm + NAME_MAX_LINES*nameLineH + 2;
         if(flowY > maxFlowY) flowY = Math.max(minFlowY, maxFlowY);
       }
 
